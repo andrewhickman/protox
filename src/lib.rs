@@ -1,12 +1,20 @@
+mod compile;
+
 use std::{fmt, path::Path};
 
 use prost_types::FileDescriptorSet;
 
 pub fn compile(
-    _files: impl IntoIterator<Item = impl AsRef<Path>>,
-    _includes: impl IntoIterator<Item = impl AsRef<Path>>,
+    files: impl IntoIterator<Item = impl AsRef<Path>>,
+    includes: impl IntoIterator<Item = impl AsRef<Path>>,
 ) -> Result<FileDescriptorSet, Error> {
-    todo!()
+    let mut compiler = compile::Compiler::new(includes)?;
+
+    for file in files {
+        compiler.add_file(file)?;
+    }
+
+    Ok(compiler.build_file_descriptor_set())
 }
 
 pub struct Error {
