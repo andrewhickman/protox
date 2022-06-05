@@ -10,5 +10,6 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
+prost-types = "0.10.1"
 
 [dev-dependencies]
