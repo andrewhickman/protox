@@ -1,4 +1,6 @@
+mod ast;
 mod compile;
+mod parse;
 
 use std::{fmt, path::Path};
 
