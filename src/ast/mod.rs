@@ -115,7 +115,7 @@ pub enum KeyTy {
     String,
 }
 
-pub struct Oneof {
+pub struct OneofDefinition {
     name: Ident,
     options: Vec<Option>,
     fields: Vec<OneofField>,
@@ -156,4 +156,18 @@ pub struct EnumField {
     name: Ident,
     value: IntLiteral,
     options: Vec<Option>,
+}
+
+pub struct ServiceDefinition {
+    name: Ident,
+    options: Vec<Option>,
+    methods: Vec<MethodDefinition>,
+}
+
+pub struct MethodDefinition {
+    input_ty: TypeName,
+    output_ty: TypeName,
+    options: Vec<Option>,
+    is_client_streaming: bool,
+    is_server_streaming: bool,
 }
