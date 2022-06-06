@@ -1,5 +1,5 @@
-mod proto2;
-mod proto3;
+pub mod proto2;
+pub mod proto3;
 
 #[derive(Debug, Copy, Clone)]
 struct Span {
@@ -33,38 +33,38 @@ pub struct TypeName {
     span: Span,
 }
 
-pub struct IntLiteral {
+pub struct Int {
     negative: bool,
     value: u64,
     span: Span,
 }
 
-pub struct FloatLiteral {
+pub struct Float {
     value: f64,
     span: Span,
 }
 
-pub struct BoolLiteral {
+pub struct Bool {
     value: bool,
     span: Span,
 }
 
-pub struct StringLiteral {
-    value: String,
+pub struct String {
+    value: std::string::String,
     span: Span,
 }
 
 pub enum Constant {
     FullIdent(FullIdent),
-    Int(IntLiteral),
-    Float(FloatLiteral),
-    String(StringLiteral),
-    BoolLiteral(BoolLiteral),
+    Int(Int),
+    Float(Float),
+    String(String),
+    BoolLiteral(Bool),
 }
 
 pub struct Import {
     kind: std::option::Option<ImportKind>,
-    value: StringLiteral,
+    value: String,
 }
 
 pub enum ImportKind {
@@ -115,7 +115,7 @@ pub enum KeyTy {
     String,
 }
 
-pub struct OneofDefinition {
+pub struct Oneof {
     name: Ident,
     options: Vec<Option>,
     fields: Vec<OneofField>,
@@ -124,7 +124,7 @@ pub struct OneofDefinition {
 pub struct OneofField {
     ty: Ty,
     name: Ident,
-    number: IntLiteral,
+    number: Int,
     options: Vec<Option>,
 }
 
@@ -132,7 +132,7 @@ pub struct MapField {
     key_ty: KeyTy,
     ty: Ty,
     name: Ident,
-    number: IntLiteral,
+    number: Int,
     options: Vec<Option>,
 }
 
@@ -142,11 +142,11 @@ pub enum Reserved {
 }
 
 pub struct ReservedRange {
-    start: IntLiteral,
-    end: std::option::Option<IntLiteral>,
+    start: Int,
+    end: std::option::Option<Int>,
 }
 
-pub struct EnumDefinition {
+pub struct Enum {
     name: Ident,
     options: Vec<Option>,
     values: Vec<EnumField>,
@@ -154,17 +154,17 @@ pub struct EnumDefinition {
 
 pub struct EnumField {
     name: Ident,
-    value: IntLiteral,
+    value: Int,
     options: Vec<Option>,
 }
 
-pub struct ServiceDefinition {
+pub struct Service {
     name: Ident,
     options: Vec<Option>,
-    methods: Vec<MethodDefinition>,
+    methods: Vec<Method>,
 }
 
-pub struct MethodDefinition {
+pub struct Method {
     input_ty: TypeName,
     output_ty: TypeName,
     options: Vec<Option>,

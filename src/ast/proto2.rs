@@ -8,34 +8,35 @@ pub struct File {
 }
 
 pub enum Definition {
-    Message(MessageDefinition),
-    Enum(EnumDefinition),
-    Service(ServiceDefinition),
-    Extension(ExtensionDefinition),
+    Message(Message),
+    Enum(Enum),
+    Service(Service),
+    Extension(Extension),
 }
 
-pub struct MessageDefinition {
+pub struct Message {
     name: Ident,
     body: MessageBody,
 }
 
 pub struct MessageBody {
-    fields: Vec<FieldDefinition>,
-    enums: Vec<EnumDefinition>,
-    messages: Vec<MessageDefinition>,
-    extensions: Vec<ExtensionDefinition>,
-    extensionRanges: Vec<ReservedRange>,
-    groups: Vec<GroupDefinition>,
+    map_fields: Vec<MapField>,
+    fields: Vec<Field>,
+    enums: Vec<Enum>,
+    messages: Vec<Message>,
+    extensions: Vec<Extension>,
+    extension_ranges: Vec<ReservedRange>,
+    groups: Vec<Group>,
     options: Vec<Option>,
-    oneofs: Vec<OneofDefinition>,
+    oneofs: Vec<Oneof>,
     reserved: Vec<Reserved>,
 }
 
-pub struct FieldDefinition {
+pub struct Field {
     label: FieldLabel,
     name: Ident,
     ty: Ty,
-    number: IntLiteral,
+    number: Int,
     options: Vec<Option>,
 }
 
@@ -45,19 +46,19 @@ pub enum FieldLabel {
     Repeated,
 }
 
-pub struct ExtensionDefinition {
+pub struct Extension {
     extendee: TypeName,
     fields: Vec<ExtensionField>,
 }
 
 pub enum ExtensionField {
-    Field(FieldDefinition),
-    Group(GroupDefinition),
+    Field(Field),
+    Group(Group),
 }
 
-pub struct GroupDefinition {
+pub struct Group {
     label: FieldLabel,
     name: Ident,
-    number: IntLiteral,
+    number: Int,
     body: MessageBody,
 }
