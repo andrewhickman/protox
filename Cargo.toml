@@ -10,6 +10,9 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
+logos = "0.12.0"
+miette = "4.7.1"
 prost-types = "0.10.1"
+thiserror = "1.0.31"
 
 [dev-dependencies]
