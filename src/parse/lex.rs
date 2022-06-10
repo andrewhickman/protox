@@ -1,9 +1,9 @@
-use std::{num::IntErrorKind, convert::TryInto};
+use std::{convert::TryInto, num::IntErrorKind};
 
-use logos::{Lexer, Logos, Filter, Skip};
+use logos::{Lexer, Logos, Skip};
 use miette::SourceOffset;
 
-#[derive(Debug, Clone, Logos)]
+#[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
 pub(crate) enum Token {
     #[regex("[A-Za-z][A-Za-z_]*", ident)]
@@ -14,7 +14,10 @@ pub(crate) enum Token {
     Decimal(u64),
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
     Hexadecimal(u64),
-    #[regex(r#"([0-9]+\.[0-9]*([eE][+\-][0-9]+)?)|([0-9]+[eE][+\-][0-9]+)|\.[0-9]+([eE][+\-][0-9]+)?|inf|nan"#, float)]
+    #[regex(
+        r#"([0-9]+\.[0-9]*([eE][+\-][0-9]+)?)|([0-9]+[eE][+\-][0-9]+)|\.[0-9]+([eE][+\-][0-9]+)?"#,
+        float
+    )]
     Float(f64),
     #[regex("false|true", bool)]
     Bool(bool),
@@ -36,6 +39,7 @@ pub(crate) enum Token {
     Error,
 }
 
+#[derive(Default)]
 pub(crate) struct TokenExtras {
     errors: Vec<LexError>,
     // Stack of block comments
@@ -43,6 +47,7 @@ pub(crate) struct TokenExtras {
     block_comments: Vec<usize>,
 }
 
+#[derive(Debug, PartialEq)]
 enum LexError {
     UnexpectedToken {
         start: SourceOffset,
@@ -80,44 +85,64 @@ fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
     }
 }
 
-fn float(lex: &mut Lexer<Token>) -> Result<f64, ()> {
-    lex.slice().parse().map_err(drop)
+fn float(lex: &mut Lexer<Token>) -> f64 {
+    lex.slice().parse().expect("failed to parse float")
 }
 
-fn bool(lex: &mut Lexer<Token>) -> Result<bool, ()> {
-    lex.slice().parse().map_err(drop)
+fn bool(lex: &mut Lexer<Token>) -> bool {
+    lex.slice().parse().expect("faield to parse bool")
 }
 
 fn string(lex: &mut Lexer<Token>) -> String {
     #[derive(Logos)]
-    enum Char {
-        #[regex(r#"[^\x00\n\\]"#, unescaped)]
-        Unescaped(char),
-        #[regex(r#"\[xX][0-9A-Fa-f][0-9A-Fa-f]"#, hex_escape)]
+    enum Char<'a> {
+        #[regex(r#"[^\x00\n\\'"]+"#)]
+        Unescaped(&'a str),
+        #[regex(r#"['"]"#, terminator)]
+        Terminator(char),
+        #[regex(r#"\\[xX][0-9A-Fa-f][0-9A-Fa-f]"#, hex_escape)]
         HexEscape(char),
-        #[regex(r#"\[0-7][0-7][0-7]"#, oct_escape)]
+        #[regex(r#"\\[0-7][0-7][0-7]"#, oct_escape)]
         OctEscape(char),
+        #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
+        CharEscape(char),
         #[error]
         Error,
     }
 
-    fn unescaped(lex: &mut Lexer<Char>) -> char {
+    fn terminator<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
         debug_assert_eq!(lex.slice().chars().count(), 1);
-        lex.slice().chars().next().expect("expected char")
+        lex.slice().chars().next().unwrap()
     }
 
-    fn hex_escape(lex: &mut Lexer<Char>) -> char {
+    fn hex_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
         u32::from_str_radix(&lex.slice()[2..], 16)
             .expect("expected valid hex escape")
             .try_into()
             .expect("two-digit hex escape should be valid char")
     }
 
-    fn oct_escape(lex: &mut Lexer<Char>) -> char {
+    fn oct_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
         u32::from_str_radix(&lex.slice()[1..], 8)
             .expect("expected valid oct escape")
             .try_into()
             .expect("three-digit oct escape should be valid char")
+    }
+
+    fn char_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
+        match lex.slice().as_bytes()[1] {
+            b'a' => '\x07',
+            b'b' => '\x08',
+            b'f' => '\x0c',
+            b'n' => '\n',
+            b'r' => '\r',
+            b't' => '\t',
+            b'v' => '\x0b',
+            b'\\' => '\\',
+            b'\'' => '\'',
+            b'"' => '"',
+            _ => panic!("failed to parse char escape"),
+        }
     }
 
     let mut result = String::new();
@@ -126,11 +151,19 @@ fn string(lex: &mut Lexer<Token>) -> String {
     let terminator = lex.slice().chars().next().expect("expected char");
     loop {
         match char_lexer.next() {
-            Some(Char::Unescaped(ch)) if ch == terminator => {
+            Some(Char::Unescaped(s)) => {
+                result.push_str(s);
+            }
+            Some(Char::Terminator(t)) if t == terminator => {
                 lex.bump(char_lexer.span().end);
                 return result;
-            },
-            Some(Char::Unescaped(ch) | Char::HexEscape(ch) | Char::OctEscape(ch)) => result.push(ch),
+            }
+            Some(
+                Char::Terminator(ch)
+                | Char::HexEscape(ch)
+                | Char::OctEscape(ch)
+                | Char::CharEscape(ch),
+            ) => result.push(ch),
             Some(Char::Error) => {
                 // TODO merge similar invalid character spans on adjacent spans
                 // TODO this will give an incorrect string to the parser. Does that matter?
@@ -153,7 +186,9 @@ fn line_comment(lex: &mut Lexer<Token>) -> String {
 
 fn start_block_comment(lex: &mut Lexer<Token>) -> Skip {
     if !lex.extras.block_comments.is_empty() {
-        lex.extras.errors.push(LexError::NestedBlockComment { start: lex.span().start.into() });
+        lex.extras.errors.push(LexError::NestedBlockComment {
+            start: lex.span().start.into(),
+        });
     }
 
     lex.extras.block_comments.push(lex.span().end);
@@ -164,5 +199,36 @@ fn end_block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
     match lex.extras.block_comments.pop() {
         Some(start) => return Ok(lex.source()[start..lex.span().start].to_owned()),
         None => Err(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn simple_tokens() {
+        let source = r#"hello 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next().unwrap(), Token::Ident("hello".to_owned()));
+        assert_eq!(lexer.next().unwrap(), Token::Octal(42));
+        assert_eq!(lexer.next().unwrap(), Token::Decimal(42));
+        assert_eq!(lexer.next().unwrap(), Token::Hexadecimal(42));
+        assert_eq!(lexer.next().unwrap(), Token::Float(5.));
+        assert_eq!(lexer.next().unwrap(), Token::Float(0.5));
+        assert_eq!(lexer.next().unwrap(), Token::Float(0.42e+2));
+        assert_eq!(lexer.next().unwrap(), Token::Float(2e-4));
+        assert_eq!(lexer.next().unwrap(), Token::Float(0.2e+3));
+        assert_eq!(lexer.next().unwrap(), Token::Bool(true));
+        assert_eq!(lexer.next().unwrap(), Token::Bool(false));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Token::String("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".to_owned())
+        );
+        assert_eq!(lexer.next().unwrap(), Token::String("hello 😀".to_owned()));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
     }
 }
