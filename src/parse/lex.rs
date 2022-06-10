@@ -1,6 +1,6 @@
 use std::{num::IntErrorKind, convert::TryInto};
 
-use logos::{Lexer, Logos};
+use logos::{Lexer, Logos, Filter, Skip};
 use miette::SourceOffset;
 
 #[derive(Debug, Clone, Logos)]
@@ -26,13 +26,21 @@ pub(crate) enum Token {
     Minus,
     #[token("+")]
     Plus,
+    #[token("//[^\n]*", line_comment)]
+    LineComment(String),
+    #[token(r#"\*/"#, end_block_comment)]
+    EndBlockComment(String),
     #[error]
+    #[token(r#"/\*"#, start_block_comment)]
     #[regex(r"[[:space:]]+", logos::skip)]
     Error,
 }
 
 pub(crate) struct TokenExtras {
     errors: Vec<LexError>,
+    // Stack of block comments
+    // (protobuf doesn't support nested block comments, but we track them anyway for better diagnostics)
+    block_comments: Vec<usize>,
 }
 
 enum LexError {
@@ -46,6 +54,9 @@ enum LexError {
     InvalidStringCharacter {
         start: SourceOffset,
     },
+    NestedBlockComment {
+        start: SourceOffset,
+    },
     UnexpectedEof,
 }
 
@@ -53,17 +64,18 @@ fn ident(lex: &mut Lexer<Token>) -> String {
     lex.slice().to_owned()
 }
 
-fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> Result<u64, ()> {
+fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
     debug_assert!(lex.slice().len() > prefix_len);
     match u64::from_str_radix(&lex.slice()[prefix_len..], radix) {
-        Ok(value) => Ok(value),
+        Ok(value) => value,
         Err(err) => {
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
             lex.extras.errors.push(LexError::IntegerOutOfRange {
                 start: (lex.span().start + prefix_len).into(),
                 end: lex.span().end.into(),
             });
-            Err(())
+            // TODO this is a really hacky way to recover from the error, is there a better way?
+            Default::default()
         }
     }
 }
@@ -76,7 +88,7 @@ fn bool(lex: &mut Lexer<Token>) -> Result<bool, ()> {
     lex.slice().parse().map_err(drop)
 }
 
-fn string(lex: &mut Lexer<Token>) -> Result<String, ()> {
+fn string(lex: &mut Lexer<Token>) -> String {
     #[derive(Logos)]
     enum Char {
         #[regex(r#"[^\x00\n\\]"#, unescaped)]
@@ -116,19 +128,41 @@ fn string(lex: &mut Lexer<Token>) -> Result<String, ()> {
         match char_lexer.next() {
             Some(Char::Unescaped(ch)) if ch == terminator => {
                 lex.bump(char_lexer.span().end);
-                return Ok(result)
+                return result;
             },
             Some(Char::Unescaped(ch) | Char::HexEscape(ch) | Char::OctEscape(ch)) => result.push(ch),
             Some(Char::Error) => {
+                // TODO merge similar invalid character spans on adjacent spans
+                // TODO this will give an incorrect string to the parser. Does that matter?
                 lex.extras.errors.push(LexError::InvalidStringCharacter {
                     start: (lex.span().end + char_lexer.span().start).into(),
                 });
-                return Err(())
+                continue;
             }
             None => {
                 lex.extras.errors.push(LexError::UnexpectedEof);
-                return Err(())
+                return result;
             }
         }
+    }
+}
+
+fn line_comment(lex: &mut Lexer<Token>) -> String {
+    lex.slice()[2..].to_owned()
+}
+
+fn start_block_comment(lex: &mut Lexer<Token>) -> Skip {
+    if !lex.extras.block_comments.is_empty() {
+        lex.extras.errors.push(LexError::NestedBlockComment { start: lex.span().start.into() });
+    }
+
+    lex.extras.block_comments.push(lex.span().end);
+    Skip
+}
+
+fn end_block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
+    match lex.extras.block_comments.pop() {
+        Some(start) => return Ok(lex.source()[start..lex.span().start].to_owned()),
+        None => Err(()),
     }
 }
