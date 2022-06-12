@@ -1,7 +1,7 @@
 use std::{convert::TryInto, num::IntErrorKind};
 
 use logos::{Lexer, Logos, Skip};
-use miette::SourceOffset;
+use miette::{SourceOffset, SourceSpan};
 
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
@@ -9,11 +9,9 @@ pub(crate) enum Token {
     #[regex("[A-Za-z][A-Za-z_]*", ident)]
     Ident(String),
     #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
-    Octal(u64),
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
-    Decimal(u64),
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
-    Hexadecimal(u64),
+    Int(u64),
     #[regex(
         r#"([0-9]+\.[0-9]*([eE][+\-][0-9]+)?)|([0-9]+[eE][+\-][0-9]+)|\.[0-9]+([eE][+\-][0-9]+)?"#,
         float
@@ -49,19 +47,12 @@ pub(crate) struct TokenExtras {
 
 #[derive(Debug, PartialEq)]
 enum LexError {
-    UnexpectedToken {
-        start: SourceOffset,
-    },
-    IntegerOutOfRange {
-        start: SourceOffset,
-        end: SourceOffset,
-    },
-    InvalidStringCharacter {
-        start: SourceOffset,
-    },
-    NestedBlockComment {
-        start: SourceOffset,
-    },
+    UnexpectedToken { span: SourceSpan },
+    IntegerOutOfRange { span: SourceSpan },
+    InvalidStringCharacters { span: SourceSpan },
+    UnterminatedString { span: SourceSpan },
+    InvalidStringEscape { span: SourceSpan },
+    NestedBlockComment { span: SourceSpan },
     UnexpectedEof,
 }
 
@@ -75,9 +66,10 @@ fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
         Ok(value) => value,
         Err(err) => {
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
+            let start = lex.span().start + prefix_len;
+            let end = lex.span().end;
             lex.extras.errors.push(LexError::IntegerOutOfRange {
-                start: (lex.span().start + prefix_len).into(),
-                end: lex.span().end.into(),
+                span: (start..end).into(),
             });
             // TODO this is a really hacky way to recover from the error, is there a better way?
             Default::default()
@@ -95,41 +87,39 @@ fn bool(lex: &mut Lexer<Token>) -> bool {
 
 fn string(lex: &mut Lexer<Token>) -> String {
     #[derive(Logos)]
-    enum Char<'a> {
+    enum Component<'a> {
         #[regex(r#"[^\x00\n\\'"]+"#)]
         Unescaped(&'a str),
         #[regex(r#"['"]"#, terminator)]
         Terminator(char),
         #[regex(r#"\\[xX][0-9A-Fa-f][0-9A-Fa-f]"#, hex_escape)]
-        HexEscape(char),
         #[regex(r#"\\[0-7][0-7][0-7]"#, oct_escape)]
-        OctEscape(char),
         #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
-        CharEscape(char),
+        Char(char),
         #[error]
         Error,
     }
 
-    fn terminator<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
+    fn terminator<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
         debug_assert_eq!(lex.slice().chars().count(), 1);
         lex.slice().chars().next().unwrap()
     }
 
-    fn hex_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
+    fn hex_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
         u32::from_str_radix(&lex.slice()[2..], 16)
             .expect("expected valid hex escape")
             .try_into()
             .expect("two-digit hex escape should be valid char")
     }
 
-    fn oct_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
+    fn oct_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
         u32::from_str_radix(&lex.slice()[1..], 8)
             .expect("expected valid oct escape")
             .try_into()
             .expect("three-digit oct escape should be valid char")
     }
 
-    fn char_escape<'a>(lex: &mut Lexer<'a, Char<'a>>) -> char {
+    fn char_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
         match lex.slice().as_bytes()[1] {
             b'a' => '\x07',
             b'b' => '\x08',
@@ -147,37 +137,64 @@ fn string(lex: &mut Lexer<Token>) -> String {
 
     let mut result = String::new();
 
-    let mut char_lexer = Char::lexer(lex.remainder());
+    let mut char_lexer = Component::lexer(lex.remainder());
     let terminator = lex.slice().chars().next().expect("expected char");
+
     loop {
         match char_lexer.next() {
-            Some(Char::Unescaped(s)) => {
+            Some(Component::Unescaped(s)) => {
                 result.push_str(s);
             }
-            Some(Char::Terminator(t)) if t == terminator => {
-                lex.bump(char_lexer.span().end);
-                return result;
+            Some(Component::Terminator(t)) if t == terminator => {
+                break;
             }
-            Some(
-                Char::Terminator(ch)
-                | Char::HexEscape(ch)
-                | Char::OctEscape(ch)
-                | Char::CharEscape(ch),
-            ) => result.push(ch),
-            Some(Char::Error) => {
-                // TODO merge similar invalid character spans on adjacent spans
-                // TODO this will give an incorrect string to the parser. Does that matter?
-                lex.extras.errors.push(LexError::InvalidStringCharacter {
-                    start: (lex.span().end + char_lexer.span().start).into(),
-                });
-                continue;
+            Some(Component::Terminator(ch) | Component::Char(ch)) => result.push(ch),
+            Some(Component::Error) => {
+                let start = lex.span().end + char_lexer.span().start;
+                let end = lex.span().end + char_lexer.span().end;
+                let span = SourceSpan::from(start..end);
+
+                if char_lexer.slice().contains('\n') {
+                    lex.extras
+                        .errors
+                        .push(LexError::UnterminatedString { span });
+                    break;
+                } else if let Some(err) = lex.extras.errors.last_mut() {
+                    match err {
+                        LexError::InvalidStringCharacters { span: err_span }
+                        | LexError::InvalidStringEscape { span: err_span } => {
+                            // If the last character was invalid, extend the span of its error
+                            // instead of adding a new error.
+                            if (err_span.offset() + err_span.len()) == start {
+                                *err_span = SourceSpan::from(err_span.offset()..end);
+                                continue;
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+
+                if char_lexer.slice().starts_with('\\') {
+                    lex.extras
+                        .errors
+                        .push(LexError::InvalidStringEscape { span });
+                    continue;
+                } else {
+                    lex.extras
+                        .errors
+                        .push(LexError::InvalidStringCharacters { span });
+                    continue;
+                }
             }
             None => {
                 lex.extras.errors.push(LexError::UnexpectedEof);
-                return result;
+                break;
             }
         }
     }
+
+    lex.bump(char_lexer.span().end);
+    result
 }
 
 fn line_comment(lex: &mut Lexer<Token>) -> String {
@@ -187,7 +204,7 @@ fn line_comment(lex: &mut Lexer<Token>) -> String {
 fn start_block_comment(lex: &mut Lexer<Token>) -> Skip {
     if !lex.extras.block_comments.is_empty() {
         lex.extras.errors.push(LexError::NestedBlockComment {
-            start: lex.span().start.into(),
+            span: lex.span().into(),
         });
     }
 
@@ -212,9 +229,9 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next().unwrap(), Token::Ident("hello".to_owned()));
-        assert_eq!(lexer.next().unwrap(), Token::Octal(42));
-        assert_eq!(lexer.next().unwrap(), Token::Decimal(42));
-        assert_eq!(lexer.next().unwrap(), Token::Hexadecimal(42));
+        assert_eq!(lexer.next().unwrap(), Token::Int(42));
+        assert_eq!(lexer.next().unwrap(), Token::Int(42));
+        assert_eq!(lexer.next().unwrap(), Token::Int(42));
         assert_eq!(lexer.next().unwrap(), Token::Float(5.));
         assert_eq!(lexer.next().unwrap(), Token::Float(0.5));
         assert_eq!(lexer.next().unwrap(), Token::Float(0.42e+2));
@@ -230,5 +247,119 @@ mod tests {
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn integer_overflow() {
+        let source = "99999999999999999999999999999999999999 4";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Int(0)));
+        assert_eq!(lexer.next(), Some(Token::Int(4)));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::IntegerOutOfRange {
+                span: SourceSpan::from((0, source.len() - 2)),
+            }]
+        );
+    }
+
+    #[test]
+    fn invalid_token() {
+        let source = "( foo";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Error));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn invalid_string_char() {
+        let source = "\"\x00\" foo";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::String(String::new())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::InvalidStringCharacters {
+                span: SourceSpan::from((1, 1)),
+            }]
+        );
+    }
+
+    #[test]
+    fn unterminated_string() {
+        let source = "\"hello \n foo";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::String("hello ".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::UnterminatedString {
+                span: SourceSpan::from((7, 1))
+            }]
+        );
+    }
+
+    #[test]
+    fn invalid_string_escape() {
+        let source = r#""\m" foo"#;
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::String("m".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::InvalidStringEscape {
+                span: SourceSpan::from((1, 1))
+            }]
+        );
+    }
+
+    #[test]
+    fn merge_string_errors() {
+        let source = "\"\\\x00\" foo";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::String("".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::InvalidStringEscape {
+                span: SourceSpan::from((1, 2))
+            }]
+        );
+    }
+
+    #[test]
+    fn merge_string_errors() {
+        let source = "\"\\\x00\" foo";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::String("".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::InvalidStringEscape {
+                span: SourceSpan::from((1, 2))
+            }]
+        );
     }
 }
