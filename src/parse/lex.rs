@@ -5,6 +5,7 @@ use miette::{SourceOffset, SourceSpan};
 
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
+#[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
 pub(crate) enum Token {
     #[regex("[A-Za-z][A-Za-z_]*", ident)]
     Ident(String),
@@ -13,7 +14,7 @@ pub(crate) enum Token {
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
     Int(u64),
     #[regex(
-        r#"([0-9]+\.[0-9]*([eE][+\-][0-9]+)?)|([0-9]+[eE][+\-][0-9]+)|\.[0-9]+([eE][+\-][0-9]+)?"#,
+        r#"([0-9]+\.[0-9]*(?&exponent)?)|([0-9]+(?&exponent))|\.[0-9]+(?&exponent)?"#,
         float
     )]
     Float(f64),
@@ -27,12 +28,11 @@ pub(crate) enum Token {
     Minus,
     #[token("+")]
     Plus,
-    #[token("//[^\n]*", line_comment)]
+    #[regex("//[^\n]*", line_comment)]
     LineComment(String),
-    #[token(r#"\*/"#, end_block_comment)]
-    EndBlockComment(String),
+    #[token(r#"/*"#, block_comment)]
+    BlockComment(String),
     #[error]
-    #[token(r#"/\*"#, start_block_comment)]
     #[regex(r"[[:space:]]+", logos::skip)]
     Error,
 }
@@ -40,14 +40,10 @@ pub(crate) enum Token {
 #[derive(Default)]
 pub(crate) struct TokenExtras {
     errors: Vec<LexError>,
-    // Stack of block comments
-    // (protobuf doesn't support nested block comments, but we track them anyway for better diagnostics)
-    block_comments: Vec<usize>,
 }
 
 #[derive(Debug, PartialEq)]
 enum LexError {
-    UnexpectedToken { span: SourceSpan },
     IntegerOutOfRange { span: SourceSpan },
     InvalidStringCharacters { span: SourceSpan },
     UnterminatedString { span: SourceSpan },
@@ -198,25 +194,57 @@ fn string(lex: &mut Lexer<Token>) -> String {
 }
 
 fn line_comment(lex: &mut Lexer<Token>) -> String {
-    lex.slice()[2..].to_owned()
+    lex.slice()[2..].trim().to_owned()
 }
 
-fn start_block_comment(lex: &mut Lexer<Token>) -> Skip {
-    if !lex.extras.block_comments.is_empty() {
-        lex.extras.errors.push(LexError::NestedBlockComment {
-            span: lex.span().into(),
-        });
+fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
+    #[derive(Logos)]
+    enum Component {
+        #[token("*/")]
+        EndComment,
+        #[token("/*")]
+        StartComment,
+        #[error]
+        Text,
     }
 
-    lex.extras.block_comments.push(lex.span().end);
-    Skip
-}
+    let mut comment_lexer = Component::lexer(lex.remainder()).spanned();
 
-fn end_block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
-    match lex.extras.block_comments.pop() {
-        Some(start) => return Ok(lex.source()[start..lex.span().start].to_owned()),
-        None => Err(()),
-    }
+    let mut depth = 1u32;
+    let mut last_end = None;
+    let len = loop {
+        match comment_lexer.next() {
+            Some((Component::EndComment, span)) => {
+                depth -= 1;
+                if depth == 0 {
+                    break span.end;
+                } else {
+                    last_end = Some(span.end);
+                }
+            }
+            Some((Component::StartComment, span)) => {
+                let start = lex.span().end + span.start;
+                let end = lex.span().end + span.end;
+                lex.extras.errors.push(LexError::NestedBlockComment {
+                    span: SourceSpan::from(start..end),
+                });
+                depth += 1;
+            }
+            Some((Component::Text, _)) => continue,
+            None => {
+                if let Some(last_end) = last_end {
+                    // This must be a nested block comment
+                    break last_end;
+                } else {
+                    lex.extras.errors.push(LexError::UnexpectedEof);
+                    break lex.remainder().len();
+                }
+            }
+        }
+    };
+
+    lex.bump(len);
+    return Ok(lex.slice()[2..][..len].trim_end_matches("*/").trim().to_owned());
 }
 
 #[cfg(test)]
@@ -347,19 +375,88 @@ mod tests {
     }
 
     #[test]
-    fn merge_string_errors() {
-        let source = "\"\\\x00\" foo";
+    fn line_comment() {
+        let source = "foo // bar \n quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::String("".to_owned())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::LineComment("bar".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn block_comment() {
+        let source = "foo /* bar\n */ quz";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment("bar".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn nested_block_comment() {
+        let source = "foo /* /* bar\n */ */ quz";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::BlockComment("/* bar\n */".to_owned()))
+        );
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::InvalidStringEscape {
-                span: SourceSpan::from((1, 2))
+            vec![LexError::NestedBlockComment {
+                span: SourceSpan::from((7, 2))
             }]
+        );
+    }
+
+    #[test]
+    fn nested_block_comment_unterminated() {
+        let source = "foo /* /* bar\n */ quz";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::BlockComment("/* bar".to_owned()))
+        );
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::NestedBlockComment {
+                span: SourceSpan::from((7, 2))
+            }]
+        );
+    }
+
+    #[test]
+    fn block_comment_unterminated() {
+        let source = "foo /* bar\n quz";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::BlockComment("bar\n quz".to_owned()))
+        );
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![LexError::UnexpectedEof]
         );
     }
 }
