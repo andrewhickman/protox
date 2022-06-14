@@ -1,7 +1,9 @@
 use std::{convert::TryInto, num::IntErrorKind};
 
-use logos::{Lexer, Logos, Skip};
+use logos::{internal::LexerInternal, Lexer, Logos, Skip, Span};
 use miette::{SourceOffset, SourceSpan};
+
+use super::ParseError;
 
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
@@ -22,6 +24,8 @@ pub(crate) enum Token {
     Bool(bool),
     #[regex(r#"'|""#, string)]
     String(String),
+    #[token("syntax")]
+    Syntax,
     #[token(".")]
     Dot,
     #[token("-")]
@@ -39,17 +43,7 @@ pub(crate) enum Token {
 
 #[derive(Default)]
 pub(crate) struct TokenExtras {
-    errors: Vec<LexError>,
-}
-
-#[derive(Debug, PartialEq)]
-enum LexError {
-    IntegerOutOfRange { span: SourceSpan },
-    InvalidStringCharacters { span: SourceSpan },
-    UnterminatedString { span: SourceSpan },
-    InvalidStringEscape { span: SourceSpan },
-    NestedBlockComment { span: SourceSpan },
-    UnexpectedEof,
+    pub errors: Vec<ParseError>,
 }
 
 fn ident(lex: &mut Lexer<Token>) -> String {
@@ -64,7 +58,7 @@ fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
             let start = lex.span().start + prefix_len;
             let end = lex.span().end;
-            lex.extras.errors.push(LexError::IntegerOutOfRange {
+            lex.extras.errors.push(ParseError::IntegerOutOfRange {
                 span: (start..end).into(),
             });
             // TODO this is a really hacky way to recover from the error, is there a better way?
@@ -153,12 +147,12 @@ fn string(lex: &mut Lexer<Token>) -> String {
                 if char_lexer.slice().contains('\n') {
                     lex.extras
                         .errors
-                        .push(LexError::UnterminatedString { span });
+                        .push(ParseError::UnterminatedString { span });
                     break;
                 } else if let Some(err) = lex.extras.errors.last_mut() {
                     match err {
-                        LexError::InvalidStringCharacters { span: err_span }
-                        | LexError::InvalidStringEscape { span: err_span } => {
+                        ParseError::InvalidStringCharacters { span: err_span }
+                        | ParseError::InvalidStringEscape { span: err_span } => {
                             // If the last character was invalid, extend the span of its error
                             // instead of adding a new error.
                             if (err_span.offset() + err_span.len()) == start {
@@ -173,17 +167,17 @@ fn string(lex: &mut Lexer<Token>) -> String {
                 if char_lexer.slice().starts_with('\\') {
                     lex.extras
                         .errors
-                        .push(LexError::InvalidStringEscape { span });
+                        .push(ParseError::InvalidStringEscape { span });
                     continue;
                 } else {
                     lex.extras
                         .errors
-                        .push(LexError::InvalidStringCharacters { span });
+                        .push(ParseError::InvalidStringCharacters { span });
                     continue;
                 }
             }
             None => {
-                lex.extras.errors.push(LexError::UnexpectedEof);
+                lex.extras.errors.push(ParseError::UnexpectedEof);
                 break;
             }
         }
@@ -225,7 +219,7 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
             Some((Component::StartComment, span)) => {
                 let start = lex.span().end + span.start;
                 let end = lex.span().end + span.end;
-                lex.extras.errors.push(LexError::NestedBlockComment {
+                lex.extras.errors.push(ParseError::NestedBlockComment {
                     span: SourceSpan::from(start..end),
                 });
                 depth += 1;
@@ -236,7 +230,7 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
                     // This must be a nested block comment
                     break last_end;
                 } else {
-                    lex.extras.errors.push(LexError::UnexpectedEof);
+                    lex.extras.errors.push(ParseError::UnexpectedEof);
                     break lex.remainder().len();
                 }
             }
@@ -244,7 +238,10 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
     };
 
     lex.bump(len);
-    return Ok(lex.slice()[2..][..len].trim_end_matches("*/").trim().to_owned());
+    return Ok(lex.slice()[2..][..len]
+        .trim_end_matches("*/")
+        .trim()
+        .to_owned());
 }
 
 #[cfg(test)]
@@ -288,7 +285,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::IntegerOutOfRange {
+            vec![ParseError::IntegerOutOfRange {
                 span: SourceSpan::from((0, source.len() - 2)),
             }]
         );
@@ -317,7 +314,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::InvalidStringCharacters {
+            vec![ParseError::InvalidStringCharacters {
                 span: SourceSpan::from((1, 1)),
             }]
         );
@@ -334,7 +331,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::UnterminatedString {
+            vec![ParseError::UnterminatedString {
                 span: SourceSpan::from((7, 1))
             }]
         );
@@ -351,7 +348,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::InvalidStringEscape {
+            vec![ParseError::InvalidStringEscape {
                 span: SourceSpan::from((1, 1))
             }]
         );
@@ -368,7 +365,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::InvalidStringEscape {
+            vec![ParseError::InvalidStringEscape {
                 span: SourceSpan::from((1, 2))
             }]
         );
@@ -415,7 +412,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::NestedBlockComment {
+            vec![ParseError::NestedBlockComment {
                 span: SourceSpan::from((7, 2))
             }]
         );
@@ -427,16 +424,13 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
-        assert_eq!(
-            lexer.next(),
-            Some(Token::BlockComment("/* bar".to_owned()))
-        );
+        assert_eq!(lexer.next(), Some(Token::BlockComment("/* bar".to_owned())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![LexError::NestedBlockComment {
+            vec![ParseError::NestedBlockComment {
                 span: SourceSpan::from((7, 2))
             }]
         );
@@ -454,9 +448,6 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
-            lexer.extras.errors,
-            vec![LexError::UnexpectedEof]
-        );
+        debug_assert_eq!(lexer.extras.errors, vec![ParseError::UnexpectedEof]);
     }
 }
