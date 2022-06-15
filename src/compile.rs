@@ -19,6 +19,8 @@ impl Compiler {
     }
 
     pub fn add_file(&mut self, file: impl AsRef<Path>) -> Result<(), Error> {
+        let source = std::fs::read_to_string(file).unwrap();
+        let _file = crate::parse::parse(&source).unwrap();
         todo!()
     }
 

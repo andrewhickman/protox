@@ -1,17 +1,7 @@
 pub mod proto2;
 pub mod proto3;
 
-#[derive(Debug, Copy, Clone)]
-struct Span {
-    start: usize,
-    end: usize,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Spanned<T> {
-    span: Span,
-    value: T,
-}
+use logos::Span;
 
 pub enum File {
     Proto2(proto2::File),
@@ -19,39 +9,39 @@ pub enum File {
 }
 
 pub struct Ident {
-    span: Span,
-    value: String,
+    pub span: Span,
+    pub value: std::string::String,
 }
 
 pub struct FullIdent {
-    parts: Vec<Ident>,
+    pub parts: Vec<Ident>,
 }
 
 pub struct TypeName {
-    leading_dot: bool,
-    name: FullIdent,
-    span: Span,
+    pub leading_dot: bool,
+    pub name: FullIdent,
+    pub span: Span,
 }
 
 pub struct Int {
-    negative: bool,
-    value: u64,
-    span: Span,
+    pub negative: bool,
+    pub value: u64,
+    pub span: Span,
 }
 
 pub struct Float {
-    value: f64,
-    span: Span,
+    pub value: f64,
+    pub span: Span,
 }
 
 pub struct Bool {
-    value: bool,
-    span: Span,
+    pub value: bool,
+    pub span: Span,
 }
 
 pub struct String {
-    value: std::string::String,
-    span: Span,
+    pub value: std::string::String,
+    pub span: Span,
 }
 
 pub enum Constant {
@@ -63,8 +53,8 @@ pub enum Constant {
 }
 
 pub struct Import {
-    kind: std::option::Option<ImportKind>,
-    value: String,
+    pub kind: std::option::Option<ImportKind>,
+    pub value: String,
 }
 
 pub enum ImportKind {
@@ -73,12 +63,13 @@ pub enum ImportKind {
 }
 
 pub struct Package {
-    name: FullIdent,
+    pub name: FullIdent,
 }
 
 pub struct Option {
-    name: FullIdent,
-    value: Constant,
+    pub namespace: FullIdent,
+    pub name: std::option::Option<FullIdent>,
+    pub value: Constant,
 }
 
 pub enum Ty {
@@ -116,24 +107,24 @@ pub enum KeyTy {
 }
 
 pub struct Oneof {
-    name: Ident,
-    options: Vec<Option>,
-    fields: Vec<OneofField>,
+    pub name: Ident,
+    pub options: Vec<Option>,
+    pub fields: Vec<OneofField>,
 }
 
 pub struct OneofField {
-    ty: Ty,
-    name: Ident,
-    number: Int,
-    options: Vec<Option>,
+    pub ty: Ty,
+    pub name: Ident,
+    pub number: Int,
+    pub options: Vec<Option>,
 }
 
 pub struct MapField {
-    key_ty: KeyTy,
-    ty: Ty,
-    name: Ident,
-    number: Int,
-    options: Vec<Option>,
+    pub key_ty: KeyTy,
+    pub ty: Ty,
+    pub name: Ident,
+    pub number: Int,
+    pub options: Vec<Option>,
 }
 
 pub enum Reserved {
@@ -142,32 +133,44 @@ pub enum Reserved {
 }
 
 pub struct ReservedRange {
-    start: Int,
-    end: std::option::Option<Int>,
+    pub start: Int,
+    pub end: std::option::Option<Int>,
 }
 
 pub struct Enum {
-    name: Ident,
-    options: Vec<Option>,
-    values: Vec<EnumField>,
+    pub name: Ident,
+    pub options: Vec<Option>,
+    pub values: Vec<EnumField>,
 }
 
 pub struct EnumField {
-    name: Ident,
-    value: Int,
-    options: Vec<Option>,
+    pub name: Ident,
+    pub value: Int,
+    pub options: Vec<Option>,
 }
 
 pub struct Service {
-    name: Ident,
-    options: Vec<Option>,
-    methods: Vec<Method>,
+    pub name: Ident,
+    pub options: Vec<Option>,
+    pub methods: Vec<Method>,
 }
 
 pub struct Method {
-    input_ty: TypeName,
-    output_ty: TypeName,
-    options: Vec<Option>,
-    is_client_streaming: bool,
-    is_server_streaming: bool,
+    pub input_ty: TypeName,
+    pub output_ty: TypeName,
+    pub options: Vec<Option>,
+    pub is_client_streaming: bool,
+    pub is_server_streaming: bool,
+}
+
+impl From<Ident> for FullIdent {
+    fn from(value: Ident) -> Self {
+        FullIdent { parts: vec![value] }
+    }
+}
+
+impl From<Vec<Ident>> for FullIdent {
+    fn from(parts: Vec<Ident>) -> Self {
+        FullIdent { parts }
+    }
 }

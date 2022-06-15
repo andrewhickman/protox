@@ -1,4 +1,8 @@
-use std::{convert::TryInto, num::IntErrorKind};
+use std::{
+    convert::TryInto,
+    fmt::{self, write},
+    num::IntErrorKind,
+};
 
 use logos::{internal::LexerInternal, Lexer, Logos, Skip, Span};
 use miette::{SourceOffset, SourceSpan};
@@ -26,12 +30,22 @@ pub(crate) enum Token {
     String(String),
     #[token("syntax")]
     Syntax,
+    #[token("option")]
+    Option,
     #[token(".")]
     Dot,
     #[token("-")]
     Minus,
     #[token("+")]
     Plus,
+    #[token("(")]
+    LeftParen,
+    #[token(")")]
+    RightParen,
+    #[token("=")]
+    Equals,
+    #[token(";")]
+    Semicolon,
     #[regex("//[^\n]*", line_comment)]
     LineComment(String),
     #[token(r#"/*"#, block_comment)]
@@ -39,6 +53,43 @@ pub(crate) enum Token {
     #[error]
     #[regex(r"[[:space:]]+", logos::skip)]
     Error,
+}
+
+impl Token {
+    pub fn as_ident(&self) -> Option<&str> {
+        match self {
+            Token::Ident(value) => Some(value),
+            Token::Syntax => Some("syntax"),
+            Token::Option => Some("option"),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Ident(value) => write!(f, "{}", value),
+            Token::Int(value) => write!(f, "{}", value),
+            Token::Float(value) => write!(f, "{}", value),
+            Token::Bool(value) => write!(f, "{}", value),
+            Token::String(string) => {
+                write!(f, "\"{}\"", string.escape_default())
+            }
+            Token::Syntax => write!(f, "syntax"),
+            Token::Option => write!(f, "option"),
+            Token::Dot => write!(f, "."),
+            Token::Minus => write!(f, "-"),
+            Token::LeftParen => write!(f, "("),
+            Token::RightParen => write!(f, ")"),
+            Token::Plus => write!(f, "+"),
+            Token::Equals => write!(f, "="),
+            Token::Semicolon => write!(f, ";"),
+            Token::LineComment(value) => writeln!(f, "// {}", value),
+            Token::BlockComment(value) => write!(f, "/* {} */", value),
+            Token::Error => write!(f, "<ERROR>"),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -177,7 +228,7 @@ fn string(lex: &mut Lexer<Token>) -> String {
                 }
             }
             None => {
-                lex.extras.errors.push(ParseError::UnexpectedEof);
+                lex.extras.errors.push(ParseError::UnexpectedEof { expected: None });
                 break;
             }
         }
@@ -230,7 +281,7 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
                     // This must be a nested block comment
                     break last_end;
                 } else {
-                    lex.extras.errors.push(ParseError::UnexpectedEof);
+                    lex.extras.errors.push(ParseError::UnexpectedEof { expected: None });
                     break lex.remainder().len();
                 }
             }
@@ -448,6 +499,6 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![ParseError::UnexpectedEof]);
+        debug_assert_eq!(lexer.extras.errors, vec![ParseError::UnexpectedEof{ expected: None}]);
     }
 }
