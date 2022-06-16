@@ -1,11 +1,7 @@
-use std::{
-    convert::TryInto,
-    fmt::{self, write},
-    num::IntErrorKind,
-};
+use std::{convert::TryInto, fmt, num::IntErrorKind};
 
-use logos::{internal::LexerInternal, Lexer, Logos, Skip, Span};
-use miette::{SourceOffset, SourceSpan};
+use logos::{Lexer, Logos};
+use miette::SourceSpan;
 
 use super::ParseError;
 
@@ -56,11 +52,11 @@ pub(crate) enum Token {
 }
 
 impl Token {
-    pub fn as_ident(&self) -> Option<&str> {
+    pub fn into_ident(self) -> Option<String> {
         match self {
             Token::Ident(value) => Some(value),
-            Token::Syntax => Some("syntax"),
-            Token::Option => Some("option"),
+            Token::Syntax => Some("syntax".to_owned()),
+            Token::Option => Some("option".to_owned()),
             _ => None,
         }
     }
@@ -228,7 +224,9 @@ fn string(lex: &mut Lexer<Token>) -> String {
                 }
             }
             None => {
-                lex.extras.errors.push(ParseError::UnexpectedEof { expected: None });
+                lex.extras
+                    .errors
+                    .push(ParseError::UnexpectedEof { expected: None });
                 break;
             }
         }
@@ -281,7 +279,9 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
                     // This must be a nested block comment
                     break last_end;
                 } else {
-                    lex.extras.errors.push(ParseError::UnexpectedEof { expected: None });
+                    lex.extras
+                        .errors
+                        .push(ParseError::UnexpectedEof { expected: None });
                     break lex.remainder().len();
                 }
             }
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn invalid_token() {
-        let source = "( foo";
+        let source = "@ foo";
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Error));
@@ -499,6 +499,9 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![ParseError::UnexpectedEof{ expected: None}]);
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![ParseError::UnexpectedEof { expected: None }]
+        );
     }
 }

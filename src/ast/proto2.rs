@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct File {
     imports: Vec<Import>,
     package: std::option::Option<Package>,
@@ -7,6 +8,7 @@ pub struct File {
     definitions: Vec<Definition>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Definition {
     Message(Message),
     Enum(Enum),
@@ -14,11 +16,13 @@ pub enum Definition {
     Extension(Extension),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Message {
     name: Ident,
     body: MessageBody,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct MessageBody {
     map_fields: Vec<MapField>,
     fields: Vec<Field>,
@@ -32,6 +36,7 @@ pub struct MessageBody {
     reserved: Vec<Reserved>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     label: FieldLabel,
     name: Ident,
@@ -40,22 +45,26 @@ pub struct Field {
     options: Vec<Option>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum FieldLabel {
     Required,
     Optional,
     Repeated,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Extension {
     extendee: TypeName,
     fields: Vec<ExtensionField>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum ExtensionField {
     Field(Field),
     Group(Group),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Group {
     label: FieldLabel,
     name: Ident,

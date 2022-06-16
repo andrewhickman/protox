@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 mod ast;
 mod compile;
 mod parse;
