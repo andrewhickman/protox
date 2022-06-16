@@ -26,6 +26,8 @@ pub(crate) enum Token {
     String(String),
     #[token("syntax")]
     Syntax,
+    #[token("enum")]
+    Enum,
     #[token("option")]
     Option,
     #[token(".")]
@@ -38,6 +40,16 @@ pub(crate) enum Token {
     LeftParen,
     #[token(")")]
     RightParen,
+    #[token("{")]
+    LeftBrace,
+    #[token("}")]
+    RightBrace,
+    #[token("[")]
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
+    #[token(",")]
+    Comma,
     #[token("=")]
     Equals,
     #[token(";")]
@@ -57,6 +69,8 @@ impl Token {
             Token::Ident(value) => Some(value),
             Token::Syntax => Some("syntax".to_owned()),
             Token::Option => Some("option".to_owned()),
+            Token::Enum => Some("enum".to_owned()),
+            Token::Bool(value) => Some(value.to_string()),
             _ => None,
         }
     }
@@ -73,11 +87,17 @@ impl fmt::Display for Token {
                 write!(f, "\"{}\"", string.escape_default())
             }
             Token::Syntax => write!(f, "syntax"),
+            Token::Enum => write!(f, "enum"),
             Token::Option => write!(f, "option"),
             Token::Dot => write!(f, "."),
             Token::Minus => write!(f, "-"),
             Token::LeftParen => write!(f, "("),
             Token::RightParen => write!(f, ")"),
+            Token::LeftBrace => write!(f, "{{"),
+            Token::RightBrace => write!(f, "}}"),
+            Token::LeftBracket => write!(f, "["),
+            Token::RightBracket => write!(f, "]"),
+            Token::Comma => write!(f, ","),
             Token::Plus => write!(f, "+"),
             Token::Equals => write!(f, "="),
             Token::Semicolon => write!(f, ";"),
@@ -98,6 +118,10 @@ fn ident(lex: &mut Lexer<Token>) -> String {
 }
 
 fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
+    if radix == 8 && lex.slice() == "0" {
+        return 0;
+    }
+
     debug_assert!(lex.slice().len() > prefix_len);
     match u64::from_str_radix(&lex.slice()[prefix_len..], radix) {
         Ok(value) => value,

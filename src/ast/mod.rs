@@ -163,11 +163,11 @@ pub struct ReservedRange {
 pub struct Enum {
     pub name: Ident,
     pub options: Vec<Option>,
-    pub values: Vec<EnumField>,
+    pub values: Vec<EnumValue>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct EnumField {
+pub struct EnumValue {
     pub name: Ident,
     pub value: Int,
     pub options: Vec<Option>,

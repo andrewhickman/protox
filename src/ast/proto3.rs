@@ -2,11 +2,17 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct File {
-    imports: Vec<Import>,
     package: std::option::Option<Package>,
+    imports: Vec<Import>,
     options: Vec<Option>,
-    messages: Vec<Message>,
     definitions: Vec<Definition>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Statement {
+    Import(Import),
+    Option(Option),
+    Definition(Definition),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,4 +46,10 @@ pub struct Field {
     ty: Ty,
     number: Int,
     options: Vec<Option>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Extension {
+    extendee: TypeName,
+    fields: Vec<Field>,
 }

@@ -85,10 +85,7 @@ impl<'a> Parser<'a> {
                         return Err(());
                     }
                 },
-                tok => {
-                    self.unexpected_token("identifier or '('");
-                    return Err(());
-                }
+                _ => self.unexpected_token("an identifier or '('")?,
             }
         } else {
             false
@@ -108,20 +105,101 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum(&mut self) -> Result<ast::Enum, ()> {
-        todo!()
+        self.expect_eq(Token::Enum)?;
+
+        let name = self.expect_ident()?;
+
+        self.expect_eq(Token::LeftBrace)?;
+
+        let mut values = Vec::new();
+        let mut options = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some((Token::Option, _)) => {
+                    options.push(self.parse_option()?);
+                }
+                Some((Token::Semicolon, _)) => {
+                    self.bump();
+                }
+                Some((Token::Ident(_), _)) => {
+                    values.push(self.parse_enum_value()?);
+                }
+                Some((Token::RightBrace, _)) => break,
+                _ => self.unexpected_token("an identifier, '}', ';' or 'option'")?,
+            };
+        }
+
+        Ok(ast::Enum {
+            name,
+            options,
+            values,
+        })
     }
 
-    fn parse_option_expr(&mut self) -> Result<ast::Option, ()> {
+    fn parse_enum_value(&mut self) -> Result<ast::EnumValue, ()> {
+        let name = self.expect_ident()?;
+
+        self.expect_eq(Token::Equals)?;
+
+        let negative = self.bump_if_eq(Token::Minus);
+        let value = match self.peek() {
+            Some((Token::Int(value), span)) => {
+                self.bump();
+                ast::Int {
+                    negative,
+                    value,
+                    span,
+                }
+            }
+            _ => self.unexpected_token("an integer")?,
+        };
+
+        let options = match self.peek() {
+            Some((Token::Semicolon, _)) => vec![],
+            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            _ => self.unexpected_token("';' or '['")?,
+        };
+
+        self.expect_eq(Token::Semicolon)?;
+        Ok(ast::EnumValue {
+            name,
+            value,
+            options,
+        })
+    }
+
+    fn parse_options_list(&mut self) -> Result<Vec<ast::Option>, ()> {
+        self.expect_eq(Token::LeftBracket)?;
+
+        let mut options = vec![self.parse_option_body(&[Token::Comma, Token::RightBracket])?];
+        loop {
+            match self.peek() {
+                Some((Token::Comma, _)) => {
+                    options.push(self.parse_option_body(&[Token::Comma, Token::RightBracket])?);
+                }
+                Some((Token::RightBracket, _)) => {
+                    self.bump();
+                    break;
+                }
+                _ => self.unexpected_token("',' or ']'")?,
+            }
+        }
+
+        Ok(options)
+    }
+
+    fn parse_option(&mut self) -> Result<ast::Option, ()> {
         self.expect_eq(Token::Option)?;
 
-        let option = self.parse_option(&[Token::Semicolon])?;
+        let option = self.parse_option_body(&[Token::Semicolon])?;
 
         self.expect_eq(Token::Semicolon)?;
 
         Ok(option)
     }
 
-    fn parse_option(&mut self, terminators: &[Token]) -> Result<ast::Option, ()> {
+    fn parse_option_body(&mut self, terminators: &[Token]) -> Result<ast::Option, ()> {
         let name = match self.peek() {
             Some((Token::LeftParen, _)) => {
                 self.bump();
@@ -133,10 +211,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ast::FullIdent::from(ast::Ident { value, span })
             }
-            _ => {
-                self.unexpected_token("identifier or '('");
-                return Err(());
-            }
+            _ => self.unexpected_token("an identifier or '('")?,
         };
 
         let mut field_name: Option<Vec<ast::Ident>> = None;
@@ -149,10 +224,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     break;
                 }
-                _ => {
-                    self.unexpected_token("'.' or '='");
-                    return Err(());
-                }
+                _ => self.unexpected_token("'.' or '='")?,
             }
 
             field_name.get_or_insert(vec![]).push(self.expect_ident()?);
@@ -179,10 +251,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ast::Constant::Bool(ast::Bool { value, span })
             }
-            _ => {
-                self.unexpected_token("constant");
-                return Err(());
-            }
+            _ => self.unexpected_token("a constant")?,
         };
 
         Ok(ast::Option {
@@ -209,10 +278,7 @@ impl<'a> Parser<'a> {
                     span,
                 }))
             }
-            _ => {
-                self.unexpected_token("numeric literal");
-                Err(())
-            }
+            _ => self.unexpected_token("numeric literal")?,
         }
     }
 
@@ -227,12 +293,9 @@ impl<'a> Parser<'a> {
                 Some((tok, _)) if terminators.contains(&tok) => {
                     return Ok(result.into());
                 }
-                _ => {
-                    self.unexpected_token(fmt_expected(
-                        once(Token::Dot).chain(terminators.iter().cloned()),
-                    ));
-                    return Err(());
-                }
+                _ => self.unexpected_token(fmt_expected(
+                    once(Token::Dot).chain(terminators.iter().cloned()),
+                ))?,
             }
 
             result.push(self.expect_ident()?);
@@ -242,7 +305,7 @@ impl<'a> Parser<'a> {
     fn expect_ident(&mut self) -> Result<ast::Ident, ()> {
         self.expect(
             |tok, span| tok.into_ident().map(|value| ast::Ident::new(value, span)),
-            "identifier",
+            "an identifier",
         )
     }
 
@@ -252,10 +315,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Ok(())
             }
-            _ => {
-                self.unexpected_token(t);
-                Err(())
-            }
+            _ => self.unexpected_token(format!("'{}'", t))?,
         }
     }
 
@@ -271,8 +331,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.unexpected_token(expected);
-        Err(())
+        self.unexpected_token(expected)?
     }
 
     fn skip_comments(&mut self) {
@@ -324,17 +383,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn unexpected_token(&mut self, expected: impl ToString) {
+    fn unexpected_token<T>(&mut self, expected: impl ToString) -> Result<T, ()> {
         match self.peek() {
-            Some((Token::Error, _)) => {}
+            Some((Token::Error, _)) => Err(()),
             Some((found, span)) => {
                 self.add_error(ParseError::UnexpectedToken {
                     expected: expected.to_string(),
                     found,
                     span: span.into(),
                 });
+                Err(())
             }
-            None => self.eof(Some(expected)),
+            None => {
+                self.eof(Some(expected));
+                Err(())
+            }
         }
     }
 
@@ -349,14 +412,14 @@ impl<'a> Parser<'a> {
     }
 }
 
-fn fmt_expected(mut ts: impl Iterator<Item = Token>) -> String {
+fn fmt_expected(ts: impl Iterator<Item = Token>) -> String {
     let ts: Vec<_> = ts.collect();
 
     let mut s = String::with_capacity(32);
     write!(s, "'{}'", ts[0]).unwrap();
     if ts.len() > 1 {
         for t in &ts[0..][..ts.len() - 1] {
-            write!(s, ", '{}'", ts[0]).unwrap();
+            write!(s, ", '{}'", t).unwrap();
         }
         write!(s, "or '{}'", ts[ts.len() - 1]).unwrap();
     }
@@ -383,7 +446,7 @@ mod tests {
 
     #[test]
     pub fn parse_option() {
-        case!(parse_option_expr("option foo = 5;") => ast::Option {
+        case!(parse_option("option foo = 5;") => ast::Option {
             name: ast::FullIdent::from(ast::Ident::new("foo", 7..10)),
             field_name: None,
             value: ast::Constant::Int(ast::Int {
@@ -392,7 +455,7 @@ mod tests {
                 span: 13..14,
             }),
         });
-        case!(parse_option_expr("option (foo.bar) = \"hello\";") => ast::Option {
+        case!(parse_option("option (foo.bar) = \"hello\";") => ast::Option {
             name: ast::FullIdent::from(vec![
                 ast::Ident::new("foo", 8..11),
                 ast::Ident::new("bar", 12..15),
@@ -403,7 +466,7 @@ mod tests {
                 span: 19..26,
             }),
         });
-        case!(parse_option_expr("option (foo).bar = true;") => ast::Option {
+        case!(parse_option("option (foo).bar = true;") => ast::Option {
             name: ast::FullIdent::from(ast::Ident::new("foo", 8..11)),
             field_name: Some(ast::FullIdent::from(ast::Ident::new("bar", 13..16))),
             value: ast::Constant::Bool(ast::Bool {
@@ -411,10 +474,117 @@ mod tests {
                 span: 19..23,
             }),
         });
-        case!(parse_option_expr("option ;") => Err(vec![ParseError::UnexpectedToken {
-            expected: "identifier or '('".to_owned(),
+        case!(parse_option("option ;") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier or '('".to_owned(),
             found: Token::Semicolon,
             span: SourceSpan::from(7..8),
+        }]));
+        case!(parse_option("option foo (") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'.' or '='".to_owned(),
+            found: Token::LeftParen,
+            span: SourceSpan::from(11..12),
+        }]));
+        case!(parse_option("option foo.]") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier".to_owned(),
+            found: Token::RightBracket,
+            span: SourceSpan::from(11..12),
+        }]));
+        case!(parse_option("option foo = =") => Err(vec![ParseError::UnexpectedToken {
+            expected: "a constant".to_owned(),
+            found: Token::Equals,
+            span: SourceSpan::from(13..14),
+        }]));
+        case!(parse_option("option foo = 1 )") => Err(vec![ParseError::UnexpectedToken {
+            expected: "';'".to_owned(),
+            found: Token::RightParen,
+            span: SourceSpan::from(15..16),
+        }]));
+    }
+
+    #[test]
+    fn parse_enum() {
+        case!(parse_enum("enum Foo {}") => ast::Enum {
+            name: ast::Ident::new("Foo", 5..8),
+            values: vec![],
+            options: vec![],
+        });
+        case!(parse_enum("enum Foo { BAR = 1; }") => ast::Enum {
+            name: ast::Ident::new("Foo", 5..8),
+            values: vec![ast::EnumValue {
+                name: ast::Ident::new("BAR", 11..14),
+                value: ast::Int {
+                    negative: false,
+                    value: 1,
+                    span: 17..18,
+                },
+                options: vec![],
+            }],
+            options: vec![],
+        });
+        case!(parse_enum("enum Foo { option bar = 'quz' ; VAL = -1; }") => ast::Enum {
+            name: ast::Ident::new("Foo", 5..8),
+            values: vec![ast::EnumValue {
+                name: ast::Ident::new("VAL", 32..35),
+                value: ast::Int {
+                    negative: true,
+                    value: 1,
+                    span: 39..40,
+                },
+                options: vec![],
+            }],
+            options: vec![ast::Option {
+                name: ast::FullIdent::from(ast::Ident::new("bar", 18..21)),
+                field_name: None,
+                value: ast::Constant::String(ast::String {
+                    value: "quz".to_owned(),
+                    span: 24..29
+                }),
+            }],
+        });
+        case!(parse_enum("enum Foo { BAR = 0 [opt = 0.5]; }") => ast::Enum {
+            name: ast::Ident::new("Foo", 5..8),
+            values: vec![ast::EnumValue {
+                name: ast::Ident::new("BAR", 11..14),
+                value: ast::Int {
+                    negative: false,
+                    value: 0,
+                    span: 17..18,
+                },
+                options: vec![ast::Option {
+                    name: ast::FullIdent::from(ast::Ident::new("opt", 20..23)),
+                    field_name: None,
+                    value: ast::Constant::Float(ast::Float {
+                        value: 0.5,
+                        span: 26..29
+                    }),
+                }],
+            }],
+            options: vec![],
+        });
+        case!(parse_enum("enum 3") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier".to_owned(),
+            found: Token::Int(3),
+            span: SourceSpan::from(5..6),
+        }]));
+        case!(parse_enum("enum Foo 0.1") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'{'".to_owned(),
+            found: Token::Float(0.1),
+            span: SourceSpan::from(9..12),
+        }]));
+        case!(parse_enum("enum Foo {]") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier, '}', ';' or 'option'".to_owned(),
+            found: Token::RightBracket,
+            span: SourceSpan::from(10..11),
+        }]));
+        case!(parse_enum("enum Foo { BAR .") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'='".to_owned(),
+            found: Token::Dot,
+            span: SourceSpan::from(15..16),
+        }]));
+        case!(parse_enum("enum Foo { BAR = foo") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an integer".to_owned(),
+            found: Token::Ident("foo".to_owned()),
+            span: SourceSpan::from(17..20),
         }]));
     }
 }
