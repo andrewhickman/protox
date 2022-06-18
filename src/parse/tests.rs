@@ -387,3 +387,38 @@ pub fn parse_package() {
         span: SourceSpan::from(11..12),
     }]));
 }
+
+#[test]
+pub fn parse_import() {
+    case!(parse_import("import 'foo';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo".to_owned(),
+            span: 7..12,
+        },
+    });
+    case!(parse_import("import weak \"foo\";") => ast::Import {
+        kind: Some(ast::ImportKind::Weak),
+        value: ast::String {
+            value: "foo".to_owned(),
+            span: 12..17,
+        },
+    });
+    case!(parse_import("import public 'f\\x6fo';") => ast::Import {
+        kind: Some(ast::ImportKind::Public),
+        value: ast::String {
+            value: "foo".to_owned(),
+            span: 14..22,
+        },
+    });
+    case!(parse_import("import ;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a string literal, 'public' or 'weak'".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(7..8),
+    }]));
+    case!(parse_import("import public ;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a string literal".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(14..15),
+    }]));
+}

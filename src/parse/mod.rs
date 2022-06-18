@@ -109,13 +109,34 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Semicolon)?;
 
-        Ok(ast::Package {
-            name
-        })
+        Ok(ast::Package { name })
     }
 
     fn parse_import(&mut self) -> Result<ast::Import, ()> {
-        todo!()
+        self.expect_eq(Token::Import)?;
+
+        let kind = match self.peek() {
+            Some((Token::Weak, _)) => {
+                self.bump();
+                Some(ast::ImportKind::Weak)
+            }
+            Some((Token::Public, _)) => {
+                self.bump();
+                Some(ast::ImportKind::Public)
+            }
+            Some((Token::String(_), _)) => None,
+            _ => self.unexpected_token("a string literal, 'public' or 'weak'")?,
+        };
+
+        let value = match self.peek() {
+            Some((Token::String(value), span)) => {
+                self.bump();
+                ast::String { value, span }
+            }
+            _ => self.unexpected_token("a string literal")?,
+        };
+
+        Ok(ast::Import { kind, value })
     }
 
     fn parse_service(&mut self) -> Result<ast::Service, ()> {

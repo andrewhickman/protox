@@ -30,6 +30,10 @@ pub(crate) enum Token {
     Package,
     #[token("import")]
     Import,
+    #[token("weak")]
+    Weak,
+    #[token("public")]
+    Public,
     #[token("enum")]
     Enum,
     #[token("option")]
@@ -85,6 +89,8 @@ impl Token {
             Token::Ident(value) => Some(value),
             Token::Syntax => Some("syntax".to_owned()),
             Token::Import => Some("import".to_owned()),
+            Token::Weak => Some("weak".to_owned()),
+            Token::Public => Some("public".to_owned()),
             Token::Package => Some("package".to_owned()),
             Token::Option => Some("option".to_owned()),
             Token::Enum => Some("enum".to_owned()),
@@ -112,6 +118,8 @@ impl fmt::Display for Token {
             }
             Token::Syntax => write!(f, "syntax"),
             Token::Import => write!(f, "import"),
+            Token::Weak => write!(f, "weak"),
+            Token::Public => write!(f, "public"),
             Token::Package => write!(f, "package"),
             Token::Enum => write!(f, "enum"),
             Token::Option => write!(f, "option"),
