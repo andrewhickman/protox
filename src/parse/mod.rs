@@ -51,8 +51,8 @@ pub(crate) enum ParseError {
 pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
     let mut parser = Parser::new(source);
     match parser.parse_file() {
-        Ok(file) => Ok(file),
-        Err(()) => Err(parser.lexer.extras.errors),
+        Ok(file) if parser.lexer.extras.errors.is_empty() => Ok(file),
+        _ => Err(parser.lexer.extras.errors),
     }
 }
 
@@ -100,6 +100,22 @@ impl<'a> Parser<'a> {
         };
 
         Ok(file)
+    }
+
+    fn parse_package(&mut self) -> Result<ast::Package, ()> {
+        self.expect_eq(Token::Package)?;
+
+        let name = self.parse_full_ident(&[Token::Semicolon])?;
+
+        self.expect_eq(Token::Semicolon)?;
+
+        Ok(ast::Package {
+            name
+        })
+    }
+
+    fn parse_import(&mut self) -> Result<ast::Import, ()> {
+        todo!()
     }
 
     fn parse_service(&mut self) -> Result<ast::Service, ()> {
@@ -458,6 +474,10 @@ impl<'a> Parser<'a> {
 
     fn skip_comments(&mut self) {
         while self.bump_if(|tok| matches!(tok, Token::LineComment(_) | Token::BlockComment(_))) {}
+    }
+
+    fn skip_until(&mut self, tokens: &[Token]) {
+        while !self.bump_if(|tok| tokens.contains(tok)) && self.peek().is_some() {}
     }
 
     fn bump_if_eq(&mut self, t: Token) -> bool {

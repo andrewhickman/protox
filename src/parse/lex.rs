@@ -26,6 +26,10 @@ pub(crate) enum Token {
     String(String),
     #[token("syntax")]
     Syntax,
+    #[token("package")]
+    Package,
+    #[token("import")]
+    Import,
     #[token("enum")]
     Enum,
     #[token("option")]
@@ -38,6 +42,10 @@ pub(crate) enum Token {
     Stream,
     #[token("returns")]
     Returns,
+    #[token("extend")]
+    Extend,
+    #[token("message")]
+    Message,
     #[token(".")]
     Dot,
     #[token("-")]
@@ -76,12 +84,16 @@ impl Token {
         match self {
             Token::Ident(value) => Some(value),
             Token::Syntax => Some("syntax".to_owned()),
+            Token::Import => Some("import".to_owned()),
+            Token::Package => Some("package".to_owned()),
             Token::Option => Some("option".to_owned()),
             Token::Enum => Some("enum".to_owned()),
             Token::Service => Some("service".to_owned()),
             Token::Rpc => Some("rpc".to_owned()),
             Token::Stream => Some("stream".to_owned()),
             Token::Returns => Some("returns".to_owned()),
+            Token::Extend => Some("extend".to_owned()),
+            Token::Message => Some("message".to_owned()),
             Token::Bool(value) => Some(value.to_string()),
             _ => None,
         }
@@ -99,11 +111,15 @@ impl fmt::Display for Token {
                 write!(f, "\"{}\"", string.escape_default())
             }
             Token::Syntax => write!(f, "syntax"),
+            Token::Import => write!(f, "import"),
+            Token::Package => write!(f, "package"),
             Token::Enum => write!(f, "enum"),
             Token::Option => write!(f, "option"),
             Token::Service => write!(f, "service"),
             Token::Stream => write!(f, "stream"),
             Token::Returns => write!(f, "returns"),
+            Token::Extend => write!(f, "extend"),
+            Token::Message => write!(f, "message"),
             Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
             Token::Minus => write!(f, "-"),

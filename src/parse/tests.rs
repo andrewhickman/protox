@@ -364,3 +364,26 @@ fn parse_service() {
         span: SourceSpan::from(45..48),
     }]));
 }
+
+#[test]
+pub fn parse_package() {
+    case!(parse_package("package foo;") => ast::Package {
+        name: ast::FullIdent::from(ast::Ident::new("foo", 8..11)),
+    });
+    case!(parse_package("package foo.bar;") => ast::Package {
+        name: ast::FullIdent::from(vec![
+            ast::Ident::new("foo", 8..11),
+            ast::Ident::new("bar", 12..15),
+        ]),
+    });
+    case!(parse_package("package =") => Err(vec![ParseError::UnexpectedToken {
+        expected: "an identifier".to_owned(),
+        found: Token::Equals,
+        span: SourceSpan::from(8..9),
+    }]));
+    case!(parse_package("package foo)") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'.' or ';'".to_owned(),
+        found: Token::RightParen,
+        span: SourceSpan::from(11..12),
+    }]));
+}

@@ -2,14 +2,16 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct File {
-    package: std::option::Option<Package>,
-    imports: Vec<Import>,
-    options: Vec<Option>,
-    definitions: Vec<Definition>,
+    pub packages: Vec<Package>,
+    pub imports: Vec<Import>,
+    pub options: Vec<Option>,
+    pub definitions: Vec<Definition>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
+    Empty,
+    Package(Package),
     Import(Import),
     Option(Option),
     Definition(Definition),
@@ -25,31 +27,31 @@ pub enum Definition {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Message {
-    name: Ident,
-    body: MessageBody,
+    pub name: Ident,
+    pub body: MessageBody,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MessageBody {
-    map_fields: Vec<MapField>,
-    fields: Vec<Field>,
-    enums: Vec<Enum>,
-    messages: Vec<Message>,
-    extensions: Vec<Extension>,
-    extension_ranges: Vec<ReservedRange>,
-    groups: Vec<Group>,
-    options: Vec<Option>,
-    oneofs: Vec<Oneof>,
-    reserved: Vec<Reserved>,
+    pub map_fields: Vec<MapField>,
+    pub fields: Vec<Field>,
+    pub enums: Vec<Enum>,
+    pub messages: Vec<Message>,
+    pub extensions: Vec<Extension>,
+    pub extension_ranges: Vec<ReservedRange>,
+    pub groups: Vec<Group>,
+    pub options: Vec<Option>,
+    pub oneofs: Vec<Oneof>,
+    pub reserved: Vec<Reserved>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
-    label: FieldLabel,
-    name: Ident,
-    ty: Ty,
-    number: Int,
-    options: Vec<Option>,
+    pub label: FieldLabel,
+    pub name: Ident,
+    pub ty: Ty,
+    pub number: Int,
+    pub options: Vec<Option>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,8 +63,8 @@ pub enum FieldLabel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extension {
-    extendee: TypeName,
-    fields: Vec<ExtensionField>,
+    pub extendee: TypeName,
+    pub fields: Vec<ExtensionField>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -73,8 +75,8 @@ pub enum ExtensionField {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Group {
-    label: FieldLabel,
-    name: Ident,
-    number: Int,
-    body: MessageBody,
+    pub label: FieldLabel,
+    pub name: Ident,
+    pub number: Int,
+    pub body: MessageBody,
 }

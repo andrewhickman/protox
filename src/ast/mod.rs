@@ -206,7 +206,7 @@ impl From<Ident> for FullIdent {
 
 impl From<Vec<Ident>> for FullIdent {
     fn from(parts: Vec<Ident>) -> Self {
-        debug_assert!(parts.len() > 0);
+        debug_assert!(!parts.is_empty());
         FullIdent { parts }
     }
 }
