@@ -138,12 +138,12 @@ fn parse_enum() {
     });
     case!(parse_enum("enum 3") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
-        found: Token::Int(3),
+        found: Token::IntLiteral(3),
         span: SourceSpan::from(5..6),
     }]));
     case!(parse_enum("enum Foo 0.1") => Err(vec![ParseError::UnexpectedToken {
         expected: "'{'".to_owned(),
-        found: Token::Float(0.1),
+        found: Token::FloatLiteral(0.1),
         span: SourceSpan::from(9..12),
     }]));
     case!(parse_enum("enum Foo {]") => Err(vec![ParseError::UnexpectedToken {
@@ -421,4 +421,15 @@ pub fn parse_import() {
         found: Token::Semicolon,
         span: SourceSpan::from(14..15),
     }]));
+}
+
+#[test]
+pub fn parse_extension() {
+    case!(parse_import("import 'foo';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo".to_owned(),
+            span: 7..12,
+        },
+    });
 }

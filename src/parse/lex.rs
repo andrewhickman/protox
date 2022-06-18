@@ -14,16 +14,16 @@ pub(crate) enum Token {
     #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
-    Int(u64),
+    IntLiteral(u64),
     #[regex(
         r#"([0-9]+\.[0-9]*(?&exponent)?)|([0-9]+(?&exponent))|\.[0-9]+(?&exponent)?"#,
         float
     )]
-    Float(f64),
+    FloatLiteral(f64),
     #[regex("false|true", bool)]
-    Bool(bool),
+    BoolLiteral(bool),
     #[regex(r#"'|""#, string)]
-    String(String),
+    StringLiteral(String),
     #[token("syntax")]
     Syntax,
     #[token("package")]
@@ -50,6 +50,54 @@ pub(crate) enum Token {
     Extend,
     #[token("message")]
     Message,
+    #[token("optional")]
+    Optional,
+    #[token("required")]
+    Required,
+    #[token("repeated")]
+    Repeated,
+    #[token("map")]
+    Map,
+    #[token("oneof")]
+    Oneof,
+    #[token("group")]
+    Group,
+    #[token("double")]
+    Double,
+    #[token("float")]
+    Float,
+    #[token("int32")]
+    Int32,
+    #[token("int64")]
+    Int64,
+    #[token("uint32")]
+    Uint32,
+    #[token("uint64")]
+    Uint64,
+    #[token("sint32")]
+    Sint32,
+    #[token("sint64")]
+    Sint64,
+    #[token("fixed32")]
+    Fixed32,
+    #[token("fixed64")]
+    Fixed64,
+    #[token("sfixed32")]
+    Sfixed32,
+    #[token("sfixed64")]
+    Sfixed64,
+    #[token("bool")]
+    Bool,
+    #[token("string")]
+    String,
+    #[token("bytes")]
+    Bytes,
+    #[token("reserved")]
+    Reserved,
+    #[token("extensions")]
+    Extensions,
+    #[token("max")]
+    Max,
     #[token(".")]
     Dot,
     #[token("-")]
@@ -87,6 +135,7 @@ impl Token {
     pub fn into_ident(self) -> Option<String> {
         match self {
             Token::Ident(value) => Some(value),
+            Token::BoolLiteral(value) => Some(value.to_string()),
             Token::Syntax => Some("syntax".to_owned()),
             Token::Import => Some("import".to_owned()),
             Token::Weak => Some("weak".to_owned()),
@@ -100,7 +149,30 @@ impl Token {
             Token::Returns => Some("returns".to_owned()),
             Token::Extend => Some("extend".to_owned()),
             Token::Message => Some("message".to_owned()),
-            Token::Bool(value) => Some(value.to_string()),
+            Token::Optional => Some("optional".to_owned()),
+            Token::Required => Some("required".to_owned()),
+            Token::Repeated => Some("repeated".to_owned()),
+            Token::Map => Some("map".to_owned()),
+            Token::Group => Some("group".to_owned()),
+            Token::Oneof => Some("oneof".to_owned()),
+            Token::Double => Some("double".to_owned()),
+            Token::Float => Some("float".to_owned()),
+            Token::Int32 => Some("int32".to_owned()),
+            Token::Int64 => Some("int64".to_owned()),
+            Token::Uint32 => Some("uint32".to_owned()),
+            Token::Uint64 => Some("uint64".to_owned()),
+            Token::Sint32 => Some("sint32".to_owned()),
+            Token::Sint64 => Some("sint64".to_owned()),
+            Token::Fixed32 => Some("fixed32".to_owned()),
+            Token::Fixed64 => Some("fixed64".to_owned()),
+            Token::Sfixed32 => Some("sfixed32".to_owned()),
+            Token::Sfixed64 => Some("sfixed64".to_owned()),
+            Token::Bool => Some("bool".to_owned()),
+            Token::String => Some("string".to_owned()),
+            Token::Bytes => Some("bytes".to_owned()),
+            Token::Reserved => Some("reserved".to_owned()),
+            Token::Extensions => Some("extensions".to_owned()),
+            Token::Max => Some("max".to_owned()),
             _ => None,
         }
     }
@@ -110,10 +182,10 @@ impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Ident(value) => write!(f, "{}", value),
-            Token::Int(value) => write!(f, "{}", value),
-            Token::Float(value) => write!(f, "{}", value),
-            Token::Bool(value) => write!(f, "{}", value),
-            Token::String(string) => {
+            Token::IntLiteral(value) => write!(f, "{}", value),
+            Token::FloatLiteral(value) => write!(f, "{}", value),
+            Token::BoolLiteral(value) => write!(f, "{}", value),
+            Token::StringLiteral(string) => {
                 write!(f, "\"{}\"", string.escape_default())
             }
             Token::Syntax => write!(f, "syntax"),
@@ -128,6 +200,30 @@ impl fmt::Display for Token {
             Token::Returns => write!(f, "returns"),
             Token::Extend => write!(f, "extend"),
             Token::Message => write!(f, "message"),
+            Token::Optional => write!(f, "optional"),
+            Token::Required => write!(f, "required"),
+            Token::Repeated => write!(f, "repeated"),
+            Token::Map => write!(f, "map"),
+            Token::Oneof => write!(f, "oneof"),
+            Token::Group => write!(f, "group"),
+            Token::Double => write!(f, "double"),
+            Token::Float => write!(f, "float"),
+            Token::Int32 => write!(f, "int32"),
+            Token::Int64 => write!(f, "int64"),
+            Token::Uint32 => write!(f, "uint32"),
+            Token::Uint64 => write!(f, "uint64"),
+            Token::Sint32 => write!(f, "sint32"),
+            Token::Sint64 => write!(f, "sint64"),
+            Token::Fixed32 => write!(f, "fixed32"),
+            Token::Fixed64 => write!(f, "fixed64"),
+            Token::Sfixed32 => write!(f, "sfixed32"),
+            Token::Sfixed64 => write!(f, "sfixed64"),
+            Token::Bool => write!(f, "bool"),
+            Token::String => write!(f, "string"),
+            Token::Bytes => write!(f, "bytes"),
+            Token::Reserved => write!(f, "reserved"),
+            Token::Extensions=> write!(f, "extensions"),
+            Token::Max => write!(f, "max"),
             Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
             Token::Minus => write!(f, "-"),
@@ -369,21 +465,24 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next().unwrap(), Token::Ident("hello".to_owned()));
-        assert_eq!(lexer.next().unwrap(), Token::Int(42));
-        assert_eq!(lexer.next().unwrap(), Token::Int(42));
-        assert_eq!(lexer.next().unwrap(), Token::Int(42));
-        assert_eq!(lexer.next().unwrap(), Token::Float(5.));
-        assert_eq!(lexer.next().unwrap(), Token::Float(0.5));
-        assert_eq!(lexer.next().unwrap(), Token::Float(0.42e+2));
-        assert_eq!(lexer.next().unwrap(), Token::Float(2e-4));
-        assert_eq!(lexer.next().unwrap(), Token::Float(0.2e+3));
-        assert_eq!(lexer.next().unwrap(), Token::Bool(true));
-        assert_eq!(lexer.next().unwrap(), Token::Bool(false));
+        assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
+        assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
+        assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
+        assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(true));
+        assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
         assert_eq!(
             lexer.next().unwrap(),
-            Token::String("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".to_owned())
+            Token::StringLiteral("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".to_owned())
         );
-        assert_eq!(lexer.next().unwrap(), Token::String("hello 😀".to_owned()));
+        assert_eq!(
+            lexer.next().unwrap(),
+            Token::StringLiteral("hello 😀".to_owned())
+        );
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -394,8 +493,8 @@ mod tests {
         let source = "99999999999999999999999999999999999999 4";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Int(0)));
-        assert_eq!(lexer.next(), Some(Token::Int(4)));
+        assert_eq!(lexer.next(), Some(Token::IntLiteral(0)));
+        assert_eq!(lexer.next(), Some(Token::IntLiteral(4)));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -423,7 +522,7 @@ mod tests {
         let source = "\"\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::String(String::new())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral(String::new())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
         assert_eq!(lexer.next(), None);
 
@@ -440,7 +539,10 @@ mod tests {
         let source = "\"hello \n foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::String("hello ".to_owned())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral("hello ".to_owned()))
+        );
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
         assert_eq!(lexer.next(), None);
 
@@ -457,7 +559,7 @@ mod tests {
         let source = r#""\m" foo"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::String("m".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral("m".to_owned())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
         assert_eq!(lexer.next(), None);
 
@@ -474,7 +576,7 @@ mod tests {
         let source = "\"\\\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::String("".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral("".to_owned())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
         assert_eq!(lexer.next(), None);
 
