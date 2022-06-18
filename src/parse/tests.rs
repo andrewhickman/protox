@@ -6,6 +6,12 @@ macro_rules! case {
         parser.$method().unwrap_err();
         assert_eq!(parser.lexer.extras.errors, $errors);
     };
+    ($method:ident($source:expr) => $ast:expr, Err($errors:expr)) => {
+        let mut parser = Parser::new($source);
+        let result = parser.$method();
+        assert_eq!(parser.lexer.extras.errors, $errors);
+        assert_eq!(result.unwrap(), $ast);
+    };
     ($method:ident($source:expr) => $ast:expr) => {
         let mut parser = Parser::new($source);
         let result = parser.$method();
@@ -425,11 +431,60 @@ pub fn parse_import() {
 
 #[test]
 pub fn parse_extension() {
-    case!(parse_import("import 'foo';") => ast::Import {
-        kind: None,
-        value: ast::String {
-            value: "foo".to_owned(),
-            span: 7..12,
+    todo!()
+}
+
+#[test]
+pub fn parse_reserved() {
+    case!(parse_reserved("reserved 0, 2 to 3, 5 to max;") => ast::Reserved::Ranges(vec![
+        ast::ReservedRange {
+            start: ast::Int { negative: false, value: 0, span: 9..10 },
+            end: ast::ReservedRangeEnd::None,
         },
-    });
+        ast::ReservedRange {
+            start: ast::Int { negative: false, value: 2, span: 12..13 },
+            end: ast::ReservedRangeEnd::Int(ast::Int {
+                negative: false, value: 3, span: 17..18
+            }),
+        },
+        ast::ReservedRange {
+            start: ast::Int { negative: false, value: 5, span: 20..21 },
+            end: ast::ReservedRangeEnd::Max,
+        },
+    ]));
+    case!(parse_reserved("reserved 'foo', 'bar';") => ast::Reserved::Names(vec![
+        ast::Ident::new("foo", 9..14),
+        ast::Ident::new("bar", 16..21),
+    ]));
+    case!(parse_reserved("reserved -1;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a positive integer or string".to_owned(),
+        found: Token::Minus,
+        span: SourceSpan::from(9..10),
+    }]));
+    case!(parse_reserved("reserved ;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a positive integer or string".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(9..10),
+    }]));
+    case!(parse_reserved("reserved '0foo';") => ast::Reserved::Names(vec![
+        ast::Ident::new("0foo", 9..15),
+    ]), Err(vec![ParseError::InvalidIdentifier {
+        span: SourceSpan::from(9..15),
+    }]));
+}
+
+#[test]
+pub fn parse_field() {
+    todo!()
+}
+
+#[test]
+pub fn parse_message() {
+    todo!()
+}
+
+#[test]
+pub fn parse_file() {
+    // TODO error recovery
+    todo!()
 }

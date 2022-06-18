@@ -36,6 +36,9 @@ pub(crate) enum ParseError {
     UnknownSyntax {
         span: SourceSpan,
     },
+    InvalidIdentifier {
+        span: SourceSpan,
+    },
     UnexpectedToken {
         expected: String,
         found: Token,
@@ -179,13 +182,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("a string literal, 'public' or 'weak'")?,
         };
 
-        let value = match self.peek() {
-            Some((Token::StringLiteral(value), span)) => {
-                self.bump();
-                ast::String { value, span }
-            }
-            _ => self.unexpected_token("a string literal")?,
-        };
+        let value = self.parse_string()?;
 
         Ok(ast::Import { kind, value })
     }
@@ -193,7 +190,7 @@ impl<'a> Parser<'a> {
     fn parse_message(&mut self) -> Result<ast::Message, ()> {
         self.expect_eq(Token::Message)?;
 
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         let body = self.parse_message_body()?;
 
@@ -274,7 +271,7 @@ impl<'a> Parser<'a> {
 
         let ty = self.parse_field_type(&[Token::Ident(Default::default())])?;
 
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         self.expect_eq(Token::Equals)?;
 
@@ -341,7 +338,7 @@ impl<'a> Parser<'a> {
     fn parse_service(&mut self) -> Result<ast::Service, ()> {
         self.expect_eq(Token::Service)?;
 
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftBrace)?;
 
@@ -378,7 +375,7 @@ impl<'a> Parser<'a> {
     fn parse_service_rpc(&mut self) -> Result<ast::Method, ()> {
         self.expect_eq(Token::Rpc)?;
 
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftParen)?;
 
@@ -450,7 +447,7 @@ impl<'a> Parser<'a> {
     fn parse_enum(&mut self) -> Result<ast::Enum, ()> {
         self.expect_eq(Token::Enum)?;
 
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftBrace)?;
 
@@ -481,7 +478,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_value(&mut self) -> Result<ast::EnumValue, ()> {
-        let name = self.expect_ident()?;
+        let name = self.parse_ident()?;
 
         self.expect_eq(Token::Equals)?;
 
@@ -558,7 +555,7 @@ impl<'a> Parser<'a> {
             Some((Token::StringLiteral(_), _)) => {
                 Ok(ast::Reserved::Names(self.parse_reserved_names()?))
             }
-            _ => self.unexpected_token("a field range or names"),
+            _ => self.unexpected_token("a positive integer or string"),
         }
     }
 
@@ -569,12 +566,86 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_reserved_names(&mut self) -> Result<Vec<ast::Ident>, ()> {
-        // TODO validate all names are valid idents
-        todo!()
+        let mut names = vec![self.parse_ident_string()?];
+
+        loop {
+            match self.peek() {
+                Some((Token::Comma, _)) => {
+                    self.bump();
+                    names.push(self.parse_ident_string()?);
+                }
+                Some((Token::Semicolon, _)) => {
+                    self.bump();
+                    break;
+                }
+                _ => self.unexpected_token("',' or ';'")?,
+            }
+        }
+
+        Ok(names)
+    }
+
+    fn parse_ident_string(&mut self) -> Result<ast::Ident, ()> {
+        let string = self.parse_string()?;
+        if !is_valid_ident(&string.value) {
+            self.add_error(ParseError::InvalidIdentifier {
+                span: SourceSpan::from(string.span.clone()),
+            })
+        }
+        Ok(ast::Ident {
+            value: string.value,
+            span: string.span,
+        })
     }
 
     fn parse_reserved_ranges(&mut self) -> Result<Vec<ast::ReservedRange>, ()> {
-        todo!()
+        let mut ranges = vec![self.parse_reserved_range()?];
+
+        loop {
+            match self.peek() {
+                Some((Token::Comma, _)) => {
+                    self.bump();
+                    ranges.push(self.parse_reserved_range()?);
+                    continue;
+                }
+                Some((Token::Semicolon, _)) => {
+                    self.bump();
+                    break;
+                }
+                _ => self.unexpected_token("',' or ';'")?,
+            }
+        }
+
+        Ok(ranges)
+    }
+
+    fn parse_reserved_range(&mut self) -> Result<ast::ReservedRange, ()> {
+        let start = self.parse_positive_int()?;
+
+        let end = match self.peek() {
+            Some((Token::To, _)) => {
+                self.bump();
+                match self.peek() {
+                    Some((Token::IntLiteral(value), span)) => {
+                        self.bump();
+                        ast::ReservedRangeEnd::Int(ast::Int {
+                            negative: false,
+                            value,
+                            span,
+                        })
+                    }
+                    Some((Token::Max, _)) => {
+                        self.bump();
+                        ast::ReservedRangeEnd::Max
+                    }
+                    _ => self.unexpected_token("an integer or 'max'")?,
+                }
+            }
+            Some((Token::Comma | Token::Semicolon, _)) => ast::ReservedRangeEnd::None,
+            _ => self.unexpected_token("'to', ',' or ';'")?,
+        };
+
+        Ok(ast::ReservedRange { start, end })
     }
 
     fn parse_options_list(&mut self) -> Result<Vec<ast::Option>, ()> {
@@ -635,7 +706,7 @@ impl<'a> Parser<'a> {
                 _ => self.unexpected_token("'.' or '='")?,
             }
 
-            field_name.get_or_insert(vec![]).push(self.expect_ident()?);
+            field_name.get_or_insert(vec![]).push(self.parse_ident()?);
         }
 
         let value = match self.peek() {
@@ -708,7 +779,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_full_ident(&mut self, terminators: &[Token]) -> Result<ast::FullIdent, ()> {
-        let mut result = vec![self.expect_ident()?];
+        let mut result = vec![self.parse_ident()?];
 
         loop {
             match self.peek() {
@@ -723,11 +794,11 @@ impl<'a> Parser<'a> {
                 ))?,
             }
 
-            result.push(self.expect_ident()?);
+            result.push(self.parse_ident()?);
         }
     }
 
-    fn expect_ident(&mut self) -> Result<ast::Ident, ()> {
+    fn parse_ident(&mut self) -> Result<ast::Ident, ()> {
         self.expect(
             |tok, span| tok.into_ident().map(|value| ast::Ident::new(value, span)),
             "an identifier",
@@ -745,6 +816,16 @@ impl<'a> Parser<'a> {
                 })
             }
             _ => self.unexpected_token("a positive integer")?,
+        }
+    }
+
+    fn parse_string(&mut self) -> Result<ast::String, ()> {
+        match self.peek() {
+            Some((Token::StringLiteral(value), span)) => {
+                self.bump();
+                Ok(ast::String { value, span })
+            }
+            _ => self.unexpected_token("a string literal"),
         }
     }
 
@@ -903,4 +984,12 @@ fn fmt_expected(ts: impl Iterator<Item = Token>) -> String {
         fmt_token(&mut s, &ts[ts.len() - 1]);
     }
     s
+}
+
+fn is_valid_ident(s: &str) -> bool {
+    s.len() > 1
+        && s.as_bytes()[0].is_ascii_alphabetic()
+        && s.as_bytes()[1..]
+            .iter()
+            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
 }

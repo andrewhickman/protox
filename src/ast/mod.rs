@@ -234,7 +234,14 @@ pub enum Reserved {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReservedRange {
     pub start: Int,
-    pub end: std::option::Option<Int>,
+    pub end: ReservedRangeEnd,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReservedRangeEnd {
+    None,
+    Int(Int),
+    Max,
 }
 
 #[derive(Debug, Clone, PartialEq)]

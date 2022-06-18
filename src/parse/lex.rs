@@ -96,6 +96,8 @@ pub(crate) enum Token {
     Reserved,
     #[token("extensions")]
     Extensions,
+    #[token("to")]
+    To,
     #[token("max")]
     Max,
     #[token(".")]
@@ -172,6 +174,7 @@ impl Token {
             Token::Bytes => Some("bytes".to_owned()),
             Token::Reserved => Some("reserved".to_owned()),
             Token::Extensions => Some("extensions".to_owned()),
+            Token::To => Some("to".to_owned()),
             Token::Max => Some("max".to_owned()),
             _ => None,
         }
@@ -223,6 +226,7 @@ impl fmt::Display for Token {
             Token::Bytes => write!(f, "bytes"),
             Token::Reserved => write!(f, "reserved"),
             Token::Extensions => write!(f, "extensions"),
+            Token::To => write!(f, "to"),
             Token::Max => write!(f, "max"),
             Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
