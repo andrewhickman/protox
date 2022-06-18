@@ -24,9 +24,8 @@ pub struct FullIdent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeName {
-    pub leading_dot: bool,
+    pub leading_dot: std::option::Option<Span>,
     pub name: FullIdent,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -182,6 +181,7 @@ pub struct Service {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Method {
+    pub name: Ident,
     pub input_ty: TypeName,
     pub output_ty: TypeName,
     pub options: Vec<Option>,
@@ -206,6 +206,7 @@ impl From<Ident> for FullIdent {
 
 impl From<Vec<Ident>> for FullIdent {
     fn from(parts: Vec<Ident>) -> Self {
+        debug_assert!(parts.len() > 0);
         FullIdent { parts }
     }
 }

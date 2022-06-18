@@ -101,7 +101,112 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_service(&mut self) -> Result<ast::Service, ()> {
-        todo!()
+        self.expect_eq(Token::Service)?;
+
+        let name = self.expect_ident()?;
+
+        self.expect_eq(Token::LeftBrace)?;
+
+        let mut options = Vec::new();
+        let mut methods = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some((Token::Rpc, _)) => {
+                    methods.push(self.parse_service_rpc()?);
+                }
+                Some((Token::Option, _)) => {
+                    options.push(self.parse_option()?);
+                }
+                Some((Token::Semicolon, _)) => {
+                    self.bump();
+                    continue;
+                }
+                Some((Token::RightBrace, _)) => {
+                    self.bump();
+                    break;
+                }
+                _ => self.unexpected_token("'rpc', '}', 'option' or ';'")?,
+            }
+        }
+
+        Ok(ast::Service {
+            name,
+            methods,
+            options,
+        })
+    }
+
+    fn parse_service_rpc(&mut self) -> Result<ast::Method, ()> {
+        self.expect_eq(Token::Rpc)?;
+
+        let name = self.expect_ident()?;
+
+        self.expect_eq(Token::LeftParen)?;
+
+        let is_client_streaming = match self.peek() {
+            Some((Token::Stream, _)) => {
+                self.bump();
+                true
+            }
+            Some((Token::Dot | Token::Ident(_), _)) => false,
+            _ => self.unexpected_token("'stream' or a type name")?,
+        };
+
+        let input_ty = self.parse_type_name(&[Token::RightParen])?;
+
+        self.expect_eq(Token::RightParen)?;
+        self.expect_eq(Token::Returns)?;
+        self.expect_eq(Token::LeftParen)?;
+
+        let is_server_streaming = match self.peek() {
+            Some((Token::Stream, _)) => {
+                self.bump();
+                true
+            }
+            Some((Token::Dot | Token::Ident(_), _)) => false,
+            _ => self.unexpected_token("'stream' or a type name")?,
+        };
+
+        let output_ty = self.parse_type_name(&[Token::RightParen])?;
+
+        self.expect_eq(Token::RightParen)?;
+
+        let mut options = Vec::new();
+        match self.peek() {
+            Some((Token::Semicolon, _)) => {
+                self.bump();
+            }
+            Some((Token::LeftBrace, _)) => {
+                self.bump();
+                loop {
+                    match self.peek() {
+                        Some((Token::Option, _)) => {
+                            options.push(self.parse_option()?);
+                        }
+                        Some((Token::RightBrace, _)) => {
+                            self.bump();
+                            break;
+                        }
+                        Some((Token::Semicolon, _)) => {
+                            self.bump();
+                            continue;
+                        }
+                        _ => self.unexpected_token("'option', '}' or ';'")?,
+                    }
+                }
+            }
+            _ => self.unexpected_token("';' or '{'")?,
+        }
+
+        Ok(ast::Method {
+            name,
+            input_ty,
+            is_client_streaming,
+            output_ty,
+            is_server_streaming,
+            options,
+        })
     }
 
     fn parse_enum(&mut self) -> Result<ast::Enum, ()> {
@@ -282,6 +387,21 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_type_name(&mut self, terminators: &[Token]) -> Result<ast::TypeName, ()> {
+        let leading_dot = match self.peek() {
+            Some((Token::Dot, span)) => {
+                self.bump();
+                Some(span)
+            }
+            Some((Token::Ident(_), _)) => None,
+            _ => self.unexpected_token("a type name")?,
+        };
+
+        let name = self.parse_full_ident(terminators)?;
+
+        Ok(ast::TypeName { name, leading_dot })
+    }
+
     fn parse_full_ident(&mut self, terminators: &[Token]) -> Result<ast::FullIdent, ()> {
         let mut result = vec![self.expect_ident()?];
 
@@ -418,10 +538,10 @@ fn fmt_expected(ts: impl Iterator<Item = Token>) -> String {
     let mut s = String::with_capacity(32);
     write!(s, "'{}'", ts[0]).unwrap();
     if ts.len() > 1 {
-        for t in &ts[0..][..ts.len() - 1] {
+        for t in &ts[1..][..ts.len() - 2] {
             write!(s, ", '{}'", t).unwrap();
         }
-        write!(s, "or '{}'", ts[ts.len() - 1]).unwrap();
+        write!(s, " or '{}'", ts[ts.len() - 1]).unwrap();
     }
     s
 }
@@ -508,6 +628,11 @@ mod tests {
             values: vec![],
             options: vec![],
         });
+        case!(parse_enum("enum Foo { ; ; }") => ast::Enum {
+            name: ast::Ident::new("Foo", 5..8),
+            values: vec![],
+            options: vec![],
+        });
         case!(parse_enum("enum Foo { BAR = 1; }") => ast::Enum {
             name: ast::Ident::new("Foo", 5..8),
             values: vec![ast::EnumValue {
@@ -585,6 +710,208 @@ mod tests {
             expected: "an integer".to_owned(),
             found: Token::Ident("foo".to_owned()),
             span: SourceSpan::from(17..20),
+        }]));
+    }
+
+    #[test]
+    fn parse_service() {
+        case!(parse_service("service Foo {}") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![],
+        });
+        case!(parse_service("service Foo { ; ; }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![],
+        });
+        case!(parse_service("service service { }") => ast::Service {
+            name: ast::Ident::new("service", 8..15),
+            options: vec![],
+            methods: vec![],
+        });
+        case!(parse_service("service Foo { rpc bar(A) returns (B.C); }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![ast::Method {
+                name: ast::Ident::new("bar", 18..21),
+                is_client_streaming: false,
+                input_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(ast::Ident::new("A", 22..23)),
+                },
+                is_server_streaming: false,
+                output_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(vec![
+                        ast::Ident::new("B", 34..35),
+                        ast::Ident::new("C", 36..37),
+                    ]),
+                },
+                options: vec![],
+            }],
+        });
+        case!(parse_service("service Foo { rpc bar(stream .A.B) returns (stream .C); }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![ast::Method {
+                name: ast::Ident::new("bar", 18..21),
+                is_client_streaming: true,
+                input_ty: ast::TypeName {
+                    leading_dot: Some(29..30),
+                    name: FullIdent::from(vec![
+                        ast::Ident::new("A", 30..31),
+                        ast::Ident::new("B", 32..33),
+                    ]),
+                },
+                is_server_streaming: true,
+                output_ty: ast::TypeName {
+                    leading_dot: Some(51..52),
+                    name: FullIdent::from(ast::Ident::new("C", 52..53)),
+                },
+                options: vec![],
+            }],
+        });
+        case!(parse_service("service Foo { rpc bar(A) returns (B.C) { } }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![ast::Method {
+                name: ast::Ident::new("bar", 18..21),
+                is_client_streaming: false,
+                input_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(ast::Ident::new("A", 22..23)),
+                },
+                is_server_streaming: false,
+                output_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(vec![
+                        ast::Ident::new("B", 34..35),
+                        ast::Ident::new("C", 36..37),
+                    ]),
+                },
+                options: vec![],
+            }],
+        });
+        case!(parse_service("service Foo { rpc bar(A) returns (B.C) { ; ; } }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![ast::Method {
+                name: ast::Ident::new("bar", 18..21),
+                is_client_streaming: false,
+                input_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(ast::Ident::new("A", 22..23)),
+                },
+                is_server_streaming: false,
+                output_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(vec![
+                        ast::Ident::new("B", 34..35),
+                        ast::Ident::new("C", 36..37),
+                    ]),
+                },
+                options: vec![],
+            }],
+        });
+        case!(parse_service("service Foo { rpc bar(A) returns (B.C) { option opt = -1; } }") => ast::Service {
+            name: ast::Ident::new("Foo", 8..11),
+            options: vec![],
+            methods: vec![ast::Method {
+                name: ast::Ident::new("bar", 18..21),
+                is_client_streaming: false,
+                input_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(ast::Ident::new("A", 22..23)),
+                },
+                is_server_streaming: false,
+                output_ty: ast::TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(vec![
+                        ast::Ident::new("B", 34..35),
+                        ast::Ident::new("C", 36..37),
+                    ]),
+                },
+                options: vec![ast::Option {
+                    name: ast::FullIdent::from(ast::Ident::new("opt", 48..51)),
+                    field_name: None,
+                    value: ast::Constant::Int(ast::Int {
+                        negative: true,
+                        value: 1,
+                        span: 55..56,
+                    })
+                }],
+            }],
+        });
+        case!(parse_service("service ;") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier".to_owned(),
+            found: Token::Semicolon,
+            span: SourceSpan::from(8..9),
+        }]));
+        case!(parse_service("service Foo (") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'{'".to_owned(),
+            found: Token::LeftParen,
+            span: SourceSpan::from(12..13),
+        }]));
+        case!(parse_service("service Foo { bar") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'rpc', '}', 'option' or ';'".to_owned(),
+            found: Token::Ident("bar".to_owned()),
+            span: SourceSpan::from(14..17),
+        }]));
+        case!(parse_service("service Foo { rpc =") => Err(vec![ParseError::UnexpectedToken {
+            expected: "an identifier".to_owned(),
+            found: Token::Equals,
+            span: SourceSpan::from(18..19),
+        }]));
+        case!(parse_service("service Foo { rpc bar{") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'('".to_owned(),
+            found: Token::LeftBrace,
+            span: SourceSpan::from(21..22),
+        }]));
+        case!(parse_service("service Foo { rpc bar(+") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'stream' or a type name".to_owned(),
+            found: Token::Plus,
+            span: SourceSpan::from(22..23),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A(") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'.' or ')'".to_owned(),
+            found: Token::LeftParen,
+            span: SourceSpan::from(23..24),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) [") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'returns'".to_owned(),
+            found: Token::LeftBracket,
+            span: SourceSpan::from(25..26),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns =") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'('".to_owned(),
+            found: Token::Equals,
+            span: SourceSpan::from(33..34),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns ()") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'stream' or a type name".to_owned(),
+            found: Token::RightParen,
+            span: SourceSpan::from(34..35),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns (stream =)") => Err(vec![ParseError::UnexpectedToken {
+            expected: "a type name".to_owned(),
+            found: Token::Equals,
+            span: SourceSpan::from(41..42),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns (stream B}") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'.' or ')'".to_owned(),
+            found: Token::RightBrace,
+            span: SourceSpan::from(42..43),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns (stream B) )") => Err(vec![ParseError::UnexpectedToken {
+            expected: "';' or '{'".to_owned(),
+            found: Token::RightParen,
+            span: SourceSpan::from(44..45),
+        }]));
+        case!(parse_service("service Foo { rpc bar(A) returns (stream B) {rpc") => Err(vec![ParseError::UnexpectedToken {
+            expected: "'option', '}' or ';'".to_owned(),
+            found: Token::Rpc,
+            span: SourceSpan::from(45..48),
         }]));
     }
 }

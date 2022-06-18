@@ -30,6 +30,14 @@ pub(crate) enum Token {
     Enum,
     #[token("option")]
     Option,
+    #[token("service")]
+    Service,
+    #[token("rpc")]
+    Rpc,
+    #[token("stream")]
+    Stream,
+    #[token("returns")]
+    Returns,
     #[token(".")]
     Dot,
     #[token("-")]
@@ -70,6 +78,10 @@ impl Token {
             Token::Syntax => Some("syntax".to_owned()),
             Token::Option => Some("option".to_owned()),
             Token::Enum => Some("enum".to_owned()),
+            Token::Service => Some("service".to_owned()),
+            Token::Rpc => Some("rpc".to_owned()),
+            Token::Stream => Some("stream".to_owned()),
+            Token::Returns => Some("returns".to_owned()),
             Token::Bool(value) => Some(value.to_string()),
             _ => None,
         }
@@ -89,6 +101,10 @@ impl fmt::Display for Token {
             Token::Syntax => write!(f, "syntax"),
             Token::Enum => write!(f, "enum"),
             Token::Option => write!(f, "option"),
+            Token::Service => write!(f, "service"),
+            Token::Stream => write!(f, "stream"),
+            Token::Returns => write!(f, "returns"),
+            Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
             Token::Minus => write!(f, "-"),
             Token::LeftParen => write!(f, "("),
