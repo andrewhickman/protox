@@ -1,10 +1,10 @@
 [package]
-name = "prost-compiler"
-description = "prost-compiler."
+name = "protox"
+description = "protox."
 version = "0.0.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
-repository = "https://github.com/andrewhickman/prost-compiler"
-documentation = "https://docs.rs/prost-compiler"
+repository = "https://github.com/andrewhickman/protox"
+documentation = "https://docs.rs/protox"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2018"
