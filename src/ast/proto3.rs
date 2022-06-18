@@ -22,6 +22,7 @@ pub enum Definition {
     Message(Message),
     Enum(Enum),
     Service(Service),
+    Extension(Extension),
 }
 
 #[derive(Debug, Clone, PartialEq)]
