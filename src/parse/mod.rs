@@ -9,7 +9,7 @@ mod lex;
 mod tests;
 
 use self::lex::Token;
-use crate::ast::{self, FullIdent, FieldLabel};
+use crate::ast::{self, FieldLabel, FullIdent};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
 #[error("error parsing file")]
@@ -197,9 +197,7 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_message_body()?;
 
-        Ok(ast::Message {
-            name, body
-        })
+        Ok(ast::Message { name, body })
     }
 
     fn parse_message_body(&mut self) -> Result<ast::MessageBody, ()> {
@@ -225,7 +223,9 @@ impl<'a> Parser<'a> {
                 Some((Token::Extend, _)) => extensions.push(self.parse_extension()?),
                 Some((Token::Option, _)) => options.push(self.parse_option()?),
                 Some((Token::Reserved, _)) => reserved.push(self.parse_reserved()?),
-                Some((Token::Extensions, _)) => extension_ranges.extend(self.parse_extension_range()?),
+                Some((Token::Extensions, _)) => {
+                    extension_ranges.extend(self.parse_extension_range()?)
+                }
                 Some((Token::Semicolon, _)) => {
                     self.bump();
                     continue;
@@ -552,8 +552,12 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::Reserved)?;
 
         match self.peek() {
-            Some((Token::IntLiteral(_), _)) => Ok(ast::Reserved::Ranges(self.parse_reserved_ranges()?)),
-            Some((Token::StringLiteral(_), _)) => Ok(ast::Reserved::Names(self.parse_reserved_names()?)),
+            Some((Token::IntLiteral(_), _)) => {
+                Ok(ast::Reserved::Ranges(self.parse_reserved_ranges()?))
+            }
+            Some((Token::StringLiteral(_), _)) => {
+                Ok(ast::Reserved::Names(self.parse_reserved_names()?))
+            }
             _ => self.unexpected_token("a field range or names"),
         }
     }

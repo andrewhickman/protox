@@ -222,7 +222,7 @@ impl fmt::Display for Token {
             Token::String => write!(f, "string"),
             Token::Bytes => write!(f, "bytes"),
             Token::Reserved => write!(f, "reserved"),
-            Token::Extensions=> write!(f, "extensions"),
+            Token::Extensions => write!(f, "extensions"),
             Token::Max => write!(f, "max"),
             Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
