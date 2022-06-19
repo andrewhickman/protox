@@ -623,12 +623,6 @@ pub fn parse_reserved() {
 }
 
 #[test]
-#[ignore]
-pub fn parse_field() {
-    todo!()
-}
-
-#[test]
 pub fn parse_group() {
     case!(parse_field("optional group A = 1 { }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
@@ -985,8 +979,92 @@ pub fn parse_oneof() {
 }
 
 #[test]
-#[ignore]
 pub fn parse_file() {
-    // TODO error recovery
-    todo!()
+    case!(parse_file("") => ast::File {
+        syntax: ast::Syntax::Proto2,
+        packages: vec![],
+        imports: vec![],
+        options: vec![],
+        definitions: vec![],
+    });
+    case!(parse_file("
+        package protox.lib;
+    ") => ast::File {
+        syntax: ast::Syntax::Proto2,
+        packages: vec![ast::Package {
+            name: ast::FullIdent::from(vec![
+                ast::Ident::new("protox", 17..23),
+                ast::Ident::new("lib", 24..27),
+            ]),
+        }],
+        imports: vec![],
+        options: vec![],
+        definitions: vec![],
+    });
+    case!(parse_file("
+        syntax 'proto2';
+
+        option optimize_for = SPEED;
+    ") => ast::File {
+        syntax: ast::Syntax::Proto2,
+        packages: vec![],
+        imports: vec![],
+        definitions: vec![],
+        options: vec![ast::Option {
+            name: ast::FullIdent::from(ast::Ident::new("optimize_for", 42..54)),
+            field_name: None,
+            value: ast::Constant::FullIdent(ast::FullIdent::from(ast::Ident::new("SPEED", 57..62)))
+        }],
+    });
+    case!(parse_file("
+        syntax 'proto3';
+
+        import \"foo.proto\";
+    ") => ast::File {
+        syntax: ast::Syntax::Proto3,
+        packages: vec![],
+        imports: vec![ast::Import {
+            kind: None,
+            value: ast::String {
+                value: "foo.proto".to_owned(),
+                span: 42..53,
+            },
+        }],
+        definitions: vec![],
+        options: vec![],
+    });
+    case!(parse_file("
+        syntax 'unknown';
+    ") => Err(vec![ParseError::UnknownSyntax {
+        span: SourceSpan::from(16..25),
+    }]));
+    case!(parse_file("
+        syntax 'proto2';
+
+        message Foo { , }
+        enum Bar { ; }
+        option quz 1;
+    ") => ast::File {
+        syntax: ast::Syntax::Proto2,
+        packages: vec![],
+        imports: vec![],
+        definitions: vec![ast::Definition::Enum(ast::Enum {
+            name: ast::Ident::new("Bar", 66..69),
+            values: vec![],
+            options: vec![],
+            reserved: vec![],
+        })],
+        options: vec![],
+    }, Err(vec![
+        ParseError::UnexpectedToken {
+            expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_string(),
+            found: Token::Comma,
+            span: SourceSpan::from(49..50),
+        },
+        ParseError::UnexpectedToken {
+            expected: "'.' or '='".to_string(),
+            found: Token::IntLiteral(1),
+            span: SourceSpan::from(95..96),
+        },
+    ]));
 }

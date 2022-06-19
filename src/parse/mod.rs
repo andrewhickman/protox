@@ -981,7 +981,11 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_until(&mut self, tokens: &[Token]) {
-        while !self.bump_if(|tok| tokens.contains(tok)) && self.peek().is_some() {}
+        let mut count = 0;
+        while self.bump_if(|tok| !tokens.contains(tok)) {
+            count += 1;
+            assert!(count < 500);
+        }
     }
 
     fn bump_if_eq(&mut self, t: Token) -> bool {
