@@ -27,8 +27,8 @@ pub enum Definition {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Ident {
-    pub span: Span,
     pub value: std::string::String,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]

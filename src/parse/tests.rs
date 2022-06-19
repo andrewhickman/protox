@@ -11,12 +11,14 @@ macro_rules! case {
         let result = parser.$method();
         assert_eq!(parser.lexer.extras.errors, $errors);
         assert_eq!(result.unwrap(), $ast);
+        assert_eq!(parser.peek(), None);
     };
     ($method:ident($source:expr) => $ast:expr) => {
         let mut parser = Parser::new($source);
         let result = parser.$method();
         assert_eq!(parser.lexer.extras.errors, vec![]);
         assert_eq!(result.unwrap(), $ast);
+        assert_eq!(parser.peek(), None);
     };
 }
 
@@ -455,6 +457,11 @@ pub fn parse_import() {
         found: Token::Semicolon,
         span: SourceSpan::from(14..15),
     }]));
+    case!(parse_import("import 'foo' message") => Err(vec![ParseError::UnexpectedToken {
+        expected: "';'".to_owned(),
+        found: Token::Message,
+        span: SourceSpan::from(13..20),
+    }]));
 }
 
 #[test]
@@ -623,7 +630,7 @@ pub fn parse_field() {
 
 #[test]
 pub fn parse_group() {
-    case!(parse_field("optional group A = 1 { } }") => ast::MessageField::Group(ast::Group {
+    case!(parse_field("optional group A = 1 { }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
@@ -633,7 +640,7 @@ pub fn parse_group() {
         },
         body: ast::MessageBody::default(),
     }));
-    case!(parse_field("optional group A = 1 { ; ; } }") => ast::MessageField::Group(ast::Group {
+    case!(parse_field("optional group A = 1 { ; ; }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
@@ -643,7 +650,7 @@ pub fn parse_group() {
         },
         body: ast::MessageBody::default(),
     }));
-    case!(parse_field("optional group A = 1 { optional sint32 foo = 2; } }") => ast::MessageField::Group(ast::Group {
+    case!(parse_field("optional group A = 1 { optional sint32 foo = 2; }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
@@ -668,7 +675,7 @@ pub fn parse_group() {
             ..Default::default()
         }
     }));
-    case!(parse_field("optional group a = 1 { } }") => ast::MessageField::Group(ast::Group {
+    case!(parse_field("optional group a = 1 { }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
         name: ast::Ident::new("a", 15..16),
         number: ast::Int {
@@ -680,7 +687,7 @@ pub fn parse_group() {
     }), Err(vec![ParseError::InvalidGroupName {
         span: SourceSpan::from(15..16),
     }]));
-    case!(parse_field("optional group , { } }") => Err(vec![ParseError::UnexpectedToken {
+    case!(parse_field("optional group , { }") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Comma,
         span: SourceSpan::from(15..16),
@@ -804,9 +811,128 @@ pub fn parse_map() {
 }
 
 #[test]
-#[ignore]
 pub fn parse_message() {
-    todo!()
+    case!(parse_message("message Foo {}") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody::default(),
+    });
+    case!(parse_message("message Foo { ; ; }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody::default(),
+    });
+    case!(parse_message("message Foo {\
+        message Bar {}\
+        enum Quz {}\
+        extend Bar {}\
+    }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            messages: vec![ast::Message {
+                name: ast::Ident::new("Bar", 21..24),
+                body: ast::MessageBody::default(),
+            }],
+            enums: vec![ast::Enum {
+                name: ast::Ident::new("Quz", 32..35),
+                values: vec![],
+                options: vec![],
+                reserved: vec![],
+            }],
+            extensions: vec![ast::Extension {
+                extendee: ast::TypeName {
+                    leading_dot: None,
+                    name: ast::FullIdent::from(ast::Ident::new("Bar", 45..48)),
+                },
+                fields: vec![],
+            }],
+            ..Default::default()
+        },
+    });
+    case!(parse_message("message Foo {
+        fixed32 a = 1;
+        map<int32, bool> b = 2;
+
+        optional group C = 3 {
+            required float d = 1;
+        }
+
+        oneof x {
+            string y = 4;
+        }
+    }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            fields: vec![
+                ast::MessageField::Field(ast::Field {
+                    label: None,
+                    name: ast::Ident::new("a", 30..31),
+                    ty: ast::Ty::Fixed32,
+                    number: ast::Int {
+                        negative: false,
+                        value: 1,
+                        span: 34..35
+                    },
+                    options: vec![],
+                }),
+                ast::MessageField::Map(ast::Map {
+                    key_ty: ast::KeyTy::Int32,
+                    ty: ast::Ty::Bool,
+                    name: ast::Ident::new("b", 62..63),
+                    number: ast::Int {
+                        negative: false,
+                        value: 2,
+                        span: 66..67,
+                    },
+                    options: vec![],
+                }),
+                ast::MessageField::Group(ast::Group {
+                    label: Some(ast::FieldLabel::Optional),
+                    name: ast::Ident::new("C", 93..94),
+                    number: ast::Int {
+                        negative: false,
+                        value: 3,
+                        span: 97..98,
+                    },
+                    body: ast::MessageBody {
+                        fields: vec![
+                            ast::MessageField::Field(ast::Field {
+                                label: Some(ast::FieldLabel::Required),
+                                name: ast::Ident::new("d", 128..129),
+                                ty: ast::Ty::Float,
+                                number: ast::Int {
+                                    negative: false,
+                                    value: 1,
+                                    span: 132..133,
+                                },
+                                options: vec![]
+                            })
+                        ],
+                        ..Default::default()
+                    },
+                }),
+            ],
+            oneofs: vec![ast::Oneof {
+                name: ast::Ident::new("x", 160..161),
+                options: vec![],
+                fields: vec![ast::MessageField::Field(ast::Field {
+                    label: None,
+                    name: ast::Ident::new("y", 183..184),
+                    ty: ast::Ty::String,
+                    number: ast::Int {
+                        negative: false,
+                        value: 4,
+                        span: 187..188,
+                    },
+                    options: vec![],
+                })]
+            }],
+            ..Default::default()
+        },
+    });
+    case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
+        found: Token::Comma,
+        span: SourceSpan::from(14..15),
+    }]));
 }
 
 #[test]

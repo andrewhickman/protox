@@ -195,6 +195,8 @@ impl<'a> Parser<'a> {
 
         let value = self.parse_string()?;
 
+        self.expect_eq(Token::Semicolon)?;
+
         Ok(ast::Import { kind, value })
     }
 
@@ -531,11 +533,15 @@ impl<'a> Parser<'a> {
                 }
                 Some((Token::Semicolon, _)) => {
                     self.bump();
+                    continue;
                 }
                 Some((Token::Ident(_), _)) => {
                     values.push(self.parse_enum_value()?);
                 }
-                Some((Token::RightBrace, _)) => break,
+                Some((Token::RightBrace, _)) => {
+                    self.bump();
+                    break;
+                }
                 _ => self.unexpected_token("an identifier, '}', 'reserved' or 'option'")?,
             };
         }
