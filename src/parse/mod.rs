@@ -4,11 +4,13 @@ use logos::{Lexer, Logos, Span};
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
+mod comments;
 mod lex;
 #[cfg(test)]
 mod tests;
 
 use self::lex::Token;
+use self::comments::Comments;
 use crate::ast::{self, FieldLabel, FullIdent};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -63,6 +65,7 @@ pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
 struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
     peek: Option<(Token<'a>, Span)>,
+    comments: Comments,
 }
 
 enum Statement {
@@ -77,13 +80,14 @@ impl<'a> Parser<'a> {
     fn new(source: &'a str) -> Self {
         Parser {
             lexer: Token::lexer(source),
+            comments: Comments::new(),
             peek: None,
         }
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
-        self.skip_comments();
         let syntax = if self.bump_if_eq(Token::Syntax) {
+            self.expect_eq(Token::Equals)?;
             match self.peek() {
                 Some((Token::StringLiteral(syntax), span)) => match &*syntax {
                     "proto2" => {
@@ -985,10 +989,6 @@ impl<'a> Parser<'a> {
         self.unexpected_token(expected)?
     }
 
-    fn skip_comments(&mut self) {
-        while self.bump_if(|tok| matches!(tok, Token::LineComment(_) | Token::BlockComment(_))) {}
-    }
-
     fn skip_until(&mut self, tokens: &[Token]) {
         let mut count = 0;
         while self.bump_if(|tok| !tokens.contains(tok)) {
@@ -1026,18 +1026,22 @@ impl<'a> Parser<'a> {
     }
 
     fn next(&mut self) -> Option<(Token<'a>, Span)> {
-        if self.peek.is_some() {
-            self.peek.take()
-        } else {
+        debug_assert!(self.peek.is_none());
+        loop {
             match self.lexer.next() {
+                Some(Token::Comment(comment)) => self.comments.comment(comment.into()),
                 Some(Token::Error) => {
+                    self.comments.reset();
                     self.add_error(ParseError::InvalidToken {
                         span: self.lexer.span().into(),
                     });
-                    Some((Token::Error, self.lexer.span()))
+                    return Some((Token::Error, self.lexer.span()))
                 }
-                Some(tok) => Some((tok, self.lexer.span())),
-                None => None,
+                Some(tok) => {
+                    self.comments.reset();
+                    return Some((tok, self.lexer.span()))
+                },
+                None => return None,
             }
         }
     }

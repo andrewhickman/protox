@@ -1002,7 +1002,7 @@ pub fn parse_file() {
         definitions: vec![],
     });
     case!(parse_file("
-        syntax 'proto2';
+        syntax = 'proto2';
 
         option optimize_for = SPEED;
     ") => ast::File {
@@ -1011,13 +1011,13 @@ pub fn parse_file() {
         imports: vec![],
         definitions: vec![],
         options: vec![ast::Option {
-            name: ast::FullIdent::from(ast::Ident::new("optimize_for", 42..54)),
+            name: ast::FullIdent::from(ast::Ident::new("optimize_for", 44..56)),
             field_name: None,
-            value: ast::Constant::FullIdent(ast::FullIdent::from(ast::Ident::new("SPEED", 57..62)))
+            value: ast::Constant::FullIdent(ast::FullIdent::from(ast::Ident::new("SPEED", 59..64)))
         }],
     });
     case!(parse_file("
-        syntax 'proto3';
+        syntax = \"proto3\";
 
         import \"foo.proto\";
     ") => ast::File {
@@ -1027,19 +1027,19 @@ pub fn parse_file() {
             kind: None,
             value: ast::String {
                 value: "foo.proto".to_owned(),
-                span: 42..53,
+                span: 44..55,
             },
         }],
         definitions: vec![],
         options: vec![],
     });
     case!(parse_file("
-        syntax 'unknown';
+        syntax = 'unknown';
     ") => Err(vec![ParseError::UnknownSyntax {
-        span: SourceSpan::from(16..25),
+        span: SourceSpan::from(18..27),
     }]));
     case!(parse_file("
-        syntax 'proto2';
+        syntax = 'proto2';
 
         message Foo { , }
         enum Bar { ; }
@@ -1049,7 +1049,7 @@ pub fn parse_file() {
         packages: vec![],
         imports: vec![],
         definitions: vec![ast::Definition::Enum(ast::Enum {
-            name: ast::Ident::new("Bar", 66..69),
+            name: ast::Ident::new("Bar", 68..71),
             values: vec![],
             options: vec![],
             reserved: vec![],
@@ -1059,12 +1059,12 @@ pub fn parse_file() {
         ParseError::UnexpectedToken {
             expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_string(),
             found: Token::Comma,
-            span: SourceSpan::from(49..50),
+            span: SourceSpan::from(51..52),
         },
         ParseError::UnexpectedToken {
             expected: "'.' or '='".to_string(),
             found: Token::IntLiteral(1),
-            span: SourceSpan::from(95..96),
+            span: SourceSpan::from(97..98),
         },
     ]));
 }

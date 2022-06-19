@@ -128,12 +128,11 @@ pub(crate) enum Token<'a> {
     Equals,
     #[token(";")]
     Semicolon,
-    #[regex("//[^\n]*", line_comment)]
-    LineComment(Cow<'a, str>),
+    #[regex(r#"//[^\n]*\n?"#, line_comment)]
     #[token(r#"/*"#, block_comment)]
-    BlockComment(Cow<'a, str>),
+    Comment(Cow<'a, str>),
     #[error]
-    #[regex(r"[[:space:]]+", logos::skip)]
+    #[regex(r"[\t\n\v\f\r ]+", logos::skip)]
     Error,
 }
 
@@ -246,10 +245,7 @@ impl<'a> Token<'a> {
             Token::Comma => Token::Comma,
             Token::Equals => Token::Equals,
             Token::Semicolon => Token::Semicolon,
-            Token::LineComment(value) => Token::LineComment(Cow::Owned(value.clone().into_owned())),
-            Token::BlockComment(value) => {
-                Token::BlockComment(Cow::Owned(value.clone().into_owned()))
-            }
+            Token::Comment(value) => Token::Comment(Cow::Owned(value.clone().into_owned())),
             Token::Error => Token::Error,
         }
     }
@@ -317,8 +313,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Plus => write!(f, "+"),
             Token::Equals => write!(f, "="),
             Token::Semicolon => write!(f, ";"),
-            Token::LineComment(value) => writeln!(f, "// {}", value),
-            Token::BlockComment(value) => write!(f, "/* {} */", value),
+            Token::Comment(value) => write!(f, "/*{}*/", value),
             Token::Error => write!(f, "<ERROR>"),
         }
     }
@@ -480,7 +475,37 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 }
 
 fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
-    Cow::Borrowed(lex.slice()[2..].trim())
+    fn strip_line_comment(s: &str) -> Option<&str> {
+        s.trim_start().strip_prefix("//")
+    }
+
+    let mut is_trailing = false;
+    for ch in lex.source()[..lex.span().start].chars().rev() {
+        if ch == '\n' {
+            is_trailing = false;
+            break;
+        } else if !ch.is_ascii_whitespace() {
+            is_trailing = true;
+            break;
+        }
+    };
+
+    let mut result = Cow::Borrowed(strip_line_comment(lex.slice()).expect("expected comment"));
+    if !is_trailing {
+        // Merge comments on subsequent lines
+        let mut start = 0;
+        for (end, _) in lex.remainder().match_indices('\n') {
+            if let Some(comment) = strip_line_comment(&lex.remainder()[start..=end]) {
+                result.to_mut().push_str(comment);
+                start = end + 1;
+            } else {
+                break;
+            }
+        }
+        lex.bump(start);
+    }
+
+    result
 }
 
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Result<Cow<'a, str>, ()> {
@@ -673,8 +698,24 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::LineComment("bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar \n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn line_comment_merge() {
+        let source = "// merge\n// me\n 5\n // merge\n // me2\n quz // no\n//merge";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me\n".into())));
+        assert_eq!(lexer.next(), Some(Token::IntLiteral(5)));
+        assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me2\n".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment(" no\n".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("merge".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -686,7 +727,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::BlockComment("bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("bar".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -701,7 +742,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(
             lexer.next(),
-            Some(Token::BlockComment("/* bar\n */".into()))
+            Some(Token::Comment("/* bar\n */".into()))
         );
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
@@ -720,7 +761,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::BlockComment("/* bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("/* bar".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -738,7 +779,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::BlockComment("bar\n quz".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("bar\n quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
