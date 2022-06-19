@@ -599,9 +599,94 @@ pub fn parse_group() {
 }
 
 #[test]
-#[ignore]
 pub fn parse_map() {
-    todo!()
+    case!(parse_map("map<string, Project> projects = 3;") => ast::Map {
+        key_ty: ast::KeyTy::String,
+        ty: ast::Ty::Named(ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(ast::Ident::new("Project", 12..19)),
+        }),
+        name: ast::Ident::new("projects", 21..29),
+        number: ast::Int {
+            negative: false,
+            value: 3,
+            span: 32..33,
+        },
+        options: vec![],
+    });
+    case!(parse_map("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];") => ast::Map {
+        key_ty: ast::KeyTy::Int32,
+        ty: ast::Ty::Bool,
+        name: ast::Ident::new("name", 17..21),
+        number: ast::Int {
+            negative: false,
+            value: 5,
+            span: 24..25,
+        },
+        options: vec![
+            ast::Option {
+                name: ast::FullIdent::from(ast::Ident::new("opt", 27..30)),
+                field_name: None,
+                value: ast::Constant::Bool(ast::Bool {
+                    value: true,
+                    span: 33..37
+                }),
+            },
+            ast::Option {
+                name: ast::FullIdent::from(ast::Ident::new("opt2", 39..43)),
+                field_name: None,
+                value: ast::Constant::Float(ast::Float {
+                    value: 4.5,
+                    span: 46..49
+                }),
+            },
+        ],
+    });
+    case!(parse_map("map>") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'<'".to_owned(),
+        found: Token::RightAngleBracket,
+        span: SourceSpan::from(3..4),
+    }]));
+    case!(parse_map("map<;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "an integer type or 'string'".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(4..5),
+    }]));
+    case!(parse_map("map<int32(") => Err(vec![ParseError::UnexpectedToken {
+        expected: "','".to_owned(),
+        found: Token::LeftParen,
+        span: SourceSpan::from(9..10),
+    }]));
+    case!(parse_map("map<string, =") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a field type".to_owned(),
+        found: Token::Equals,
+        span: SourceSpan::from(12..13),
+    }]));
+    case!(parse_map("map<string, .Foo,") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'.' or '>'".to_owned(),
+        found: Token::Comma,
+        span: SourceSpan::from(16..17),
+    }]));
+    case!(parse_map("map<string, Foo> ;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "an identifier".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(17..18),
+    }]));
+    case!(parse_map("map<string, Foo> foo ]") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'='".to_owned(),
+        found: Token::RightBracket,
+        span: SourceSpan::from(21..22),
+    }]));
+    case!(parse_map("map<string, Foo> foo = x") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a positive integer".to_owned(),
+        found: Token::Ident("x".to_string()),
+        span: SourceSpan::from(23..24),
+    }]));
+    case!(parse_map("map<string, Foo> foo = 1service") => Err(vec![ParseError::UnexpectedToken {
+        expected: "';' or '['".to_owned(),
+        found: Token::Service,
+        span: SourceSpan::from(24..31),
+    }]));
 }
 
 #[test]

@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
                 Some(FieldLabel::Repeated)
             }
             Some((Token::Map, _)) => {
-                return Ok(ast::MessageField::Map(self.parse_map_field()?));
+                return Ok(ast::MessageField::Map(self.parse_map()?));
             }
             Some((tok, _)) if is_field_start_token(&tok) => None,
             _ => self.unexpected_token("a message field")?,
@@ -334,6 +334,43 @@ impl<'a> Parser<'a> {
                 }))
             }
         }
+    }
+
+    fn parse_map(&mut self) -> Result<ast::Map, ()> {
+        self.expect_eq(Token::Map)?;
+
+        self.expect_eq(Token::LeftAngleBracket)?;
+        let key_ty = self.parse_key_type()?;
+        self.expect_eq(Token::Comma)?;
+        let ty = self.parse_field_type(&[Token::RightAngleBracket])?;
+        self.expect_eq(Token::RightAngleBracket)?;
+
+        let name = self.parse_ident()?;
+
+        self.expect_eq(Token::Equals)?;
+
+        let number = self.parse_positive_int()?;
+
+        let options = match self.peek() {
+            Some((Token::LeftBracket, _)) => {
+                let options = self.parse_options_list()?;
+                self.expect_eq(Token::Semicolon)?;
+                options
+            }
+            Some((Token::Semicolon, _)) => {
+                self.bump();
+                vec![]
+            }
+            _ => self.unexpected_token("';' or '['")?,
+        };
+
+        Ok(ast::Map {
+            key_ty,
+            ty,
+            name,
+            number,
+            options,
+        })
     }
 
     fn parse_extension(&mut self) -> Result<ast::Extension, ()> {
@@ -542,77 +579,52 @@ impl<'a> Parser<'a> {
         todo!()
     }
 
-    fn parse_map_field(&mut self) -> Result<ast::Map, ()> {
-        todo!()
+    fn parse_key_type(&mut self) -> Result<ast::KeyTy, ()> {
+        let ty = match self.peek() {
+            Some((Token::Int32, _)) => ast::KeyTy::Int32,
+            Some((Token::Int64, _)) => ast::KeyTy::Int64,
+            Some((Token::Uint32, _)) => ast::KeyTy::Uint32,
+            Some((Token::Uint64, _)) => ast::KeyTy::Uint64,
+            Some((Token::Sint32, _)) => ast::KeyTy::Sint32,
+            Some((Token::Sint64, _)) => ast::KeyTy::Sint64,
+            Some((Token::Fixed32, _)) => ast::KeyTy::Fixed32,
+            Some((Token::Fixed64, _)) => ast::KeyTy::Fixed64,
+            Some((Token::Sfixed32, _)) => ast::KeyTy::Sfixed32,
+            Some((Token::Sfixed64, _)) => ast::KeyTy::Sfixed64,
+            Some((Token::Bool, _)) => ast::KeyTy::Bool,
+            Some((Token::String, _)) => ast::KeyTy::String,
+            _ => self.unexpected_token("an integer type or 'string'")?,
+        };
+
+        self.bump();
+        Ok(ty)
     }
 
     fn parse_field_type(&mut self, terminators: &[Token]) -> Result<ast::Ty, ()> {
-        match self.peek() {
-            Some((Token::Double, _)) => {
-                self.bump();
-                Ok(ast::Ty::Double)
-            }
-            Some((Token::Float, _)) => {
-                self.bump();
-                Ok(ast::Ty::Float)
-            }
-            Some((Token::Int32, _)) => {
-                self.bump();
-                Ok(ast::Ty::Int32)
-            }
-            Some((Token::Int64, _)) => {
-                self.bump();
-                Ok(ast::Ty::Int64)
-            }
-            Some((Token::Uint32, _)) => {
-                self.bump();
-                Ok(ast::Ty::Uint32)
-            }
-            Some((Token::Uint64, _)) => {
-                self.bump();
-                Ok(ast::Ty::Uint64)
-            }
-            Some((Token::Sint32, _)) => {
-                self.bump();
-                Ok(ast::Ty::Sint32)
-            }
-            Some((Token::Sint64, _)) => {
-                self.bump();
-                Ok(ast::Ty::Sint64)
-            }
-            Some((Token::Fixed32, _)) => {
-                self.bump();
-                Ok(ast::Ty::Fixed32)
-            }
-            Some((Token::Fixed64, _)) => {
-                self.bump();
-                Ok(ast::Ty::Fixed64)
-            }
-            Some((Token::Sfixed32, _)) => {
-                self.bump();
-                Ok(ast::Ty::Sfixed32)
-            }
-            Some((Token::Sfixed64, _)) => {
-                self.bump();
-                Ok(ast::Ty::Sfixed64)
-            }
-            Some((Token::Bool, _)) => {
-                self.bump();
-                Ok(ast::Ty::Bool)
-            }
-            Some((Token::String, _)) => {
-                self.bump();
-                Ok(ast::Ty::String)
-            }
-            Some((Token::Bytes, _)) => {
-                self.bump();
-                Ok(ast::Ty::Bytes)
-            }
+        let scalar_ty = match self.peek() {
+            Some((Token::Double, _)) => ast::Ty::Double,
+            Some((Token::Float, _)) => ast::Ty::Float,
+            Some((Token::Int32, _)) => ast::Ty::Int32,
+            Some((Token::Int64, _)) => ast::Ty::Int64,
+            Some((Token::Uint32, _)) => ast::Ty::Uint32,
+            Some((Token::Uint64, _)) => ast::Ty::Uint64,
+            Some((Token::Sint32, _)) => ast::Ty::Sint32,
+            Some((Token::Sint64, _)) => ast::Ty::Sint64,
+            Some((Token::Fixed32, _)) => ast::Ty::Fixed32,
+            Some((Token::Fixed64, _)) => ast::Ty::Fixed64,
+            Some((Token::Sfixed32, _)) => ast::Ty::Sfixed32,
+            Some((Token::Sfixed64, _)) => ast::Ty::Sfixed64,
+            Some((Token::Bool, _)) => ast::Ty::Bool,
+            Some((Token::String, _)) => ast::Ty::String,
+            Some((Token::Bytes, _)) => ast::Ty::Bytes,
             Some((Token::Dot | Token::Ident(_), _)) => {
-                Ok(ast::Ty::Named(self.parse_type_name(terminators)?))
+                return Ok(ast::Ty::Named(self.parse_type_name(terminators)?))
             }
-            _ => self.unexpected_token("a field type"),
-        }
+            _ => self.unexpected_token("a field type")?,
+        };
+
+        self.bump();
+        Ok(scalar_ty)
     }
 
     fn parse_reserved(&mut self) -> Result<ast::Reserved, ()> {
@@ -725,6 +737,7 @@ impl<'a> Parser<'a> {
         loop {
             match self.peek() {
                 Some((Token::Comma, _)) => {
+                    self.bump();
                     options.push(self.parse_option_body(&[Token::Comma, Token::RightBracket])?);
                 }
                 Some((Token::RightBracket, _)) => {

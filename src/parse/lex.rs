@@ -9,7 +9,7 @@ use super::ParseError;
 #[logos(extras = TokenExtras)]
 #[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
 pub(crate) enum Token {
-    #[regex("[A-Za-z][A-Za-z_]*", ident)]
+    #[regex("[A-Za-z][A-Za-z0-9_]*", ident)]
     Ident(String),
     #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
@@ -118,6 +118,10 @@ pub(crate) enum Token {
     LeftBracket,
     #[token("]")]
     RightBracket,
+    #[token("<")]
+    LeftAngleBracket,
+    #[token(">")]
+    RightAngleBracket,
     #[token(",")]
     Comma,
     #[token("=")]
@@ -237,6 +241,8 @@ impl fmt::Display for Token {
             Token::RightBrace => write!(f, "}}"),
             Token::LeftBracket => write!(f, "["),
             Token::RightBracket => write!(f, "]"),
+            Token::LeftAngleBracket => write!(f, "<"),
+            Token::RightAngleBracket => write!(f, ">"),
             Token::Comma => write!(f, ","),
             Token::Plus => write!(f, "+"),
             Token::Equals => write!(f, "="),
@@ -272,7 +278,7 @@ fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
             lex.extras.errors.push(ParseError::IntegerOutOfRange {
                 span: (start..end).into(),
             });
-            // TODO this is a really hacky way to recover from the error, is there a better way?
+            // Return a dummy value so we can continue parsing
             Default::default()
         }
     }
@@ -465,10 +471,10 @@ mod tests {
 
     #[test]
     fn simple_tokens() {
-        let source = r#"hello 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
+        let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next().unwrap(), Token::Ident("hello".to_owned()));
+        assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".to_owned()));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
