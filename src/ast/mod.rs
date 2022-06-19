@@ -181,15 +181,7 @@ pub enum KeyTy {
 pub struct Oneof {
     pub name: Ident,
     pub options: Vec<Option>,
-    pub fields: Vec<OneofField>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct OneofField {
-    pub ty: Ty,
-    pub name: Ident,
-    pub number: Int,
-    pub options: Vec<Option>,
+    pub fields: Vec<MessageField>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

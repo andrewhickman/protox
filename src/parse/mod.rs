@@ -241,7 +241,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 _ => self.unexpected_token(
-                    "a message field, oneof, reserved range, enum, message or '}'",
+                    "a message field, oneof, reserved range, enum, message, option or '}'",
                 )?,
             }
         }
@@ -570,7 +570,36 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_oneof(&mut self) -> Result<ast::Oneof, ()> {
-        todo!()
+        self.expect_eq(Token::Oneof)?;
+
+        let name = self.parse_ident()?;
+
+        self.expect_eq(Token::LeftBrace)?;
+
+        let mut fields = Vec::new();
+        let mut options = Vec::new();
+
+        loop {
+            match self.peek() {
+                Some((tok, _)) if is_field_start_token(&tok) => fields.push(self.parse_field()?),
+                Some((Token::Option, _)) => options.push(self.parse_option()?),
+                Some((Token::Semicolon, _)) => {
+                    self.bump();
+                    continue;
+                }
+                Some((Token::RightBrace, _)) => {
+                    self.bump();
+                    break;
+                }
+                _ => self.unexpected_token("a message field, option or '}'")?,
+            }
+        }
+
+        Ok(ast::Oneof {
+            name,
+            fields,
+            options,
+        })
     }
 
     fn parse_key_type(&mut self) -> Result<ast::KeyTy, ()> {
@@ -887,7 +916,7 @@ impl<'a> Parser<'a> {
                     value,
                     span,
                 })
-            },
+            }
             _ => self.unexpected_token("an integer"),
         }
     }

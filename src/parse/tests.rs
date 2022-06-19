@@ -706,7 +706,7 @@ pub fn parse_group() {
         span: SourceSpan::from(21..22),
     }]));
     case!(parse_field("optional group A = 1 {]") => Err(vec![ParseError::UnexpectedToken {
-        expected: "a message field, oneof, reserved range, enum, message or '}'".to_owned(),
+        expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::RightBracket,
         span: SourceSpan::from(22..23),
     }]));
@@ -810,9 +810,52 @@ pub fn parse_message() {
 }
 
 #[test]
-#[ignore]
 pub fn parse_oneof() {
-    todo!()
+    case!(parse_oneof("oneof Foo {}") => ast::Oneof {
+        name: ast::Ident::new("Foo", 6..9),
+        fields: vec![],
+        options: vec![],
+    });
+    case!(parse_oneof("oneof Foo { ; ; }") => ast::Oneof {
+        name: ast::Ident::new("Foo", 6..9),
+        fields: vec![],
+        options: vec![],
+    });
+    case!(parse_oneof("oneof Foo { int32 bar = 1; }") => ast::Oneof {
+        name: ast::Ident::new("Foo", 6..9),
+        fields: vec![ast::MessageField::Field(ast::Field {
+            label: None,
+            ty: ast::Ty::Int32,
+            name: ast::Ident::new("bar", 18..21),
+            number: ast::Int {
+                negative: false,
+                value: 1,
+                span: 24..25,
+            },
+            options: vec![],
+        })],
+        options: vec![],
+    });
+    case!(parse_oneof("oneof 10.4") => Err(vec![ParseError::UnexpectedToken {
+        expected: "an identifier".to_owned(),
+        found: Token::FloatLiteral(10.4),
+        span: SourceSpan::from(6..10),
+    }]));
+    case!(parse_oneof("oneof Foo <") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'{'".to_owned(),
+        found: Token::LeftAngleBracket,
+        span: SourceSpan::from(10..11),
+    }]));
+    case!(parse_oneof("oneof Foo { ,") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a message field, option or '}'".to_owned(),
+        found: Token::Comma,
+        span: SourceSpan::from(12..13),
+    }]));
+    case!(parse_oneof("oneof Foo { bytes b = 1 }") => Err(vec![ParseError::UnexpectedToken {
+        expected: "';' or '['".to_owned(),
+        found: Token::RightBrace,
+        span: SourceSpan::from(24..25),
+    }]));
 }
 
 #[test]
