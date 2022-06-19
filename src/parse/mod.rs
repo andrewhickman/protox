@@ -39,6 +39,9 @@ pub(crate) enum ParseError {
     InvalidIdentifier {
         span: SourceSpan,
     },
+    InvalidGroupName {
+        span: SourceSpan,
+    },
     UnexpectedToken {
         expected: String,
         found: Token,
@@ -60,6 +63,14 @@ pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
 struct Parser<'a> {
     lexer: Lexer<'a, Token>,
     peek: Option<(Token, Span)>,
+}
+
+enum Statement {
+    Empty,
+    Package(ast::Package),
+    Import(ast::Import),
+    Option(ast::Option),
+    Definition(ast::Definition),
 }
 
 impl<'a> Parser<'a> {
@@ -101,11 +112,11 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.parse_statement() {
-                Ok(Some(ast::Statement::Empty)) => continue,
-                Ok(Some(ast::Statement::Package(package))) => packages.push(package),
-                Ok(Some(ast::Statement::Import(import))) => imports.push(import),
-                Ok(Some(ast::Statement::Option(option))) => options.push(option),
-                Ok(Some(ast::Statement::Definition(definition))) => definitions.push(definition),
+                Ok(Some(Statement::Empty)) => continue,
+                Ok(Some(Statement::Package(package))) => packages.push(package),
+                Ok(Some(Statement::Import(import))) => imports.push(import),
+                Ok(Some(Statement::Option(option))) => options.push(option),
+                Ok(Some(Statement::Definition(definition))) => definitions.push(definition),
                 Ok(None) => break,
                 Err(()) => self.skip_until(&[
                     Token::Enum,
@@ -128,27 +139,27 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_statement(&mut self) -> Result<Option<ast::Statement>, ()> {
+    fn parse_statement(&mut self) -> Result<Option<Statement>, ()> {
         match self.peek() {
             Some((Token::Semicolon, _)) => {
                 self.bump();
-                Ok(Some(ast::Statement::Empty))
+                Ok(Some(Statement::Empty))
             }
-            Some((Token::Import, _)) => Ok(Some(ast::Statement::Import(self.parse_import()?))),
-            Some((Token::Package, _)) => Ok(Some(ast::Statement::Package(self.parse_package()?))),
-            Some((Token::Option, _)) => Ok(Some(ast::Statement::Option(self.parse_option()?))),
-            Some((Token::Extend, _)) => Ok(Some(ast::Statement::Definition(
+            Some((Token::Import, _)) => Ok(Some(Statement::Import(self.parse_import()?))),
+            Some((Token::Package, _)) => Ok(Some(Statement::Package(self.parse_package()?))),
+            Some((Token::Option, _)) => Ok(Some(Statement::Option(self.parse_option()?))),
+            Some((Token::Extend, _)) => Ok(Some(Statement::Definition(
                 ast::Definition::Extension(self.parse_extension()?),
             ))),
-            Some((Token::Message, _)) => Ok(Some(ast::Statement::Definition(
-                ast::Definition::Message(self.parse_message()?),
-            ))),
-            Some((Token::Enum, _)) => Ok(Some(ast::Statement::Definition(ast::Definition::Enum(
+            Some((Token::Message, _)) => Ok(Some(Statement::Definition(ast::Definition::Message(
+                self.parse_message()?,
+            )))),
+            Some((Token::Enum, _)) => Ok(Some(Statement::Definition(ast::Definition::Enum(
                 self.parse_enum()?,
             )))),
-            Some((Token::Service, _)) => Ok(Some(ast::Statement::Definition(
-                ast::Definition::Service(self.parse_service()?),
-            ))),
+            Some((Token::Service, _)) => Ok(Some(Statement::Definition(ast::Definition::Service(
+                self.parse_service()?,
+            )))),
             None => Ok(None),
             _ => self.unexpected_token(
                 "'enum', 'extend', 'import', 'message', 'option', 'service', 'package' or ';'",
@@ -199,9 +210,7 @@ impl<'a> Parser<'a> {
 
     fn parse_message_body(&mut self) -> Result<ast::MessageBody, ()> {
         let mut fields = Vec::new();
-        let mut map_fields = Vec::new();
         let mut oneofs = Vec::new();
-        let mut groups = Vec::new();
         let mut enums = Vec::new();
         let mut messages = Vec::new();
         let mut extensions = Vec::new();
@@ -209,12 +218,12 @@ impl<'a> Parser<'a> {
         let mut reserved = Vec::new();
         let mut extension_ranges = Vec::new();
 
+        self.expect_eq(Token::LeftBrace)?;
+
         loop {
             match self.peek() {
                 Some((tok, _)) if is_field_start_token(&tok) => fields.push(self.parse_field()?),
-                Some((Token::Map, _)) => map_fields.push(self.parse_map_field()?),
                 Some((Token::Oneof, _)) => oneofs.push(self.parse_oneof()?),
-                Some((Token::Group, _)) => groups.push(self.parse_group()?),
                 Some((Token::Enum, _)) => enums.push(self.parse_enum()?),
                 Some((Token::Message, _)) => messages.push(self.parse_message()?),
                 Some((Token::Extend, _)) => extensions.push(self.parse_extension()?),
@@ -239,9 +248,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::MessageBody {
             fields,
-            map_fields,
             oneofs,
-            groups,
             enums,
             messages,
             extensions,
@@ -251,7 +258,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_field(&mut self) -> Result<ast::Field, ()> {
+    fn parse_field(&mut self) -> Result<ast::MessageField, ()> {
         let label = match self.peek() {
             Some((Token::Optional, _)) => {
                 self.bump();
@@ -265,38 +272,68 @@ impl<'a> Parser<'a> {
                 self.bump();
                 Some(FieldLabel::Repeated)
             }
+            Some((Token::Map, _)) => {
+                return Ok(ast::MessageField::Map(self.parse_map_field()?));
+            }
             Some((tok, _)) if is_field_start_token(&tok) => None,
             _ => self.unexpected_token("a message field")?,
         };
 
-        let ty = self.parse_field_type(&[Token::Ident(Default::default())])?;
-
-        let name = self.parse_ident()?;
-
-        self.expect_eq(Token::Equals)?;
-
-        let number = self.parse_positive_int()?;
-
-        let options = match self.peek() {
-            Some((Token::LeftBracket, _)) => {
-                let options = self.parse_options_list()?;
-                self.expect_eq(Token::Semicolon)?;
-                options
-            }
-            Some((Token::Semicolon, _)) => {
+        match self.peek() {
+            Some((Token::Group, _)) => {
                 self.bump();
-                vec![]
-            }
-            _ => self.unexpected_token("';' or '['")?,
-        };
 
-        Ok(ast::Field {
-            label,
-            ty,
-            name,
-            number,
-            options,
-        })
+                let name = self.parse_ident()?;
+                if !is_valid_group_name(&name.value) {
+                    self.add_error(ParseError::InvalidGroupName {
+                        span: SourceSpan::from(name.span.clone()),
+                    });
+                }
+
+                self.expect_eq(Token::Equals)?;
+
+                let number = self.parse_positive_int()?;
+
+                let body = self.parse_message_body()?;
+
+                Ok(ast::MessageField::Group(ast::Group {
+                    label,
+                    name,
+                    number,
+                    body,
+                }))
+            }
+            _ => {
+                let ty = self.parse_field_type(&[Token::Ident(Default::default())])?;
+
+                let name = self.parse_ident()?;
+
+                self.expect_eq(Token::Equals)?;
+
+                let number = self.parse_positive_int()?;
+
+                let options = match self.peek() {
+                    Some((Token::LeftBracket, _)) => {
+                        let options = self.parse_options_list()?;
+                        self.expect_eq(Token::Semicolon)?;
+                        options
+                    }
+                    Some((Token::Semicolon, _)) => {
+                        self.bump();
+                        vec![]
+                    }
+                    _ => self.unexpected_token("';' or '['")?,
+                };
+
+                Ok(ast::MessageField::Field(ast::Field {
+                    label,
+                    ty,
+                    name,
+                    number,
+                    options,
+                }))
+            }
+        }
     }
 
     fn parse_extension(&mut self) -> Result<ast::Extension, ()> {
@@ -304,11 +341,13 @@ impl<'a> Parser<'a> {
 
         let extendee = self.parse_type_name(&[Token::LeftBrace])?;
 
+        self.expect_eq(Token::LeftBrace)?;
+
         let mut fields = Vec::new();
         loop {
             match self.peek() {
                 Some((tok, _)) if is_field_start_token(&tok) || tok == Token::Group => {
-                    fields.push(self.parse_extension_field()?);
+                    fields.push(self.parse_field()?);
                 }
                 Some((Token::Semicolon, _)) => {
                     self.bump();
@@ -318,21 +357,11 @@ impl<'a> Parser<'a> {
                     self.bump();
                     break;
                 }
-                _ => self.unexpected_token("a message field")?,
+                _ => self.unexpected_token("a message field, '}' or ';'")?,
             }
         }
 
         Ok(ast::Extension { extendee, fields })
-    }
-
-    fn parse_extension_field(&mut self) -> Result<ast::ExtensionField, ()> {
-        match self.peek() {
-            Some((Token::Group, _)) => Ok(ast::ExtensionField::Group(self.parse_group()?)),
-            Some((tok, _)) if is_field_start_token(&tok) => {
-                Ok(ast::ExtensionField::Field(self.parse_field()?))
-            }
-            _ => self.unexpected_token("an extension field"),
-        }
     }
 
     fn parse_service(&mut self) -> Result<ast::Service, ()> {
@@ -513,31 +542,72 @@ impl<'a> Parser<'a> {
         todo!()
     }
 
-    fn parse_map_field(&mut self) -> Result<ast::MapField, ()> {
-        todo!()
-    }
-
-    fn parse_group(&mut self) -> Result<ast::Group, ()> {
+    fn parse_map_field(&mut self) -> Result<ast::Map, ()> {
         todo!()
     }
 
     fn parse_field_type(&mut self, terminators: &[Token]) -> Result<ast::Ty, ()> {
         match self.peek() {
-            Some((Token::Double, _)) => Ok(ast::Ty::Double),
-            Some((Token::Float, _)) => Ok(ast::Ty::Float),
-            Some((Token::Int32, _)) => Ok(ast::Ty::Int32),
-            Some((Token::Int64, _)) => Ok(ast::Ty::Int64),
-            Some((Token::Uint32, _)) => Ok(ast::Ty::Uint32),
-            Some((Token::Uint64, _)) => Ok(ast::Ty::Uint64),
-            Some((Token::Sint32, _)) => Ok(ast::Ty::Sint32),
-            Some((Token::Sint64, _)) => Ok(ast::Ty::Sint64),
-            Some((Token::Fixed32, _)) => Ok(ast::Ty::Fixed32),
-            Some((Token::Fixed64, _)) => Ok(ast::Ty::Fixed64),
-            Some((Token::Sfixed32, _)) => Ok(ast::Ty::Sfixed32),
-            Some((Token::Sfixed64, _)) => Ok(ast::Ty::Sfixed64),
-            Some((Token::Bool, _)) => Ok(ast::Ty::Bool),
-            Some((Token::String, _)) => Ok(ast::Ty::String),
-            Some((Token::Bytes, _)) => Ok(ast::Ty::Bytes),
+            Some((Token::Double, _)) => {
+                self.bump();
+                Ok(ast::Ty::Double)
+            }
+            Some((Token::Float, _)) => {
+                self.bump();
+                Ok(ast::Ty::Float)
+            }
+            Some((Token::Int32, _)) => {
+                self.bump();
+                Ok(ast::Ty::Int32)
+            }
+            Some((Token::Int64, _)) => {
+                self.bump();
+                Ok(ast::Ty::Int64)
+            }
+            Some((Token::Uint32, _)) => {
+                self.bump();
+                Ok(ast::Ty::Uint32)
+            }
+            Some((Token::Uint64, _)) => {
+                self.bump();
+                Ok(ast::Ty::Uint64)
+            }
+            Some((Token::Sint32, _)) => {
+                self.bump();
+                Ok(ast::Ty::Sint32)
+            }
+            Some((Token::Sint64, _)) => {
+                self.bump();
+                Ok(ast::Ty::Sint64)
+            }
+            Some((Token::Fixed32, _)) => {
+                self.bump();
+                Ok(ast::Ty::Fixed32)
+            }
+            Some((Token::Fixed64, _)) => {
+                self.bump();
+                Ok(ast::Ty::Fixed64)
+            }
+            Some((Token::Sfixed32, _)) => {
+                self.bump();
+                Ok(ast::Ty::Sfixed32)
+            }
+            Some((Token::Sfixed64, _)) => {
+                self.bump();
+                Ok(ast::Ty::Sfixed64)
+            }
+            Some((Token::Bool, _)) => {
+                self.bump();
+                Ok(ast::Ty::Bool)
+            }
+            Some((Token::String, _)) => {
+                self.bump();
+                Ok(ast::Ty::String)
+            }
+            Some((Token::Bytes, _)) => {
+                self.bump();
+                Ok(ast::Ty::Bytes)
+            }
             Some((Token::Dot | Token::Ident(_), _)) => {
                 Ok(ast::Ty::Named(self.parse_type_name(terminators)?))
             }
@@ -939,7 +1009,8 @@ impl<'a> Parser<'a> {
 fn is_field_start_token(tok: &Token) -> bool {
     matches!(
         tok,
-        Token::Repeated
+        Token::Map
+            | Token::Repeated
             | Token::Optional
             | Token::Required
             | Token::Double
@@ -987,8 +1058,16 @@ fn fmt_expected(ts: impl Iterator<Item = Token>) -> String {
 }
 
 fn is_valid_ident(s: &str) -> bool {
-    s.len() > 1
+    !s.is_empty()
         && s.as_bytes()[0].is_ascii_alphabetic()
+        && s.as_bytes()[1..]
+            .iter()
+            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
+}
+
+fn is_valid_group_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.as_bytes()[0].is_ascii_uppercase()
         && s.as_bytes()[1..]
             .iter()
             .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')

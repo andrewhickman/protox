@@ -18,15 +18,6 @@ pub enum Syntax {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
-    Empty,
-    Package(Package),
-    Import(Import),
-    Option(Option),
-    Definition(Definition),
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub enum Definition {
     Message(Message),
     Enum(Enum),
@@ -131,18 +122,23 @@ pub enum FieldLabel {
     Repeated,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct MessageBody {
-    pub map_fields: Vec<MapField>,
-    pub fields: Vec<Field>,
+    pub fields: Vec<MessageField>,
     pub enums: Vec<Enum>,
     pub messages: Vec<Message>,
     pub extensions: Vec<Extension>,
     pub extension_ranges: Vec<ReservedRange>,
-    pub groups: Vec<Group>,
     pub options: Vec<Option>,
     pub oneofs: Vec<Oneof>,
     pub reserved: Vec<Reserved>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum MessageField {
+    Field(Field),
+    Group(Group),
+    Map(Map),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -197,7 +193,7 @@ pub struct OneofField {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct MapField {
+pub struct Map {
     pub key_ty: KeyTy,
     pub ty: Ty,
     pub name: Ident,
@@ -208,18 +204,12 @@ pub struct MapField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Extension {
     pub extendee: TypeName,
-    pub fields: Vec<ExtensionField>,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum ExtensionField {
-    Field(Field),
-    Group(Group),
+    pub fields: Vec<MessageField>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Group {
-    pub label: FieldLabel,
+    pub label: std::option::Option<FieldLabel>,
     pub name: Ident,
     pub number: Int,
     pub body: MessageBody,

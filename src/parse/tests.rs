@@ -431,7 +431,120 @@ pub fn parse_import() {
 
 #[test]
 pub fn parse_extension() {
-    todo!()
+    case!(parse_extension("extend Foo { }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
+        },
+        fields: vec![],
+    });
+    case!(parse_extension("extend Foo { ; ; }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
+        },
+        fields: vec![],
+    });
+    case!(parse_extension("extend Foo.Foo { optional int32 bar = 126; }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(vec![
+                ast::Ident::new("Foo", 7..10),
+                ast::Ident::new("Foo", 11..14),
+            ]),
+        },
+        fields: vec![
+            ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Optional),
+                ty: ast::Ty::Int32,
+                name: ast::Ident::new("bar", 32..35),
+                number: ast::Int {
+                    negative: false,
+                    value: 126,
+                    span: 38..41,
+                },
+                options: vec![],
+            }),
+        ],
+    });
+    case!(parse_extension("extend .Foo { optional int32 bar = 126; repeated string quz = 127; }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: Some(7..8),
+            name: ast::FullIdent::from(ast::Ident::new("Foo", 8..11)),
+        },
+        fields: vec![
+            ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Optional),
+                ty: ast::Ty::Int32,
+                name: ast::Ident::new("bar", 29..32),
+                number: ast::Int {
+                    negative: false,
+                    value: 126,
+                    span: 35..38,
+                },
+                options: vec![],
+            }),
+            ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Repeated),
+                ty: ast::Ty::String,
+                name: ast::Ident::new("quz", 56..59),
+                number: ast::Int {
+                    negative: false,
+                    value: 127,
+                    span: 62..65,
+                },
+                options: vec![],
+            }),
+        ],
+    });
+    case!(parse_extension("extend Foo { repeated group A = 1 { optional string name = 2; } }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
+        },
+        fields: vec![
+            ast::MessageField::Group(ast::Group {
+                label: Some(ast::FieldLabel::Repeated),
+                name: ast::Ident::new("A", 28..29),
+                number: ast::Int {
+                    negative: false,
+                    value: 1,
+                    span: 32..33,
+                },
+                body: ast::MessageBody {
+                    fields: vec![
+                        ast::MessageField::Field(ast::Field {
+                            label: Some(ast::FieldLabel::Optional),
+                            name: ast::Ident::new("name", 52..56),
+                            ty: ast::Ty::String,
+                            number: ast::Int {
+                                negative: false,
+                                value: 2,
+                                span: 59..60
+                            },
+                            options: vec![]
+                        })
+                    ],
+                    ..Default::default()
+                }
+            }),
+        ],
+    });
+    case!(parse_extension("extend ] ") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a type name".to_owned(),
+        found: Token::RightBracket,
+        span: SourceSpan::from(7..8),
+    }]));
+    case!(parse_extension("extend Foo =") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'.' or '{'".to_owned(),
+        found: Token::Equals,
+        span: SourceSpan::from(11..12),
+    }]));
+    case!(parse_extension("extend Foo { )") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a message field, '}' or ';'".to_owned(),
+        found: Token::RightParen,
+        span: SourceSpan::from(13..14),
+    }]));
 }
 
 #[test]
@@ -474,16 +587,31 @@ pub fn parse_reserved() {
 }
 
 #[test]
+#[ignore]
 pub fn parse_field() {
     todo!()
 }
 
 #[test]
+#[ignore]
+pub fn parse_group() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+pub fn parse_map() {
+    todo!()
+}
+
+#[test]
+#[ignore]
 pub fn parse_message() {
     todo!()
 }
 
 #[test]
+#[ignore]
 pub fn parse_file() {
     // TODO error recovery
     todo!()
