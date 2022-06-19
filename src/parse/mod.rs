@@ -519,11 +519,15 @@ impl<'a> Parser<'a> {
 
         let mut values = Vec::new();
         let mut options = Vec::new();
+        let mut reserved = Vec::new();
 
         loop {
             match self.peek() {
                 Some((Token::Option, _)) => {
                     options.push(self.parse_option()?);
+                }
+                Some((Token::Reserved, _)) => {
+                    reserved.push(self.parse_reserved()?);
                 }
                 Some((Token::Semicolon, _)) => {
                     self.bump();
@@ -532,13 +536,14 @@ impl<'a> Parser<'a> {
                     values.push(self.parse_enum_value()?);
                 }
                 Some((Token::RightBrace, _)) => break,
-                _ => self.unexpected_token("an identifier, '}', ';' or 'option'")?,
+                _ => self.unexpected_token("an identifier, '}', 'reserved' or 'option'")?,
             };
         }
 
         Ok(ast::Enum {
             name,
             options,
+            reserved,
             values,
         })
     }
@@ -548,18 +553,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Equals)?;
 
-        let negative = self.bump_if_eq(Token::Minus);
-        let value = match self.peek() {
-            Some((Token::IntLiteral(value), span)) => {
-                self.bump();
-                ast::Int {
-                    negative,
-                    value,
-                    span,
-                }
-            }
-            _ => self.unexpected_token("an integer")?,
-        };
+        let value = self.parse_int()?;
 
         let options = match self.peek() {
             Some((Token::Semicolon, _)) => vec![],
@@ -631,7 +625,7 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::Reserved)?;
 
         match self.peek() {
-            Some((Token::IntLiteral(_), _)) => {
+            Some((Token::IntLiteral(_) | Token::Minus, _)) => {
                 Ok(ast::Reserved::Ranges(self.parse_reserved_ranges()?))
             }
             Some((Token::StringLiteral(_), _)) => {
@@ -702,19 +696,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_reserved_range(&mut self) -> Result<ast::ReservedRange, ()> {
-        let start = self.parse_positive_int()?;
+        let start = self.parse_int()?;
 
         let end = match self.peek() {
             Some((Token::To, _)) => {
                 self.bump();
                 match self.peek() {
-                    Some((Token::IntLiteral(value), span)) => {
-                        self.bump();
-                        ast::ReservedRangeEnd::Int(ast::Int {
-                            negative: false,
-                            value,
-                            span,
-                        })
+                    Some((Token::IntLiteral(_) | Token::Minus, _)) => {
+                        ast::ReservedRangeEnd::Int(self.parse_int()?)
                     }
                     Some((Token::Max, _)) => {
                         self.bump();
@@ -886,6 +875,21 @@ impl<'a> Parser<'a> {
             |tok, span| tok.into_ident().map(|value| ast::Ident::new(value, span)),
             "an identifier",
         )
+    }
+
+    fn parse_int(&mut self) -> Result<ast::Int, ()> {
+        let negative = self.bump_if_eq(Token::Minus);
+        match self.peek() {
+            Some((Token::IntLiteral(value), span)) => {
+                self.bump();
+                Ok(ast::Int {
+                    negative,
+                    value,
+                    span,
+                })
+            },
+            _ => self.unexpected_token("an integer"),
+        }
     }
 
     fn parse_positive_int(&mut self) -> Result<ast::Int, ()> {

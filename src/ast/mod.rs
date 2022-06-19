@@ -239,6 +239,7 @@ pub struct Enum {
     pub name: Ident,
     pub options: Vec<Option>,
     pub values: Vec<EnumValue>,
+    pub reserved: Vec<Reserved>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

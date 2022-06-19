@@ -83,11 +83,13 @@ fn parse_enum() {
         name: ast::Ident::new("Foo", 5..8),
         values: vec![],
         options: vec![],
+        reserved: vec![],
     });
     case!(parse_enum("enum Foo { ; ; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
         values: vec![],
         options: vec![],
+        reserved: vec![],
     });
     case!(parse_enum("enum Foo { BAR = 1; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -101,6 +103,7 @@ fn parse_enum() {
             options: vec![],
         }],
         options: vec![],
+        reserved: vec![],
     });
     case!(parse_enum("enum Foo { option bar = 'quz' ; VAL = -1; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -121,6 +124,7 @@ fn parse_enum() {
                 span: 24..29
             }),
         }],
+        reserved: vec![],
     });
     case!(parse_enum("enum Foo { BAR = 0 [opt = 0.5]; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -141,6 +145,30 @@ fn parse_enum() {
             }],
         }],
         options: vec![],
+        reserved: vec![],
+    });
+    case!(parse_enum("enum Foo { BAR = 0; reserved -1 to max; }") => ast::Enum {
+        name: ast::Ident::new("Foo", 5..8),
+        values: vec![ast::EnumValue {
+            name: ast::Ident::new("BAR", 11..14),
+            value: ast::Int {
+                negative: false,
+                value: 0,
+                span: 17..18,
+            },
+            options: vec![],
+        }],
+        options: vec![],
+        reserved: vec![ast::Reserved::Ranges(vec![
+            ast::ReservedRange {
+                start: ast::Int {
+                    negative: true,
+                    value: 1,
+                    span: 30..31,
+                },
+                end: ast::ReservedRangeEnd::Max,
+            },
+        ])],
     });
     case!(parse_enum("enum 3") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
@@ -153,7 +181,7 @@ fn parse_enum() {
         span: SourceSpan::from(9..12),
     }]));
     case!(parse_enum("enum Foo {]") => Err(vec![ParseError::UnexpectedToken {
-        expected: "an identifier, '}', ';' or 'option'".to_owned(),
+        expected: "an identifier, '}', 'reserved' or 'option'".to_owned(),
         found: Token::RightBracket,
         span: SourceSpan::from(10..11),
     }]));
@@ -565,15 +593,16 @@ pub fn parse_reserved() {
             end: ast::ReservedRangeEnd::Max,
         },
     ]));
+    case!(parse_reserved("reserved -1;") => ast::Reserved::Ranges(vec![
+        ast::ReservedRange {
+            start: ast::Int { negative: true, value: 1, span: 10..11 },
+            end: ast::ReservedRangeEnd::None,
+        }
+    ]));
     case!(parse_reserved("reserved 'foo', 'bar';") => ast::Reserved::Names(vec![
         ast::Ident::new("foo", 9..14),
         ast::Ident::new("bar", 16..21),
     ]));
-    case!(parse_reserved("reserved -1;") => Err(vec![ParseError::UnexpectedToken {
-        expected: "a positive integer or string".to_owned(),
-        found: Token::Minus,
-        span: SourceSpan::from(9..10),
-    }]));
     case!(parse_reserved("reserved ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer or string".to_owned(),
         found: Token::Semicolon,
@@ -777,6 +806,12 @@ pub fn parse_map() {
 #[test]
 #[ignore]
 pub fn parse_message() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+pub fn parse_oneof() {
     todo!()
 }
 
