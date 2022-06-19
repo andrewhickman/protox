@@ -593,9 +593,94 @@ pub fn parse_field() {
 }
 
 #[test]
-#[ignore]
 pub fn parse_group() {
-    todo!()
+    case!(parse_field("optional group A = 1 { } }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("A", 15..16),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        body: ast::MessageBody::default(),
+    }));
+    case!(parse_field("optional group A = 1 { ; ; } }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("A", 15..16),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        body: ast::MessageBody::default(),
+    }));
+    case!(parse_field("optional group A = 1 { optional sint32 foo = 2; } }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("A", 15..16),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        body: ast::MessageBody {
+            fields: vec![
+                ast::MessageField::Field(ast::Field {
+                    label: Some(ast::FieldLabel::Optional),
+                    name: ast::Ident::new("foo", 39..42),
+                    ty: ast::Ty::Sint32,
+                    number: ast::Int {
+                        negative: false,
+                        value: 2,
+                        span: 45..46
+                    },
+                    options: vec![]
+                })
+            ],
+            ..Default::default()
+        }
+    }));
+    case!(parse_field("optional group a = 1 { } }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("a", 15..16),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        body: ast::MessageBody::default(),
+    }), Err(vec![ParseError::InvalidGroupName {
+        span: SourceSpan::from(15..16),
+    }]));
+    case!(parse_field("optional group , { } }") => Err(vec![ParseError::UnexpectedToken {
+        expected: "an identifier".to_owned(),
+        found: Token::Comma,
+        span: SourceSpan::from(15..16),
+    }]));
+    case!(parse_field("optional group a [") => Err(vec![
+        ParseError::InvalidGroupName {
+            span: SourceSpan::from(15..16),
+        },
+        ParseError::UnexpectedToken {
+            expected: "'='".to_owned(),
+            found: Token::LeftBracket,
+            span: SourceSpan::from(17..18),
+        },
+    ]));
+    case!(parse_field("optional group A = {") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a positive integer".to_owned(),
+        found: Token::LeftBrace,
+        span: SourceSpan::from(19..20),
+    }]));
+    case!(parse_field("optional group A = 1 ;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'{'".to_owned(),
+        found: Token::Semicolon,
+        span: SourceSpan::from(21..22),
+    }]));
+    case!(parse_field("optional group A = 1 {]") => Err(vec![ParseError::UnexpectedToken {
+        expected: "a message field, oneof, reserved range, enum, message or '}'".to_owned(),
+        found: Token::RightBracket,
+        span: SourceSpan::from(22..23),
+    }]));
 }
 
 #[test]
