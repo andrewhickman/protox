@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fmt, num::IntErrorKind};
+use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
 use logos::{Lexer, Logos};
 use miette::SourceSpan;
@@ -8,9 +8,9 @@ use super::ParseError;
 #[derive(Debug, Clone, Logos, PartialEq)]
 #[logos(extras = TokenExtras)]
 #[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
-pub(crate) enum Token {
+pub(crate) enum Token<'a> {
     #[regex("[A-Za-z][A-Za-z0-9_]*", ident)]
-    Ident(String),
+    Ident(Cow<'a, str>),
     #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
@@ -23,7 +23,7 @@ pub(crate) enum Token {
     #[regex("false|true", bool)]
     BoolLiteral(bool),
     #[regex(r#"'|""#, string)]
-    StringLiteral(String),
+    StringLiteral(Cow<'a, str>),
     #[token("syntax")]
     Syntax,
     #[token("package")]
@@ -129,63 +129,133 @@ pub(crate) enum Token {
     #[token(";")]
     Semicolon,
     #[regex("//[^\n]*", line_comment)]
-    LineComment(String),
+    LineComment(Cow<'a, str>),
     #[token(r#"/*"#, block_comment)]
-    BlockComment(String),
+    BlockComment(Cow<'a, str>),
     #[error]
     #[regex(r"[[:space:]]+", logos::skip)]
     Error,
 }
 
-impl Token {
-    pub fn into_ident(self) -> Option<String> {
+impl<'a> Token<'a> {
+    pub fn as_ident(&self) -> Option<&str> {
         match self {
             Token::Ident(value) => Some(value),
-            Token::BoolLiteral(value) => Some(value.to_string()),
-            Token::Syntax => Some("syntax".to_owned()),
-            Token::Import => Some("import".to_owned()),
-            Token::Weak => Some("weak".to_owned()),
-            Token::Public => Some("public".to_owned()),
-            Token::Package => Some("package".to_owned()),
-            Token::Option => Some("option".to_owned()),
-            Token::Enum => Some("enum".to_owned()),
-            Token::Service => Some("service".to_owned()),
-            Token::Rpc => Some("rpc".to_owned()),
-            Token::Stream => Some("stream".to_owned()),
-            Token::Returns => Some("returns".to_owned()),
-            Token::Extend => Some("extend".to_owned()),
-            Token::Message => Some("message".to_owned()),
-            Token::Optional => Some("optional".to_owned()),
-            Token::Required => Some("required".to_owned()),
-            Token::Repeated => Some("repeated".to_owned()),
-            Token::Map => Some("map".to_owned()),
-            Token::Group => Some("group".to_owned()),
-            Token::Oneof => Some("oneof".to_owned()),
-            Token::Double => Some("double".to_owned()),
-            Token::Float => Some("float".to_owned()),
-            Token::Int32 => Some("int32".to_owned()),
-            Token::Int64 => Some("int64".to_owned()),
-            Token::Uint32 => Some("uint32".to_owned()),
-            Token::Uint64 => Some("uint64".to_owned()),
-            Token::Sint32 => Some("sint32".to_owned()),
-            Token::Sint64 => Some("sint64".to_owned()),
-            Token::Fixed32 => Some("fixed32".to_owned()),
-            Token::Fixed64 => Some("fixed64".to_owned()),
-            Token::Sfixed32 => Some("sfixed32".to_owned()),
-            Token::Sfixed64 => Some("sfixed64".to_owned()),
-            Token::Bool => Some("bool".to_owned()),
-            Token::String => Some("string".to_owned()),
-            Token::Bytes => Some("bytes".to_owned()),
-            Token::Reserved => Some("reserved".to_owned()),
-            Token::Extensions => Some("extensions".to_owned()),
-            Token::To => Some("to".to_owned()),
-            Token::Max => Some("max".to_owned()),
+            Token::BoolLiteral(false) => Some("false"),
+            Token::BoolLiteral(true) => Some("true"),
+            Token::Syntax => Some("syntax"),
+            Token::Import => Some("import"),
+            Token::Weak => Some("weak"),
+            Token::Public => Some("public"),
+            Token::Package => Some("package"),
+            Token::Option => Some("option"),
+            Token::Enum => Some("enum"),
+            Token::Service => Some("service"),
+            Token::Rpc => Some("rpc"),
+            Token::Stream => Some("stream"),
+            Token::Returns => Some("returns"),
+            Token::Extend => Some("extend"),
+            Token::Message => Some("message"),
+            Token::Optional => Some("optional"),
+            Token::Required => Some("required"),
+            Token::Repeated => Some("repeated"),
+            Token::Map => Some("map"),
+            Token::Group => Some("group"),
+            Token::Oneof => Some("oneof"),
+            Token::Double => Some("double"),
+            Token::Float => Some("float"),
+            Token::Int32 => Some("int32"),
+            Token::Int64 => Some("int64"),
+            Token::Uint32 => Some("uint32"),
+            Token::Uint64 => Some("uint64"),
+            Token::Sint32 => Some("sint32"),
+            Token::Sint64 => Some("sint64"),
+            Token::Fixed32 => Some("fixed32"),
+            Token::Fixed64 => Some("fixed64"),
+            Token::Sfixed32 => Some("sfixed32"),
+            Token::Sfixed64 => Some("sfixed64"),
+            Token::Bool => Some("bool"),
+            Token::String => Some("string"),
+            Token::Bytes => Some("bytes"),
+            Token::Reserved => Some("reserved"),
+            Token::Extensions => Some("extensions"),
+            Token::To => Some("to"),
+            Token::Max => Some("max"),
             _ => None,
+        }
+    }
+
+    pub fn to_static(&self) -> Token<'static> {
+        match self {
+            Token::Ident(value) => Token::Ident(Cow::Owned(value.clone().into_owned())),
+            Token::IntLiteral(value) => Token::IntLiteral(*value),
+            Token::FloatLiteral(value) => Token::FloatLiteral(*value),
+            Token::BoolLiteral(value) => Token::BoolLiteral(*value),
+            Token::StringLiteral(value) => {
+                Token::StringLiteral(Cow::Owned(value.clone().into_owned()))
+            }
+            Token::Syntax => Token::Syntax,
+            Token::Package => Token::Package,
+            Token::Import => Token::Import,
+            Token::Weak => Token::Weak,
+            Token::Public => Token::Public,
+            Token::Enum => Token::Enum,
+            Token::Option => Token::Option,
+            Token::Service => Token::Service,
+            Token::Rpc => Token::Rpc,
+            Token::Stream => Token::Stream,
+            Token::Returns => Token::Returns,
+            Token::Extend => Token::Extend,
+            Token::Message => Token::Message,
+            Token::Optional => Token::Optional,
+            Token::Required => Token::Required,
+            Token::Repeated => Token::Repeated,
+            Token::Map => Token::Map,
+            Token::Oneof => Token::Oneof,
+            Token::Group => Token::Group,
+            Token::Double => Token::Double,
+            Token::Float => Token::Float,
+            Token::Int32 => Token::Int32,
+            Token::Int64 => Token::Int64,
+            Token::Uint32 => Token::Uint32,
+            Token::Uint64 => Token::Uint64,
+            Token::Sint32 => Token::Sint32,
+            Token::Sint64 => Token::Sint64,
+            Token::Fixed32 => Token::Fixed32,
+            Token::Fixed64 => Token::Fixed64,
+            Token::Sfixed32 => Token::Sfixed32,
+            Token::Sfixed64 => Token::Sfixed64,
+            Token::Bool => Token::Bool,
+            Token::String => Token::String,
+            Token::Bytes => Token::Bytes,
+            Token::Reserved => Token::Reserved,
+            Token::Extensions => Token::Extensions,
+            Token::To => Token::To,
+            Token::Max => Token::Max,
+            Token::Dot => Token::Dot,
+            Token::Minus => Token::Minus,
+            Token::Plus => Token::Plus,
+            Token::LeftParen => Token::LeftParen,
+            Token::RightParen => Token::RightParen,
+            Token::LeftBrace => Token::LeftBrace,
+            Token::RightBrace => Token::RightBrace,
+            Token::LeftBracket => Token::LeftBracket,
+            Token::RightBracket => Token::RightBracket,
+            Token::LeftAngleBracket => Token::LeftAngleBracket,
+            Token::RightAngleBracket => Token::RightAngleBracket,
+            Token::Comma => Token::Comma,
+            Token::Equals => Token::Equals,
+            Token::Semicolon => Token::Semicolon,
+            Token::LineComment(value) => Token::LineComment(Cow::Owned(value.clone().into_owned())),
+            Token::BlockComment(value) => {
+                Token::BlockComment(Cow::Owned(value.clone().into_owned()))
+            }
+            Token::Error => Token::Error,
         }
     }
 }
 
-impl fmt::Display for Token {
+impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Ident(value) => write!(f, "{}", value),
@@ -259,11 +329,11 @@ pub(crate) struct TokenExtras {
     pub errors: Vec<ParseError>,
 }
 
-fn ident(lex: &mut Lexer<Token>) -> String {
-    lex.slice().to_owned()
+fn ident<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
+    Cow::Borrowed(lex.slice())
 }
 
-fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
+fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> u64 {
     if radix == 8 && lex.slice() == "0" {
         return 0;
     }
@@ -284,15 +354,15 @@ fn int(lex: &mut Lexer<Token>, radix: u32, prefix_len: usize) -> u64 {
     }
 }
 
-fn float(lex: &mut Lexer<Token>) -> f64 {
+fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> f64 {
     lex.slice().parse().expect("failed to parse float")
 }
 
-fn bool(lex: &mut Lexer<Token>) -> bool {
+fn bool<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
     lex.slice().parse().expect("faield to parse bool")
 }
 
-fn string(lex: &mut Lexer<Token>) -> String {
+fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     #[derive(Logos)]
     enum Component<'a> {
         #[regex(r#"[^\x00\n\\'"]+"#)]
@@ -342,20 +412,23 @@ fn string(lex: &mut Lexer<Token>) -> String {
         }
     }
 
-    let mut result = String::new();
+    let mut result: Option<Cow<'a, str>> = None;
 
     let mut char_lexer = Component::lexer(lex.remainder());
     let terminator = lex.slice().chars().next().expect("expected char");
 
     loop {
         match char_lexer.next() {
-            Some(Component::Unescaped(s)) => {
-                result.push_str(s);
-            }
+            Some(Component::Unescaped(s)) => match result.as_mut() {
+                None => result = Some(Cow::Borrowed(s)),
+                Some(result) => result.to_mut().push_str(s),
+            },
             Some(Component::Terminator(t)) if t == terminator => {
                 break;
             }
-            Some(Component::Terminator(ch) | Component::Char(ch)) => result.push(ch),
+            Some(Component::Terminator(ch) | Component::Char(ch)) => {
+                result.get_or_insert_with(Cow::default).to_mut().push(ch)
+            }
             Some(Component::Error) => {
                 let start = lex.span().end + char_lexer.span().start;
                 let end = lex.span().end + char_lexer.span().end;
@@ -403,14 +476,14 @@ fn string(lex: &mut Lexer<Token>) -> String {
     }
 
     lex.bump(char_lexer.span().end);
-    result
+    result.unwrap_or_default()
 }
 
-fn line_comment(lex: &mut Lexer<Token>) -> String {
-    lex.slice()[2..].trim().to_owned()
+fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
+    Cow::Borrowed(lex.slice()[2..].trim())
 }
 
-fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
+fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Result<Cow<'a, str>, ()> {
     #[derive(Logos)]
     enum Component {
         #[token("*/")]
@@ -459,10 +532,9 @@ fn block_comment(lex: &mut Lexer<Token>) -> Result<String, ()> {
     };
 
     lex.bump(len);
-    return Ok(lex.slice()[2..][..len]
-        .trim_end_matches("*/")
-        .trim()
-        .to_owned());
+    return Ok(Cow::Borrowed(
+        lex.slice()[2..][..len].trim_end_matches("*/").trim(),
+    ));
 }
 
 #[cfg(test)]
@@ -474,7 +546,7 @@ mod tests {
         let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".to_owned()));
+        assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".into()));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
@@ -487,11 +559,11 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
         assert_eq!(
             lexer.next().unwrap(),
-            Token::StringLiteral("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".to_owned())
+            Token::StringLiteral("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".into())
         );
         assert_eq!(
             lexer.next().unwrap(),
-            Token::StringLiteral("hello 😀".to_owned())
+            Token::StringLiteral("hello 😀".into())
         );
         assert_eq!(lexer.next(), None);
 
@@ -521,7 +593,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Error));
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -532,8 +604,8 @@ mod tests {
         let source = "\"\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral(String::new())));
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral(Default::default())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -549,11 +621,8 @@ mod tests {
         let source = "\"hello \n foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(
-            lexer.next(),
-            Some(Token::StringLiteral("hello ".to_owned()))
-        );
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral("hello ".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -569,8 +638,8 @@ mod tests {
         let source = r#""\m" foo"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral("m".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral("m".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -586,8 +655,8 @@ mod tests {
         let source = "\"\\\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral("".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral("".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -603,9 +672,9 @@ mod tests {
         let source = "foo // bar \n quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::LineComment("bar".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
+        assert_eq!(lexer.next(), Some(Token::LineComment("bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -616,9 +685,9 @@ mod tests {
         let source = "foo /* bar\n */ quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::BlockComment("bar".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment("bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -629,12 +698,12 @@ mod tests {
         let source = "foo /* /* bar\n */ */ quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(
             lexer.next(),
-            Some(Token::BlockComment("/* bar\n */".to_owned()))
+            Some(Token::BlockComment("/* bar\n */".into()))
         );
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -650,9 +719,9 @@ mod tests {
         let source = "foo /* /* bar\n */ quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::BlockComment("/* bar".to_owned())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".to_owned())));
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment("/* bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -668,11 +737,8 @@ mod tests {
         let source = "foo /* bar\n quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".to_owned())));
-        assert_eq!(
-            lexer.next(),
-            Some(Token::BlockComment("bar\n quz".to_owned()))
-        );
+        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment("bar\n quz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(

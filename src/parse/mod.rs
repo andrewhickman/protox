@@ -44,7 +44,7 @@ pub(crate) enum ParseError {
     },
     UnexpectedToken {
         expected: String,
-        found: Token,
+        found: Token<'static>,
         span: SourceSpan,
     },
     UnexpectedEof {
@@ -61,8 +61,8 @@ pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
 }
 
 struct Parser<'a> {
-    lexer: Lexer<'a, Token>,
-    peek: Option<(Token, Span)>,
+    lexer: Lexer<'a, Token<'a>>,
+    peek: Option<(Token<'a>, Span)>,
 }
 
 enum Statement {
@@ -795,7 +795,10 @@ impl<'a> Parser<'a> {
             }
             Some((Token::Ident(value), span)) => {
                 self.bump();
-                ast::FullIdent::from(ast::Ident { value, span })
+                ast::FullIdent::from(ast::Ident {
+                    value: value.into_owned(),
+                    span,
+                })
             }
             _ => self.unexpected_token("an identifier or '('")?,
         };
@@ -833,7 +836,10 @@ impl<'a> Parser<'a> {
             }
             Some((Token::StringLiteral(value), span)) => {
                 self.bump();
-                ast::Constant::String(ast::String { value, span })
+                ast::Constant::String(ast::String {
+                    value: value.into_owned(),
+                    span,
+                })
             }
             Some((Token::BoolLiteral(value), span)) => {
                 self.bump();
@@ -907,7 +913,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident(&mut self) -> Result<ast::Ident, ()> {
         self.expect(
-            |tok, span| tok.into_ident().map(|value| ast::Ident::new(value, span)),
+            |tok, span| tok.as_ident().map(|value| ast::Ident::new(value, span)),
             "an identifier",
         )
     }
@@ -945,7 +951,10 @@ impl<'a> Parser<'a> {
         match self.peek() {
             Some((Token::StringLiteral(value), span)) => {
                 self.bump();
-                Ok(ast::String { value, span })
+                Ok(ast::String {
+                    value: value.into_owned(),
+                    span,
+                })
             }
             _ => self.unexpected_token("a string literal"),
         }
@@ -1009,14 +1018,14 @@ impl<'a> Parser<'a> {
             .expect("called bump without peek returning Some()")
     }
 
-    fn peek(&mut self) -> Option<(Token, Span)> {
+    fn peek(&mut self) -> Option<(Token<'a>, Span)> {
         if self.peek.is_none() {
             self.peek = self.next();
         }
         self.peek.clone()
     }
 
-    fn next(&mut self) -> Option<(Token, Span)> {
+    fn next(&mut self) -> Option<(Token<'a>, Span)> {
         if self.peek.is_some() {
             self.peek.take()
         } else {
@@ -1039,7 +1048,7 @@ impl<'a> Parser<'a> {
             Some((found, span)) => {
                 self.add_error(ParseError::UnexpectedToken {
                     expected: expected.to_string(),
-                    found,
+                    found: found.to_static(),
                     span: span.into(),
                 });
                 Err(())
@@ -1089,7 +1098,7 @@ fn is_field_start_token(tok: &Token) -> bool {
     )
 }
 
-fn fmt_expected(ts: impl Iterator<Item = Token>) -> String {
+fn fmt_expected<'a>(ts: impl Iterator<Item = Token<'a>>) -> String {
     fn fmt_token(s: &mut String, t: &Token) {
         if let Token::Ident(_) = t {
             s.push_str("an identifier");

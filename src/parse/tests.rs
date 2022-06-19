@@ -194,7 +194,7 @@ fn parse_enum() {
     }]));
     case!(parse_enum("enum Foo { BAR = foo") => Err(vec![ParseError::UnexpectedToken {
         expected: "an integer".to_owned(),
-        found: Token::Ident("foo".to_owned()),
+        found: Token::Ident("foo".into()),
         span: SourceSpan::from(17..20),
     }]));
 }
@@ -341,7 +341,7 @@ fn parse_service() {
     }]));
     case!(parse_service("service Foo { bar") => Err(vec![ParseError::UnexpectedToken {
         expected: "'rpc', '}', 'option' or ';'".to_owned(),
-        found: Token::Ident("bar".to_owned()),
+        found: Token::Ident("bar".into()),
         span: SourceSpan::from(14..17),
     }]));
     case!(parse_service("service Foo { rpc =") => Err(vec![ParseError::UnexpectedToken {
@@ -794,7 +794,7 @@ pub fn parse_map() {
     }]));
     case!(parse_map("map<string, Foo> foo = x") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer".to_owned(),
-        found: Token::Ident("x".to_string()),
+        found: Token::Ident("x".into()),
         span: SourceSpan::from(23..24),
     }]));
     case!(parse_map("map<string, Foo> foo = 1service") => Err(vec![ParseError::UnexpectedToken {
