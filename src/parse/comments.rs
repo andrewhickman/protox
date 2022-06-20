@@ -21,6 +21,7 @@ impl Comments {
         self.current = None;
     }
 
+    #[allow(unused)]
     pub fn take(&mut self) -> (Vec<String>, Option<String>) {
         (take(&mut self.detached), take(&mut self.current))
     }

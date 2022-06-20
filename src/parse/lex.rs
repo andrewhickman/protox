@@ -1,6 +1,6 @@
 use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
-use logos::{Lexer, Logos};
+use logos::{skip, Lexer, Logos};
 use miette::SourceSpan;
 
 use super::ParseError;
@@ -132,7 +132,7 @@ pub(crate) enum Token<'a> {
     #[token(r#"/*"#, block_comment)]
     Comment(Cow<'a, str>),
     #[error]
-    #[regex(r"[\t\n\v\f\r ]+", logos::skip)]
+    #[regex(r"[\t\n\v\f\r ]+", skip)]
     Error,
 }
 
@@ -414,10 +414,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 
     loop {
         match char_lexer.next() {
-            Some(Component::Unescaped(s)) => match result.as_mut() {
-                None => result = Some(Cow::Borrowed(s)),
-                Some(result) => result.to_mut().push_str(s),
-            },
+            Some(Component::Unescaped(s)) => cow_push_str(&mut result, s),
             Some(Component::Terminator(t)) if t == terminator => {
                 break;
             }
@@ -488,7 +485,7 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
             is_trailing = true;
             break;
         }
-    };
+    }
 
     let mut result = Cow::Borrowed(strip_line_comment(lex.slice()).expect("expected comment"));
     if !is_trailing {
@@ -508,58 +505,74 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     result
 }
 
-fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Result<Cow<'a, str>, ()> {
+fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     #[derive(Logos)]
     enum Component {
         #[token("*/")]
         EndComment,
         #[token("/*")]
         StartComment,
+        #[regex("\n")]
+        Newline,
         #[error]
         Text,
     }
 
-    let mut comment_lexer = Component::lexer(lex.remainder()).spanned();
+    let mut comment_lexer = Component::lexer(lex.remainder());
+    let mut result: Option<Cow<'a, str>> = None;
 
     let mut depth = 1u32;
     let mut last_end = None;
     let len = loop {
         match comment_lexer.next() {
-            Some((Component::EndComment, span)) => {
+            Some(Component::EndComment) => {
                 depth -= 1;
                 if depth == 0 {
-                    break span.end;
+                    break comment_lexer.span().end;
                 } else {
-                    last_end = Some(span.end);
+                    last_end = Some(comment_lexer.span().end);
                 }
             }
-            Some((Component::StartComment, span)) => {
-                let start = lex.span().end + span.start;
-                let end = lex.span().end + span.end;
+            Some(Component::StartComment) => {
+                let start = lex.span().end + comment_lexer.span().start;
+                let end = lex.span().end + comment_lexer.span().end;
                 lex.extras.errors.push(ParseError::NestedBlockComment {
                     span: SourceSpan::from(start..end),
                 });
                 depth += 1;
             }
-            Some((Component::Text, _)) => continue,
+            Some(Component::Newline) => {
+                cow_push_str(&mut result, "\n");
+                let stripped = comment_lexer.remainder().trim_start();
+                comment_lexer.bump(comment_lexer.remainder().len() - stripped.len());
+                if stripped.starts_with('*') && !stripped.starts_with("*/") {
+                    comment_lexer.bump(1);
+                }
+            },
+            Some(Component::Text) => cow_push_str(&mut result, comment_lexer.slice()),
             None => {
                 if let Some(last_end) = last_end {
                     // This must be a nested block comment
-                    break last_end;
+                    break dbg!(last_end);
                 } else {
                     lex.extras
                         .errors
                         .push(ParseError::UnexpectedEof { expected: None });
-                    break lex.remainder().len();
+                    break dbg!(lex.remainder().len());
                 }
             }
         }
     };
 
     lex.bump(len);
-    return Ok(Cow::Borrowed(
-        lex.slice()[2..][..len].trim_end_matches("*/").trim(),
-    ));
+    result.unwrap_or_default()
+}
+
+fn cow_push_str<'a>(cow: &mut Option<Cow<'a, str>>, s: &'a str) {
+    match cow {
+        Some(cow) => cow.to_mut().push_str(s),
+        None => *cow = Some(Cow::Borrowed(s)),
+    }
 }
 
 #[cfg(test)]
@@ -727,8 +740,19 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar\n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn block_comment_multiline() {
+        let source = "/* foo\n * bar\n quz*/";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Comment(" foo\n bar\nquz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -740,10 +764,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(
-            lexer.next(),
-            Some(Token::Comment("/* bar\n */".into()))
-        );
+        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n ".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -761,7 +782,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("/* bar".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n quz".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -779,7 +800,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("bar\n quz".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar\nquz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
