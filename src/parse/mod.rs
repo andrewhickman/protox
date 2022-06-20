@@ -1029,7 +1029,12 @@ impl<'a> Parser<'a> {
         debug_assert!(self.peek.is_none());
         loop {
             match self.lexer.next() {
-                Some(Token::Comment(comment)) => self.comments.comment(comment.into()),
+                Some(Token::Comment(comment)) => {
+                    self.comments.comment(comment.into());
+                },
+                Some(Token::Newline) => {
+                    self.comments.newline();
+                },
                 Some(Token::Error) => {
                     self.comments.reset();
                     self.add_error(ParseError::InvalidToken {

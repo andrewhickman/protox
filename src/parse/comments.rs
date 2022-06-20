@@ -12,8 +12,12 @@ impl Comments {
     }
 
     pub fn comment(&mut self, comment: String) {
-        self.detached.extend(self.current.take());
+        self.newline();
         self.current = Some(comment);
+    }
+
+    pub fn newline(&mut self) {
+        self.detached.extend(self.current.take());
     }
 
     pub fn reset(&mut self) {

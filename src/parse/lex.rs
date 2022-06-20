@@ -131,8 +131,10 @@ pub(crate) enum Token<'a> {
     #[regex(r#"//[^\n]*\n?"#, line_comment)]
     #[token(r#"/*"#, block_comment)]
     Comment(Cow<'a, str>),
+    #[token("\n")]
+    Newline,
     #[error]
-    #[regex(r"[\t\n\v\f\r ]+", skip)]
+    #[regex(r"[\t\v\f\r ]+", skip)]
     Error,
 }
 
@@ -246,6 +248,7 @@ impl<'a> Token<'a> {
             Token::Equals => Token::Equals,
             Token::Semicolon => Token::Semicolon,
             Token::Comment(value) => Token::Comment(Cow::Owned(value.clone().into_owned())),
+            Token::Newline => Token::Newline,
             Token::Error => Token::Error,
         }
     }
@@ -314,6 +317,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Equals => write!(f, "="),
             Token::Semicolon => write!(f, ";"),
             Token::Comment(value) => write!(f, "/*{}*/", value),
+            Token::Newline => writeln!(f),
             Token::Error => write!(f, "<ERROR>"),
         }
     }
@@ -581,7 +585,8 @@ mod tests {
 
     #[test]
     fn simple_tokens() {
-        let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
+        let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true
+            false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".into()));
@@ -594,6 +599,7 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
         assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(true));
+        assert_eq!(lexer.next().unwrap(), Token::Newline);
         assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
         assert_eq!(
             lexer.next().unwrap(),
@@ -725,6 +731,7 @@ mod tests {
 
         assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me\n".into())));
         assert_eq!(lexer.next(), Some(Token::IntLiteral(5)));
+        assert_eq!(lexer.next(), Some(Token::Newline));
         assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me2\n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), Some(Token::Comment(" no\n".into())));
