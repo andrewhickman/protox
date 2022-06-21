@@ -9,8 +9,8 @@ mod lex;
 #[cfg(test)]
 mod tests;
 
-use self::lex::Token;
 use self::comments::Comments;
+use self::lex::Token;
 use crate::ast::{self, FieldLabel, FullIdent};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -172,16 +172,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_package(&mut self) -> Result<ast::Package, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Package)?;
 
         let name = self.parse_full_ident(&[Token::Semicolon])?;
 
         self.expect_eq(Token::Semicolon)?;
 
-        Ok(ast::Package { name })
+        let comments = self.parse_trailing_comment(leading_comments);
+
+        Ok(ast::Package { name, comments })
     }
 
     fn parse_import(&mut self) -> Result<ast::Import, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Import)?;
 
         let kind = match self.peek() {
@@ -201,17 +207,32 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Semicolon)?;
 
-        Ok(ast::Import { kind, value })
+        let comments = self.parse_trailing_comment(leading_comments);
+
+        Ok(ast::Import {
+            kind,
+            value,
+            comments,
+        })
     }
 
     fn parse_message(&mut self) -> Result<ast::Message, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Message)?;
 
         let name = self.parse_ident()?;
 
+        self.expect_eq(Token::LeftBrace)?;
+        let comments = self.parse_trailing_comment(leading_comments);
+
         let body = self.parse_message_body()?;
 
-        Ok(ast::Message { name, body })
+        Ok(ast::Message {
+            name,
+            body,
+            comments,
+        })
     }
 
     fn parse_message_body(&mut self) -> Result<ast::MessageBody, ()> {
@@ -223,8 +244,6 @@ impl<'a> Parser<'a> {
         let mut options = Vec::new();
         let mut reserved = Vec::new();
         let mut extension_ranges = Vec::new();
-
-        self.expect_eq(Token::LeftBrace)?;
 
         loop {
             match self.peek() {
@@ -265,6 +284,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field(&mut self) -> Result<ast::MessageField, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         let label = match self.peek() {
             Some((Token::Optional, _)) => {
                 self.bump();
@@ -279,7 +300,9 @@ impl<'a> Parser<'a> {
                 Some(FieldLabel::Repeated)
             }
             Some((Token::Map, _)) => {
-                return Ok(ast::MessageField::Map(self.parse_map()?));
+                return Ok(ast::MessageField::Map(
+                    self.parse_map_inner(leading_comments)?,
+                ));
             }
             Some((tok, _)) if is_field_start_token(&tok) => None,
             _ => self.unexpected_token("a message field")?,
@@ -300,6 +323,9 @@ impl<'a> Parser<'a> {
 
                 let number = self.parse_positive_int()?;
 
+                self.expect_eq(Token::LeftBrace)?;
+                let comments = self.parse_trailing_comment(leading_comments);
+
                 let body = self.parse_message_body()?;
 
                 Ok(ast::MessageField::Group(ast::Group {
@@ -307,6 +333,7 @@ impl<'a> Parser<'a> {
                     name,
                     number,
                     body,
+                    comments,
                 }))
             }
             _ => {
@@ -331,18 +358,30 @@ impl<'a> Parser<'a> {
                     _ => self.unexpected_token("';' or '['")?,
                 };
 
+                let comments = self.parse_trailing_comment(leading_comments);
+
                 Ok(ast::MessageField::Field(ast::Field {
                     label,
                     ty,
                     name,
                     number,
                     options,
+                    comments,
                 }))
             }
         }
     }
 
+    #[cfg(test)]
     fn parse_map(&mut self) -> Result<ast::Map, ()> {
+        let leading_comments = self.parse_leading_comments();
+        self.parse_map_inner(leading_comments)
+    }
+
+    fn parse_map_inner(
+        &mut self,
+        leading_comments: (Vec<String>, Option<String>),
+    ) -> Result<ast::Map, ()> {
         self.expect_eq(Token::Map)?;
 
         self.expect_eq(Token::LeftAngleBracket)?;
@@ -370,21 +409,27 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("';' or '['")?,
         };
 
+        let comments = self.parse_trailing_comment(leading_comments);
+
         Ok(ast::Map {
             key_ty,
             ty,
             name,
             number,
             options,
+            comments,
         })
     }
 
     fn parse_extension(&mut self) -> Result<ast::Extension, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Extend)?;
 
         let extendee = self.parse_type_name(&[Token::LeftBrace])?;
 
         self.expect_eq(Token::LeftBrace)?;
+        let comments = self.parse_trailing_comment(leading_comments);
 
         let mut fields = Vec::new();
         loop {
@@ -404,15 +449,22 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(ast::Extension { extendee, fields })
+        Ok(ast::Extension {
+            extendee,
+            fields,
+            comments,
+        })
     }
 
     fn parse_service(&mut self) -> Result<ast::Service, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Service)?;
 
         let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftBrace)?;
+        let comments = self.parse_trailing_comment(leading_comments);
 
         let mut options = Vec::new();
         let mut methods = Vec::new();
@@ -441,10 +493,13 @@ impl<'a> Parser<'a> {
             name,
             methods,
             options,
+            comments,
         })
     }
 
     fn parse_service_rpc(&mut self) -> Result<ast::Method, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Rpc)?;
 
         let name = self.parse_ident()?;
@@ -506,6 +561,8 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("';' or '{'")?,
         }
 
+        let comments = self.parse_trailing_comment(leading_comments);
+
         Ok(ast::Method {
             name,
             input_ty,
@@ -513,15 +570,19 @@ impl<'a> Parser<'a> {
             output_ty,
             is_server_streaming,
             options,
+            comments,
         })
     }
 
     fn parse_enum(&mut self) -> Result<ast::Enum, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         self.expect_eq(Token::Enum)?;
 
         let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftBrace)?;
+        let comments = self.parse_trailing_comment(leading_comments);
 
         let mut values = Vec::new();
         let mut options = Vec::new();
@@ -555,10 +616,13 @@ impl<'a> Parser<'a> {
             options,
             reserved,
             values,
+            comments,
         })
     }
 
     fn parse_enum_value(&mut self) -> Result<ast::EnumValue, ()> {
+        let leading_comments = self.parse_leading_comments();
+
         let name = self.parse_ident()?;
 
         self.expect_eq(Token::Equals)?;
@@ -572,19 +636,24 @@ impl<'a> Parser<'a> {
         };
 
         self.expect_eq(Token::Semicolon)?;
+        let comments = self.parse_trailing_comment(leading_comments);
+
         Ok(ast::EnumValue {
             name,
             value,
             options,
+            comments,
         })
     }
 
     fn parse_oneof(&mut self) -> Result<ast::Oneof, ()> {
+        let leading_comments = self.parse_leading_comments();
         self.expect_eq(Token::Oneof)?;
 
         let name = self.parse_ident()?;
 
         self.expect_eq(Token::LeftBrace)?;
+        let comments = self.parse_trailing_comment(leading_comments);
 
         let mut fields = Vec::new();
         let mut options = Vec::new();
@@ -609,6 +678,7 @@ impl<'a> Parser<'a> {
             name,
             fields,
             options,
+            comments,
         })
     }
 
@@ -661,14 +731,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_reserved(&mut self) -> Result<ast::Reserved, ()> {
+        let leading_comments = self.parse_leading_comments();
         self.expect_eq(Token::Reserved)?;
 
         match self.peek() {
             Some((Token::IntLiteral(_) | Token::Minus, _)) => {
-                Ok(ast::Reserved::Ranges(self.parse_reserved_ranges()?))
+                let ranges = self.parse_reserved_ranges()?;
+                let comments = self.parse_trailing_comment(leading_comments);
+                Ok(ast::Reserved::Ranges(ranges, comments))
             }
             Some((Token::StringLiteral(_), _)) => {
-                Ok(ast::Reserved::Names(self.parse_reserved_names()?))
+                let names = self.parse_reserved_names()?;
+                let comments = self.parse_trailing_comment(leading_comments);
+                Ok(ast::Reserved::Names(names, comments))
             }
             _ => self.unexpected_token("a positive integer or string"),
         }
@@ -780,13 +855,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_option(&mut self) -> Result<ast::Option, ()> {
+        let leading_comments = self.parse_leading_comments();
         self.expect_eq(Token::Option)?;
 
         let option = self.parse_option_body(&[Token::Semicolon])?;
 
         self.expect_eq(Token::Semicolon)?;
+        let comments = self.parse_trailing_comment(leading_comments);
 
-        Ok(option)
+        Ok(ast::Option { comments, ..option })
     }
 
     fn parse_option_body(&mut self, terminators: &[Token]) -> Result<ast::Option, ()> {
@@ -856,6 +933,7 @@ impl<'a> Parser<'a> {
             name,
             field_name: field_name.map(FullIdent::from),
             value,
+            comments: Default::default(),
         })
     }
 
@@ -964,6 +1042,44 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_leading_comments(&mut self) -> (Vec<String>, Option<String>) {
+        if self.peek.is_none() {
+            self.peek();
+        }
+        self.comments.take()
+    }
+
+    fn parse_trailing_comment(
+        &mut self,
+        (leading_detached_comments, leading_comment): (Vec<String>, std::option::Option<String>),
+    ) -> ast::Comments {
+        if let Some((Token::Newline, _)) = self.peek_comments() {
+            self.bump_comment();
+        }
+
+        let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
+            self.bump_comment();
+
+            if matches!(
+                self.peek_comments(),
+                Some((Token::Newline | Token::RightBrace, _)) | None
+            ) {
+                Some(comment.into())
+            } else {
+                self.comments.comment(comment.into());
+                None
+            }
+        } else {
+            None
+        };
+
+        ast::Comments {
+            leading_detached_comments,
+            leading_comment,
+            trailing_comment,
+        }
+    }
+
     fn expect_eq(&mut self, t: Token) -> Result<(), ()> {
         match self.peek() {
             Some((tok, _)) if tok == t => {
@@ -1001,24 +1117,58 @@ impl<'a> Parser<'a> {
         self.bump_if(|tok| *tok == t)
     }
 
-    fn bump_if(&mut self, f: impl FnMut(&Token) -> bool) -> bool {
-        self.next_if(f).is_some()
-    }
-
-    fn next_if(&mut self, mut f: impl FnMut(&Token) -> bool) -> Option<(Token, Span)> {
+    fn bump_if(&mut self, mut f: impl FnMut(&Token) -> bool) -> bool {
         match self.peek() {
-            Some((tok, _)) if f(&tok) => Some(self.bump()),
-            _ => None,
+            Some((tok, _)) if f(&tok) => {
+                self.bump();
+                true
+            }
+            _ => false,
         }
     }
 
-    fn bump(&mut self) -> (Token, Span) {
-        self.peek
+    fn bump(&mut self) {
+        match self
+            .peek
             .take()
             .expect("called bump without peek returning Some()")
+            .0
+        {
+            Token::Comment(comment) => {
+                self.comments.comment(comment.into());
+            }
+            Token::Newline => {
+                self.comments.newline();
+            }
+            _ => {
+                self.comments.reset();
+            }
+        }
+    }
+
+    fn bump_comment(&mut self) {
+        self.peek
+            .take()
+            .expect("called bump without peek returning Some()");
     }
 
     fn peek(&mut self) -> Option<(Token<'a>, Span)> {
+        loop {
+            match self.peek_comments() {
+                Some((Token::Comment(_), _)) => {
+                    self.bump();
+                }
+                Some((Token::Newline, _)) => {
+                    self.bump();
+                }
+                tok => {
+                    return tok;
+                }
+            }
+        }
+    }
+
+    fn peek_comments(&mut self) -> Option<(Token<'a>, Span)> {
         if self.peek.is_none() {
             self.peek = self.next();
         }
@@ -1027,27 +1177,16 @@ impl<'a> Parser<'a> {
 
     fn next(&mut self) -> Option<(Token<'a>, Span)> {
         debug_assert!(self.peek.is_none());
-        loop {
-            match self.lexer.next() {
-                Some(Token::Comment(comment)) => {
-                    self.comments.comment(comment.into());
-                },
-                Some(Token::Newline) => {
-                    self.comments.newline();
-                },
-                Some(Token::Error) => {
-                    self.comments.reset();
-                    self.add_error(ParseError::InvalidToken {
-                        span: self.lexer.span().into(),
-                    });
-                    return Some((Token::Error, self.lexer.span()))
-                }
-                Some(tok) => {
-                    self.comments.reset();
-                    return Some((tok, self.lexer.span()))
-                },
-                None => return None,
+        match self.lexer.next() {
+            Some(Token::Error) => {
+                self.comments.reset();
+                self.add_error(ParseError::InvalidToken {
+                    span: self.lexer.span().into(),
+                });
+                Some((Token::Error, self.lexer.span()))
             }
+            Some(tok) => Some((tok, self.lexer.span())),
+            None => None,
         }
     }
 

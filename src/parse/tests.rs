@@ -32,6 +32,21 @@ pub fn parse_option() {
             value: 5,
             span: 13..14,
         }),
+        comments: ast::Comments::default(),
+    });
+    case!(parse_option("//detached\n\n /*leading*/\noption foo = 5;//trailing") => ast::Option {
+        name: ast::FullIdent::from(ast::Ident::new("foo", 32..35)),
+        field_name: None,
+        value: ast::Constant::Int(ast::Int {
+            negative: false,
+            value: 5,
+            span: 38..39,
+        }),
+        comments: ast::Comments {
+            leading_detached_comments: vec!["detached\n".to_owned()],
+            leading_comment: Some("leading".to_owned()),
+            trailing_comment: Some("trailing".to_owned()),
+        },
     });
     case!(parse_option("option (foo.bar) = \"hello\";") => ast::Option {
         name: ast::FullIdent::from(vec![
@@ -43,6 +58,7 @@ pub fn parse_option() {
             value: "hello".to_string(),
             span: 19..26,
         }),
+        comments: ast::Comments::default(),
     });
     case!(parse_option("option (foo).bar = true;") => ast::Option {
         name: ast::FullIdent::from(ast::Ident::new("foo", 8..11)),
@@ -51,6 +67,7 @@ pub fn parse_option() {
             value: true,
             span: 19..23,
         }),
+        comments: ast::Comments::default(),
     });
     case!(parse_option("option ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier or '('".to_owned(),
@@ -86,12 +103,25 @@ fn parse_enum() {
         values: vec![],
         options: vec![],
         reserved: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_enum("enum Foo { ; ; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
         values: vec![],
         options: vec![],
         reserved: vec![],
+        comments: ast::Comments::default(),
+    });
+    case!(parse_enum("/*detached*//*leading*/\nenum Foo {\n//trailing\n\n; ; }") => ast::Enum {
+        name: ast::Ident::new("Foo", 29..32),
+        values: vec![],
+        options: vec![],
+        reserved: vec![],
+        comments: ast::Comments {
+            leading_detached_comments: vec!["detached".to_owned()],
+            leading_comment: Some("leading".to_owned()),
+            trailing_comment: Some("trailing\n".to_owned()),
+        },
     });
     case!(parse_enum("enum Foo { BAR = 1; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -103,9 +133,11 @@ fn parse_enum() {
                 span: 17..18,
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
         options: vec![],
         reserved: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_enum("enum Foo { option bar = 'quz' ; VAL = -1; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -117,6 +149,7 @@ fn parse_enum() {
                 span: 39..40,
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
         options: vec![ast::Option {
             name: ast::FullIdent::from(ast::Ident::new("bar", 18..21)),
@@ -125,8 +158,10 @@ fn parse_enum() {
                 value: "quz".to_owned(),
                 span: 24..29
             }),
+            comments: ast::Comments::default(),
         }],
         reserved: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_enum("enum Foo { BAR = 0 [opt = 0.5]; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -144,10 +179,13 @@ fn parse_enum() {
                     value: 0.5,
                     span: 26..29
                 }),
+                comments: ast::Comments::default(),
             }],
+            comments: ast::Comments::default(),
         }],
         options: vec![],
         reserved: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_enum("enum Foo { BAR = 0; reserved -1 to max; }") => ast::Enum {
         name: ast::Ident::new("Foo", 5..8),
@@ -159,6 +197,7 @@ fn parse_enum() {
                 span: 17..18,
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
         options: vec![],
         reserved: vec![ast::Reserved::Ranges(vec![
@@ -170,7 +209,8 @@ fn parse_enum() {
                 },
                 end: ast::ReservedRangeEnd::Max,
             },
-        ])],
+        ], ast::Comments::default())],
+        comments: ast::Comments::default(),
     });
     case!(parse_enum("enum 3") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
@@ -205,16 +245,29 @@ fn parse_service() {
         name: ast::Ident::new("Foo", 8..11),
         options: vec![],
         methods: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { ; ; }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
         options: vec![],
         methods: vec![],
+        comments: ast::Comments::default(),
+    });
+    case!(parse_service("//detached\n\n//leading\nservice Foo {\n/* nottrailing */; ; }") => ast::Service {
+        name: ast::Ident::new("Foo", 30..33),
+        options: vec![],
+        methods: vec![],
+        comments: ast::Comments {
+            leading_detached_comments: vec!["detached\n".to_owned()],
+            leading_comment: Some("leading\n".to_owned()),
+            trailing_comment: None,
+        },
     });
     case!(parse_service("service service { }") => ast::Service {
         name: ast::Ident::new("service", 8..15),
         options: vec![],
         methods: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { rpc bar(A) returns (B.C); }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
@@ -235,7 +288,9 @@ fn parse_service() {
                 ]),
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { rpc bar(stream .A.B) returns (stream .C); }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
@@ -256,7 +311,9 @@ fn parse_service() {
                 name: FullIdent::from(ast::Ident::new("C", 52..53)),
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { rpc bar(A) returns (B.C) { } }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
@@ -277,7 +334,9 @@ fn parse_service() {
                 ]),
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { rpc bar(A) returns (B.C) { ; ; } }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
@@ -298,7 +357,9 @@ fn parse_service() {
                 ]),
             },
             options: vec![],
+            comments: ast::Comments::default(),
         }],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service Foo { rpc bar(A) returns (B.C) { option opt = -1; } }") => ast::Service {
         name: ast::Ident::new("Foo", 8..11),
@@ -325,9 +386,12 @@ fn parse_service() {
                     negative: true,
                     value: 1,
                     span: 55..56,
-                })
+                }),
+                comments: ast::Comments::default(),
             }],
+            comments: ast::Comments::default(),
         }],
+        comments: ast::Comments::default(),
     });
     case!(parse_service("service ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
@@ -405,12 +469,25 @@ fn parse_service() {
 pub fn parse_package() {
     case!(parse_package("package foo;") => ast::Package {
         name: ast::FullIdent::from(ast::Ident::new("foo", 8..11)),
+        comments: ast::Comments::default(),
+    });
+    case!(parse_package("//detached\n//detached2\n\n//detached3\n\npackage foo;\n/*trailing*/") => ast::Package {
+        name: ast::FullIdent::from(ast::Ident::new("foo", 45..48)),
+        comments: ast::Comments {
+            leading_detached_comments: vec![
+                "detached\ndetached2\n".to_owned(),
+                "detached3\n".to_owned(),
+            ],
+            leading_comment: None,
+            trailing_comment: Some("trailing".to_owned()),
+        },
     });
     case!(parse_package("package foo.bar;") => ast::Package {
         name: ast::FullIdent::from(vec![
             ast::Ident::new("foo", 8..11),
             ast::Ident::new("bar", 12..15),
         ]),
+        comments: ast::Comments::default(),
     });
     case!(parse_package("package =") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
@@ -432,6 +509,19 @@ pub fn parse_import() {
             value: "foo".to_owned(),
             span: 7..12,
         },
+        comments: ast::Comments::default(),
+    });
+    case!(parse_import("/*leading*/\nimport 'foo';/*trailing*/\n") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo".to_owned(),
+            span: 19..24,
+        },
+        comments: ast::Comments {
+            leading_detached_comments: vec![],
+            leading_comment: Some("leading".to_owned()),
+            trailing_comment: Some("trailing".to_owned()),
+        },
     });
     case!(parse_import("import weak \"foo\";") => ast::Import {
         kind: Some(ast::ImportKind::Weak),
@@ -439,6 +529,7 @@ pub fn parse_import() {
             value: "foo".to_owned(),
             span: 12..17,
         },
+        comments: ast::Comments::default(),
     });
     case!(parse_import("import public 'f\\x6fo';") => ast::Import {
         kind: Some(ast::ImportKind::Public),
@@ -446,6 +537,7 @@ pub fn parse_import() {
             value: "foo".to_owned(),
             span: 14..22,
         },
+        comments: ast::Comments::default(),
     });
     case!(parse_import("import ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a string literal, 'public' or 'weak'".to_owned(),
@@ -472,6 +564,19 @@ pub fn parse_extension() {
             name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
         },
         fields: vec![],
+        comments: ast::Comments::default(),
+    });
+    case!(parse_extension("/*leading*/extend Foo {\n//trailing\n }") => ast::Extension {
+        extendee: ast::TypeName {
+            leading_dot: None,
+            name: ast::FullIdent::from(ast::Ident::new("Foo", 18..21)),
+        },
+        fields: vec![],
+        comments: ast::Comments {
+            leading_detached_comments: vec![],
+            leading_comment: Some("leading".to_owned()),
+            trailing_comment: Some("trailing\n".to_owned()),
+        },
     });
     case!(parse_extension("extend Foo { ; ; }") => ast::Extension {
         extendee: ast::TypeName {
@@ -479,6 +584,7 @@ pub fn parse_extension() {
             name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
         },
         fields: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_extension("extend Foo.Foo { optional int32 bar = 126; }") => ast::Extension {
         extendee: ast::TypeName {
@@ -499,8 +605,10 @@ pub fn parse_extension() {
                     span: 38..41,
                 },
                 options: vec![],
+                comments: ast::Comments::default(),
             }),
         ],
+        comments: ast::Comments::default(),
     });
     case!(parse_extension("extend .Foo { optional int32 bar = 126; repeated string quz = 127; }") => ast::Extension {
         extendee: ast::TypeName {
@@ -518,6 +626,7 @@ pub fn parse_extension() {
                     span: 35..38,
                 },
                 options: vec![],
+                comments: ast::Comments::default(),
             }),
             ast::MessageField::Field(ast::Field {
                 label: Some(ast::FieldLabel::Repeated),
@@ -529,8 +638,10 @@ pub fn parse_extension() {
                     span: 62..65,
                 },
                 options: vec![],
+                comments: ast::Comments::default(),
             }),
         ],
+        comments: ast::Comments::default(),
     });
     case!(parse_extension("extend Foo { repeated group A = 1 { optional string name = 2; } }") => ast::Extension {
         extendee: ast::TypeName {
@@ -557,13 +668,16 @@ pub fn parse_extension() {
                                 value: 2,
                                 span: 59..60
                             },
-                            options: vec![]
+                            options: vec![],
+                            comments: ast::Comments::default(),
                         })
                     ],
                     ..Default::default()
-                }
+                },
+                comments: ast::Comments::default(),
             }),
         ],
+        comments: ast::Comments::default(),
     });
     case!(parse_extension("extend ] ") => Err(vec![ParseError::UnexpectedToken {
         expected: "a type name".to_owned(),
@@ -584,6 +698,13 @@ pub fn parse_extension() {
 
 #[test]
 pub fn parse_reserved() {
+    case!(parse_reserved("//detached\n\nreserved 'foo';//trailing") => ast::Reserved::Names(vec![
+        ast::Ident::new("foo", 21..26),
+    ], ast::Comments {
+        leading_detached_comments: vec!["detached\n".to_owned()],
+        leading_comment: None,
+        trailing_comment: Some("trailing".to_owned()),
+    }));
     case!(parse_reserved("reserved 0, 2 to 3, 5 to max;") => ast::Reserved::Ranges(vec![
         ast::ReservedRange {
             start: ast::Int { negative: false, value: 0, span: 9..10 },
@@ -599,17 +720,17 @@ pub fn parse_reserved() {
             start: ast::Int { negative: false, value: 5, span: 20..21 },
             end: ast::ReservedRangeEnd::Max,
         },
-    ]));
+    ], ast::Comments::default()));
     case!(parse_reserved("reserved -1;") => ast::Reserved::Ranges(vec![
         ast::ReservedRange {
             start: ast::Int { negative: true, value: 1, span: 10..11 },
             end: ast::ReservedRangeEnd::None,
         }
-    ]));
+    ], ast::Comments::default()));
     case!(parse_reserved("reserved 'foo', 'bar';") => ast::Reserved::Names(vec![
         ast::Ident::new("foo", 9..14),
         ast::Ident::new("bar", 16..21),
-    ]));
+    ], ast::Comments::default()));
     case!(parse_reserved("reserved ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer or string".to_owned(),
         found: Token::Semicolon,
@@ -617,13 +738,28 @@ pub fn parse_reserved() {
     }]));
     case!(parse_reserved("reserved '0foo';") => ast::Reserved::Names(vec![
         ast::Ident::new("0foo", 9..15),
-    ]), Err(vec![ParseError::InvalidIdentifier {
+    ], ast::Comments::default()), Err(vec![ParseError::InvalidIdentifier {
         span: SourceSpan::from(9..15),
     }]));
 }
 
 #[test]
 pub fn parse_group() {
+    case!(parse_field("//leading\noptional group A = 1 {\n/*trailing*/ }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("A", 25..26),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 29..30,
+        },
+        body: ast::MessageBody::default(),
+        comments: ast::Comments {
+            leading_detached_comments: vec![],
+            leading_comment: Some("leading\n".to_owned()),
+            trailing_comment: Some("trailing".to_owned()),
+        },
+    }));
     case!(parse_field("optional group A = 1 { }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
         name: ast::Ident::new("A", 15..16),
@@ -633,6 +769,7 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        comments: ast::Comments::default(),
     }));
     case!(parse_field("optional group A = 1 { ; ; }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
@@ -643,6 +780,7 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        comments: ast::Comments::default(),
     }));
     case!(parse_field("optional group A = 1 { optional sint32 foo = 2; }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
@@ -663,11 +801,13 @@ pub fn parse_group() {
                         value: 2,
                         span: 45..46
                     },
-                    options: vec![]
+                    options: vec![],
+                    comments: ast::Comments::default(),
                 })
             ],
             ..Default::default()
-        }
+        },
+        comments: ast::Comments::default(),
     }));
     case!(parse_field("optional group a = 1 { }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
@@ -678,6 +818,7 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        comments: ast::Comments::default(),
     }), Err(vec![ParseError::InvalidGroupName {
         span: SourceSpan::from(15..16),
     }]));
@@ -728,6 +869,23 @@ pub fn parse_map() {
             span: 32..33,
         },
         options: vec![],
+        comments: ast::Comments::default(),
+    });
+    case!(parse_map("/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n") => ast::Map {
+        key_ty: ast::KeyTy::String,
+        ty: ast::Ty::Int32,
+        name: ast::Ident::new("projects", 30..38),
+        number: ast::Int {
+            negative: false,
+            value: 3,
+            span: 41..42,
+        },
+        options: vec![],
+        comments: ast::Comments {
+            leading_detached_comments: vec![],
+            leading_comment: Some("leading".to_string()),
+            trailing_comment: Some("trailing".to_owned()),
+        },
     });
     case!(parse_map("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];") => ast::Map {
         key_ty: ast::KeyTy::Int32,
@@ -746,6 +904,7 @@ pub fn parse_map() {
                     value: true,
                     span: 33..37
                 }),
+                comments: ast::Comments::default(),
             },
             ast::Option {
                 name: ast::FullIdent::from(ast::Ident::new("opt2", 39..43)),
@@ -754,8 +913,10 @@ pub fn parse_map() {
                     value: 4.5,
                     span: 46..49
                 }),
+                comments: ast::Comments::default(),
             },
         ],
+        comments: ast::Comments::default(),
     });
     case!(parse_map("map>") => Err(vec![ParseError::UnexpectedToken {
         expected: "'<'".to_owned(),
@@ -809,10 +970,21 @@ pub fn parse_message() {
     case!(parse_message("message Foo {}") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody::default(),
+        comments: ast::Comments::default(),
+    });
+    case!(parse_message("//detached\n/*leading*/message Foo {/*trailing*/}") => ast::Message {
+        name: ast::Ident::new("Foo", 30..33),
+        body: ast::MessageBody::default(),
+        comments: ast::Comments {
+            leading_detached_comments: vec!["detached\n".to_owned()],
+            leading_comment: Some("leading".to_owned()),
+            trailing_comment: Some("trailing".to_owned()),
+        },
     });
     case!(parse_message("message Foo { ; ; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody::default(),
+        comments: ast::Comments::default(),
     });
     case!(parse_message("message Foo {\
         message Bar {}\
@@ -824,12 +996,14 @@ pub fn parse_message() {
             messages: vec![ast::Message {
                 name: ast::Ident::new("Bar", 21..24),
                 body: ast::MessageBody::default(),
+                comments: ast::Comments::default(),
             }],
             enums: vec![ast::Enum {
                 name: ast::Ident::new("Quz", 32..35),
                 values: vec![],
                 options: vec![],
                 reserved: vec![],
+                comments: ast::Comments::default(),
             }],
             extensions: vec![ast::Extension {
                 extendee: ast::TypeName {
@@ -837,9 +1011,11 @@ pub fn parse_message() {
                     name: ast::FullIdent::from(ast::Ident::new("Bar", 45..48)),
                 },
                 fields: vec![],
+                comments: ast::Comments::default(),
             }],
             ..Default::default()
         },
+        comments: ast::Comments::default(),
     });
     case!(parse_message("message Foo {
         fixed32 a = 1;
@@ -866,6 +1042,7 @@ pub fn parse_message() {
                         span: 34..35
                     },
                     options: vec![],
+                    comments: ast::Comments::default(),
                 }),
                 ast::MessageField::Map(ast::Map {
                     key_ty: ast::KeyTy::Int32,
@@ -877,6 +1054,7 @@ pub fn parse_message() {
                         span: 66..67,
                     },
                     options: vec![],
+                    comments: ast::Comments::default(),
                 }),
                 ast::MessageField::Group(ast::Group {
                     label: Some(ast::FieldLabel::Optional),
@@ -897,11 +1075,13 @@ pub fn parse_message() {
                                     value: 1,
                                     span: 132..133,
                                 },
-                                options: vec![]
+                                options: vec![],
+                                comments: ast::Comments::default(),
                             })
                         ],
                         ..Default::default()
                     },
+                    comments: ast::Comments::default(),
                 }),
             ],
             oneofs: vec![ast::Oneof {
@@ -917,10 +1097,13 @@ pub fn parse_message() {
                         span: 187..188,
                     },
                     options: vec![],
-                })]
+                    comments: ast::Comments::default(),
+                })],
+                comments: ast::Comments::default(),
             }],
             ..Default::default()
         },
+        comments: ast::Comments::default(),
     });
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
@@ -935,11 +1118,23 @@ pub fn parse_oneof() {
         name: ast::Ident::new("Foo", 6..9),
         fields: vec![],
         options: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_oneof("oneof Foo { ; ; }") => ast::Oneof {
         name: ast::Ident::new("Foo", 6..9),
         fields: vec![],
         options: vec![],
+        comments: ast::Comments::default(),
+    });
+    case!(parse_oneof("/*detached1*///detached2\n\n//leading\noneof Foo {/*nottrailing*/ ; ; }") => ast::Oneof {
+        name: ast::Ident::new("Foo", 42..45),
+        fields: vec![],
+        options: vec![],
+        comments: ast::Comments {
+            leading_detached_comments: vec!["detached1".to_owned(), "detached2\n".to_owned()],
+            leading_comment: Some("leading\n".to_owned()),
+            trailing_comment: None,
+        },
     });
     case!(parse_oneof("oneof Foo { int32 bar = 1; }") => ast::Oneof {
         name: ast::Ident::new("Foo", 6..9),
@@ -953,8 +1148,10 @@ pub fn parse_oneof() {
                 span: 24..25,
             },
             options: vec![],
+            comments: ast::Comments::default(),
         })],
         options: vec![],
+        comments: ast::Comments::default(),
     });
     case!(parse_oneof("oneof 10.4") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
@@ -996,6 +1193,7 @@ pub fn parse_file() {
                 ast::Ident::new("protox", 17..23),
                 ast::Ident::new("lib", 24..27),
             ]),
+            comments: ast::Comments::default(),
         }],
         imports: vec![],
         options: vec![],
@@ -1013,7 +1211,8 @@ pub fn parse_file() {
         options: vec![ast::Option {
             name: ast::FullIdent::from(ast::Ident::new("optimize_for", 44..56)),
             field_name: None,
-            value: ast::Constant::FullIdent(ast::FullIdent::from(ast::Ident::new("SPEED", 59..64)))
+            value: ast::Constant::FullIdent(ast::FullIdent::from(ast::Ident::new("SPEED", 59..64))),
+            comments: ast::Comments::default(),
         }],
     });
     case!(parse_file("
@@ -1029,6 +1228,7 @@ pub fn parse_file() {
                 value: "foo.proto".to_owned(),
                 span: 44..55,
             },
+            comments: ast::Comments::default(),
         }],
         definitions: vec![],
         options: vec![],
@@ -1053,6 +1253,7 @@ pub fn parse_file() {
             values: vec![],
             options: vec![],
             reserved: vec![],
+            comments: ast::Comments::default(),
         })],
         options: vec![],
     }, Err(vec![
@@ -1067,4 +1268,49 @@ pub fn parse_file() {
             span: SourceSpan::from(97..98),
         },
     ]));
+    case!(parse_file("
+        syntax = 'proto3';
+
+        message Foo {
+            // trailing
+
+            // detached
+
+            // leading
+            int32 bar = 1;
+            // trailing2
+        }
+    ") => ast::File {
+        syntax: ast::Syntax::Proto3,
+        packages: vec![],
+        imports: vec![],
+        definitions: vec![ast::Definition::Message(ast::Message {
+            name: ast::Ident::new("Foo", 45..48),
+            body: ast::MessageBody {
+                fields: vec![ast::MessageField::Field(ast::Field {
+                    label: None,
+                    name: ast::Ident::new("bar", 142..145),
+                    ty: ast::Ty::Int32,
+                    number: ast::Int {
+                        negative: false,
+                        value: 1,
+                        span: 148..149,
+                    },
+                    options: vec![],
+                    comments: ast::Comments {
+                        leading_detached_comments: vec![" detached\n".to_owned()],
+                        leading_comment: Some(" leading\n".to_owned()),
+                        trailing_comment: Some(" trailing2\n".to_owned()),
+                    },
+                })],
+                ..Default::default()
+            },
+            comments: ast::Comments {
+                leading_detached_comments: vec![],
+                leading_comment: None,
+                trailing_comment: Some(" trailing\n".to_owned()),
+            },
+        })],
+        options: vec![],
+    });
 }

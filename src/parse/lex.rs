@@ -512,7 +512,8 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     #[derive(Logos)]
     enum Component {
-        #[token("*/")]
+        // Optionally include a trailing newline for consistency with line comments
+        #[regex(r#"\*/[\t\v\f\r ]*\n?"#)]
         EndComment,
         #[token("/*")]
         StartComment,
@@ -552,17 +553,17 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                 if stripped.starts_with('*') && !stripped.starts_with("*/") {
                     comment_lexer.bump(1);
                 }
-            },
+            }
             Some(Component::Text) => cow_push_str(&mut result, comment_lexer.slice()),
             None => {
                 if let Some(last_end) = last_end {
                     // This must be a nested block comment
-                    break dbg!(last_end);
+                    break last_end;
                 } else {
                     lex.extras
                         .errors
                         .push(ParseError::UnexpectedEof { expected: None });
-                    break dbg!(lex.remainder().len());
+                    break lex.remainder().len();
                 }
             }
         }
@@ -771,7 +772,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n ".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -789,7 +790,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n quz".into())));
+        assert_eq!(lexer.next(), Some(Token::Comment("  bar\nquz".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
         assert_eq!(lexer.next(), None);
 
@@ -814,5 +815,16 @@ mod tests {
             lexer.extras.errors,
             vec![ParseError::UnexpectedEof { expected: None }]
         );
+    }
+
+    #[test]
+    fn block_comment_trailing_newline() {
+        let source = "/* bar */\n";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar ".into())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
     }
 }
