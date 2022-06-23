@@ -9,9 +9,19 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2018"
 
+[[bin]]
+name = "protox"
+path = "src/main.rs"
+required-features = ["bin"]
+
+[features]
+bin = ["dep:clap", "miette/fancy"]
+
 [dependencies]
+clap = { version = "3.2.6", features = ["derive"], optional = true }
 logos = "0.12.0"
 miette = "4.7.1"
+prost = "0.10.4"
 prost-types = "0.10.1"
 thiserror = "1.0.31"
 

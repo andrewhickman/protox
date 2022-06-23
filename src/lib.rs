@@ -4,12 +4,12 @@ mod ast;
 mod compile;
 mod parse;
 
-use std::{fmt, path::Path};
+use std::path::Path;
 
+use miette::{Diagnostic, NamedSource};
 use parse::ParseError;
 use prost_types::FileDescriptorSet;
 use thiserror::Error;
-use miette::{Diagnostic, NamedSource};
 
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,

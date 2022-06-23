@@ -343,9 +343,9 @@ fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> u64
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
             let start = lex.span().start + prefix_len;
             let end = lex.span().end;
-            lex.extras.errors.push(ParseError::IntegerOutOfRange {
-                span: start..end,
-            });
+            lex.extras
+                .errors
+                .push(ParseError::IntegerOutOfRange { span: start..end });
             // Return a dummy value so we can continue parsing
             Default::default()
         }
@@ -539,9 +539,9 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
             Some(Component::StartComment) => {
                 let start = lex.span().end + comment_lexer.span().start;
                 let end = lex.span().end + comment_lexer.span().end;
-                lex.extras.errors.push(ParseError::NestedBlockComment {
-                    span: start..end,
-                });
+                lex.extras
+                    .errors
+                    .push(ParseError::NestedBlockComment { span: start..end });
                 depth += 1;
             }
             Some(Component::Newline) => {
@@ -653,9 +653,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::InvalidStringCharacters {
-                span: 1..2,
-            }]
+            vec![ParseError::InvalidStringCharacters { span: 1..2 }]
         );
     }
 
@@ -670,9 +668,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::UnterminatedString {
-                span: 7..8,
-            }]
+            vec![ParseError::UnterminatedString { span: 7..8 }]
         );
     }
 
@@ -687,9 +683,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::InvalidStringEscape {
-                span: 1..2,
-            }]
+            vec![ParseError::InvalidStringEscape { span: 1..2 }]
         );
     }
 
@@ -704,9 +698,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::InvalidStringEscape {
-                span: 1..3,
-            }]
+            vec![ParseError::InvalidStringEscape { span: 1..3 }]
         );
     }
 
@@ -776,9 +768,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::NestedBlockComment {
-                span: 7..9,
-            }]
+            vec![ParseError::NestedBlockComment { span: 7..9 }]
         );
     }
 
@@ -794,9 +784,7 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::NestedBlockComment {
-                span: 7..9,
-            }]
+            vec![ParseError::NestedBlockComment { span: 7..9 }]
         );
     }
 

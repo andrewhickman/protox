@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
                         ast::Syntax::Proto3
                     }
                     _ => {
-                        self.add_error(ParseError::UnknownSyntax { span});
+                        self.add_error(ParseError::UnknownSyntax { span });
                         return Err(());
                     }
                 },
