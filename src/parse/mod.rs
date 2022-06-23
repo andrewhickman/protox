@@ -1,7 +1,7 @@
 use std::{fmt::Write, iter::once};
 
 use logos::{Lexer, Logos, Span};
-use miette::{Diagnostic, SourceSpan};
+use miette::Diagnostic;
 use thiserror::Error;
 
 mod comments;
@@ -18,36 +18,36 @@ use crate::ast::{self, FieldLabel, FullIdent};
 #[diagnostic()]
 pub(crate) enum ParseError {
     InvalidToken {
-        span: SourceSpan,
+        span: Span,
     },
     IntegerOutOfRange {
-        span: SourceSpan,
+        span: Span,
     },
     InvalidStringCharacters {
-        span: SourceSpan,
+        span: Span,
     },
     UnterminatedString {
-        span: SourceSpan,
+        span: Span,
     },
     InvalidStringEscape {
-        span: SourceSpan,
+        span: Span,
     },
     NestedBlockComment {
-        span: SourceSpan,
+        span: Span,
     },
     UnknownSyntax {
-        span: SourceSpan,
+        span: Span,
     },
     InvalidIdentifier {
-        span: SourceSpan,
+        span: Span,
     },
     InvalidGroupName {
-        span: SourceSpan,
+        span: Span,
     },
     UnexpectedToken {
         expected: String,
         found: Token<'static>,
-        span: SourceSpan,
+        span: Span,
     },
     UnexpectedEof {
         expected: Option<String>,
@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
                         ast::Syntax::Proto3
                     }
                     _ => {
-                        self.add_error(ParseError::UnknownSyntax { span: span.into() });
+                        self.add_error(ParseError::UnknownSyntax { span});
                         return Err(());
                     }
                 },
@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
                 let name = self.parse_ident()?;
                 if !is_valid_group_name(&name.value) {
                     self.add_error(ParseError::InvalidGroupName {
-                        span: SourceSpan::from(name.span.clone()),
+                        span: name.span.clone(),
                     });
                 }
 
@@ -779,7 +779,7 @@ impl<'a> Parser<'a> {
         let string = self.parse_string()?;
         if !is_valid_ident(&string.value) {
             self.add_error(ParseError::InvalidIdentifier {
-                span: SourceSpan::from(string.span.clone()),
+                span: string.span.clone(),
             })
         }
         Ok(ast::Ident {
@@ -1181,7 +1181,7 @@ impl<'a> Parser<'a> {
             Some(Token::Error) => {
                 self.comments.reset();
                 self.add_error(ParseError::InvalidToken {
-                    span: self.lexer.span().into(),
+                    span: self.lexer.span(),
                 });
                 Some((Token::Error, self.lexer.span()))
             }
@@ -1197,7 +1197,7 @@ impl<'a> Parser<'a> {
                 self.add_error(ParseError::UnexpectedToken {
                     expected: expected.to_string(),
                     found: found.to_static(),
-                    span: span.into(),
+                    span,
                 });
                 Err(())
             }

@@ -19,6 +19,10 @@ impl Compiler {
     }
 
     pub fn add_file(&mut self, file: impl AsRef<Path>) -> Result<(), Error> {
+        for include in &self.includes {
+
+        }
+
         let source = std::fs::read_to_string(file).unwrap();
         let _file = crate::parse::parse(&source).unwrap();
         todo!()
@@ -27,4 +31,8 @@ impl Compiler {
     pub fn build_file_descriptor_set(self) -> FileDescriptorSet {
         todo!()
     }
+}
+
+fn naive_path_eq(lhs: &Path, rhs: &Path) -> bool {
+    lhs.components().eq(rhs.components())
 }

@@ -72,27 +72,27 @@ pub fn parse_option() {
     case!(parse_option("option ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier or '('".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(7..8),
+        span: 7..8,
     }]));
     case!(parse_option("option foo (") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or '='".to_owned(),
         found: Token::LeftParen,
-        span: SourceSpan::from(11..12),
+        span: 11..12,
     }]));
     case!(parse_option("option foo.]") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::RightBracket,
-        span: SourceSpan::from(11..12),
+        span: 11..12,
     }]));
     case!(parse_option("option foo = =") => Err(vec![ParseError::UnexpectedToken {
         expected: "a constant".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(13..14),
+        span: 13..14,
     }]));
     case!(parse_option("option foo = 1 )") => Err(vec![ParseError::UnexpectedToken {
         expected: "';'".to_owned(),
         found: Token::RightParen,
-        span: SourceSpan::from(15..16),
+        span: 15..16,
     }]));
 }
 
@@ -215,27 +215,27 @@ fn parse_enum() {
     case!(parse_enum("enum 3") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::IntLiteral(3),
-        span: SourceSpan::from(5..6),
+        span: 5..6,
     }]));
     case!(parse_enum("enum Foo 0.1") => Err(vec![ParseError::UnexpectedToken {
         expected: "'{'".to_owned(),
         found: Token::FloatLiteral(0.1),
-        span: SourceSpan::from(9..12),
+        span: 9..12,
     }]));
     case!(parse_enum("enum Foo {]") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier, '}', 'reserved' or 'option'".to_owned(),
         found: Token::RightBracket,
-        span: SourceSpan::from(10..11),
+        span: 10..11,
     }]));
     case!(parse_enum("enum Foo { BAR .") => Err(vec![ParseError::UnexpectedToken {
         expected: "'='".to_owned(),
         found: Token::Dot,
-        span: SourceSpan::from(15..16),
+        span: 15..16,
     }]));
     case!(parse_enum("enum Foo { BAR = foo") => Err(vec![ParseError::UnexpectedToken {
         expected: "an integer".to_owned(),
         found: Token::Ident("foo".into()),
-        span: SourceSpan::from(17..20),
+        span: 17..20,
     }]));
 }
 
@@ -396,72 +396,72 @@ fn parse_service() {
     case!(parse_service("service ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(8..9),
+        span: 8..9,
     }]));
     case!(parse_service("service Foo (") => Err(vec![ParseError::UnexpectedToken {
         expected: "'{'".to_owned(),
         found: Token::LeftParen,
-        span: SourceSpan::from(12..13),
+        span: 12..13,
     }]));
     case!(parse_service("service Foo { bar") => Err(vec![ParseError::UnexpectedToken {
         expected: "'rpc', '}', 'option' or ';'".to_owned(),
         found: Token::Ident("bar".into()),
-        span: SourceSpan::from(14..17),
+        span: 14..17,
     }]));
     case!(parse_service("service Foo { rpc =") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(18..19),
+        span: 18..19,
     }]));
     case!(parse_service("service Foo { rpc bar{") => Err(vec![ParseError::UnexpectedToken {
         expected: "'('".to_owned(),
         found: Token::LeftBrace,
-        span: SourceSpan::from(21..22),
+        span: 21..22,
     }]));
     case!(parse_service("service Foo { rpc bar(+") => Err(vec![ParseError::UnexpectedToken {
         expected: "'stream' or a type name".to_owned(),
         found: Token::Plus,
-        span: SourceSpan::from(22..23),
+        span: 22..23,
     }]));
     case!(parse_service("service Foo { rpc bar(A(") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or ')'".to_owned(),
         found: Token::LeftParen,
-        span: SourceSpan::from(23..24),
+        span: 23..24,
     }]));
     case!(parse_service("service Foo { rpc bar(A) [") => Err(vec![ParseError::UnexpectedToken {
         expected: "'returns'".to_owned(),
         found: Token::LeftBracket,
-        span: SourceSpan::from(25..26),
+        span: 25..26,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns =") => Err(vec![ParseError::UnexpectedToken {
         expected: "'('".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(33..34),
+        span: 33..34,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns ()") => Err(vec![ParseError::UnexpectedToken {
         expected: "'stream' or a type name".to_owned(),
         found: Token::RightParen,
-        span: SourceSpan::from(34..35),
+        span: 34..35,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns (stream =)") => Err(vec![ParseError::UnexpectedToken {
         expected: "a type name".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(41..42),
+        span: 41..42,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns (stream B}") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or ')'".to_owned(),
         found: Token::RightBrace,
-        span: SourceSpan::from(42..43),
+        span: 42..43,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns (stream B) )") => Err(vec![ParseError::UnexpectedToken {
         expected: "';' or '{'".to_owned(),
         found: Token::RightParen,
-        span: SourceSpan::from(44..45),
+        span: 44..45,
     }]));
     case!(parse_service("service Foo { rpc bar(A) returns (stream B) {rpc") => Err(vec![ParseError::UnexpectedToken {
         expected: "'option', '}' or ';'".to_owned(),
         found: Token::Rpc,
-        span: SourceSpan::from(45..48),
+        span: 45..48,
     }]));
 }
 
@@ -492,12 +492,12 @@ pub fn parse_package() {
     case!(parse_package("package =") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(8..9),
+        span: 8..9,
     }]));
     case!(parse_package("package foo)") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or ';'".to_owned(),
         found: Token::RightParen,
-        span: SourceSpan::from(11..12),
+        span: 11..12,
     }]));
 }
 
@@ -542,17 +542,17 @@ pub fn parse_import() {
     case!(parse_import("import ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a string literal, 'public' or 'weak'".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(7..8),
+        span: 7..8,
     }]));
     case!(parse_import("import public ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a string literal".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(14..15),
+        span: 14..15,
     }]));
     case!(parse_import("import 'foo' message") => Err(vec![ParseError::UnexpectedToken {
         expected: "';'".to_owned(),
         found: Token::Message,
-        span: SourceSpan::from(13..20),
+        span: 13..20,
     }]));
 }
 
@@ -682,17 +682,17 @@ pub fn parse_extension() {
     case!(parse_extension("extend ] ") => Err(vec![ParseError::UnexpectedToken {
         expected: "a type name".to_owned(),
         found: Token::RightBracket,
-        span: SourceSpan::from(7..8),
+        span: 7..8,
     }]));
     case!(parse_extension("extend Foo =") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or '{'".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(11..12),
+        span: 11..12,
     }]));
     case!(parse_extension("extend Foo { )") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, '}' or ';'".to_owned(),
         found: Token::RightParen,
-        span: SourceSpan::from(13..14),
+        span: 13..14,
     }]));
 }
 
@@ -734,12 +734,12 @@ pub fn parse_reserved() {
     case!(parse_reserved("reserved ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer or string".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(9..10),
+        span: 9..10,
     }]));
     case!(parse_reserved("reserved '0foo';") => ast::Reserved::Names(vec![
         ast::Ident::new("0foo", 9..15),
     ], ast::Comments::default()), Err(vec![ParseError::InvalidIdentifier {
-        span: SourceSpan::from(9..15),
+        span: 9..15,
     }]));
 }
 
@@ -820,37 +820,37 @@ pub fn parse_group() {
         body: ast::MessageBody::default(),
         comments: ast::Comments::default(),
     }), Err(vec![ParseError::InvalidGroupName {
-        span: SourceSpan::from(15..16),
+        span: 15..16,
     }]));
     case!(parse_field("optional group , { }") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Comma,
-        span: SourceSpan::from(15..16),
+        span: 15..16,
     }]));
     case!(parse_field("optional group a [") => Err(vec![
         ParseError::InvalidGroupName {
-            span: SourceSpan::from(15..16),
+            span: 15..16,
         },
         ParseError::UnexpectedToken {
             expected: "'='".to_owned(),
             found: Token::LeftBracket,
-            span: SourceSpan::from(17..18),
+            span: 17..18,
         },
     ]));
     case!(parse_field("optional group A = {") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer".to_owned(),
         found: Token::LeftBrace,
-        span: SourceSpan::from(19..20),
+        span: 19..20,
     }]));
     case!(parse_field("optional group A = 1 ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "'{'".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(21..22),
+        span: 21..22,
     }]));
     case!(parse_field("optional group A = 1 {]") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::RightBracket,
-        span: SourceSpan::from(22..23),
+        span: 22..23,
     }]));
 }
 
@@ -921,47 +921,47 @@ pub fn parse_map() {
     case!(parse_map("map>") => Err(vec![ParseError::UnexpectedToken {
         expected: "'<'".to_owned(),
         found: Token::RightAngleBracket,
-        span: SourceSpan::from(3..4),
+        span: 3..4,
     }]));
     case!(parse_map("map<;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an integer type or 'string'".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(4..5),
+        span: 4..5,
     }]));
     case!(parse_map("map<int32(") => Err(vec![ParseError::UnexpectedToken {
         expected: "','".to_owned(),
         found: Token::LeftParen,
-        span: SourceSpan::from(9..10),
+        span: 9..10,
     }]));
     case!(parse_map("map<string, =") => Err(vec![ParseError::UnexpectedToken {
         expected: "a field type".to_owned(),
         found: Token::Equals,
-        span: SourceSpan::from(12..13),
+        span: 12..13,
     }]));
     case!(parse_map("map<string, .Foo,") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or '>'".to_owned(),
         found: Token::Comma,
-        span: SourceSpan::from(16..17),
+        span: 16..17,
     }]));
     case!(parse_map("map<string, Foo> ;") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::Semicolon,
-        span: SourceSpan::from(17..18),
+        span: 17..18,
     }]));
     case!(parse_map("map<string, Foo> foo ]") => Err(vec![ParseError::UnexpectedToken {
         expected: "'='".to_owned(),
         found: Token::RightBracket,
-        span: SourceSpan::from(21..22),
+        span: 21..22,
     }]));
     case!(parse_map("map<string, Foo> foo = x") => Err(vec![ParseError::UnexpectedToken {
         expected: "a positive integer".to_owned(),
         found: Token::Ident("x".into()),
-        span: SourceSpan::from(23..24),
+        span: 23..24,
     }]));
     case!(parse_map("map<string, Foo> foo = 1service") => Err(vec![ParseError::UnexpectedToken {
         expected: "';' or '['".to_owned(),
         found: Token::Service,
-        span: SourceSpan::from(24..31),
+        span: 24..31,
     }]));
 }
 
@@ -1108,7 +1108,7 @@ pub fn parse_message() {
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::Comma,
-        span: SourceSpan::from(14..15),
+        span: 14..15,
     }]));
 }
 
@@ -1156,22 +1156,22 @@ pub fn parse_oneof() {
     case!(parse_oneof("oneof 10.4") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),
         found: Token::FloatLiteral(10.4),
-        span: SourceSpan::from(6..10),
+        span: 6..10,
     }]));
     case!(parse_oneof("oneof Foo <") => Err(vec![ParseError::UnexpectedToken {
         expected: "'{'".to_owned(),
         found: Token::LeftAngleBracket,
-        span: SourceSpan::from(10..11),
+        span: 10..11,
     }]));
     case!(parse_oneof("oneof Foo { ,") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, option or '}'".to_owned(),
         found: Token::Comma,
-        span: SourceSpan::from(12..13),
+        span: 12..13,
     }]));
     case!(parse_oneof("oneof Foo { bytes b = 1 }") => Err(vec![ParseError::UnexpectedToken {
         expected: "';' or '['".to_owned(),
         found: Token::RightBrace,
-        span: SourceSpan::from(24..25),
+        span: 24..25,
     }]));
 }
 
@@ -1236,7 +1236,7 @@ pub fn parse_file() {
     case!(parse_file("
         syntax = 'unknown';
     ") => Err(vec![ParseError::UnknownSyntax {
-        span: SourceSpan::from(18..27),
+        span: 18..27,
     }]));
     case!(parse_file("
         syntax = 'proto2';
@@ -1260,12 +1260,12 @@ pub fn parse_file() {
         ParseError::UnexpectedToken {
             expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_string(),
             found: Token::Comma,
-            span: SourceSpan::from(51..52),
+            span: 51..52,
         },
         ParseError::UnexpectedToken {
             expected: "'.' or '='".to_string(),
             found: Token::IntLiteral(1),
-            span: SourceSpan::from(97..98),
+            span: 97..98,
         },
     ]));
     case!(parse_file("

@@ -1,7 +1,6 @@
 use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
 use logos::{skip, Lexer, Logos};
-use miette::SourceSpan;
 
 use super::ParseError;
 
@@ -345,7 +344,7 @@ fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> u64
             let start = lex.span().start + prefix_len;
             let end = lex.span().end;
             lex.extras.errors.push(ParseError::IntegerOutOfRange {
-                span: (start..end).into(),
+                span: start..end,
             });
             // Return a dummy value so we can continue parsing
             Default::default()
@@ -428,12 +427,11 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
             Some(Component::Error) => {
                 let start = lex.span().end + char_lexer.span().start;
                 let end = lex.span().end + char_lexer.span().end;
-                let span = SourceSpan::from(start..end);
 
                 if char_lexer.slice().contains('\n') {
                     lex.extras
                         .errors
-                        .push(ParseError::UnterminatedString { span });
+                        .push(ParseError::UnterminatedString { span: start..end });
                     break;
                 } else if let Some(err) = lex.extras.errors.last_mut() {
                     match err {
@@ -441,8 +439,8 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                         | ParseError::InvalidStringEscape { span: err_span } => {
                             // If the last character was invalid, extend the span of its error
                             // instead of adding a new error.
-                            if (err_span.offset() + err_span.len()) == start {
-                                *err_span = SourceSpan::from(err_span.offset()..end);
+                            if err_span.end == start {
+                                *err_span = err_span.start..end;
                                 continue;
                             }
                         }
@@ -453,12 +451,12 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                 if char_lexer.slice().starts_with('\\') {
                     lex.extras
                         .errors
-                        .push(ParseError::InvalidStringEscape { span });
+                        .push(ParseError::InvalidStringEscape { span: start..end });
                     continue;
                 } else {
                     lex.extras
                         .errors
-                        .push(ParseError::InvalidStringCharacters { span });
+                        .push(ParseError::InvalidStringCharacters { span: start..end });
                     continue;
                 }
             }
@@ -542,7 +540,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                 let start = lex.span().end + comment_lexer.span().start;
                 let end = lex.span().end + comment_lexer.span().end;
                 lex.extras.errors.push(ParseError::NestedBlockComment {
-                    span: SourceSpan::from(start..end),
+                    span: start..end,
                 });
                 depth += 1;
             }
@@ -627,7 +625,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::IntegerOutOfRange {
-                span: SourceSpan::from((0, source.len() - 2)),
+                span: 0..(source.len() - 2),
             }]
         );
     }
@@ -656,7 +654,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::InvalidStringCharacters {
-                span: SourceSpan::from((1, 1)),
+                span: 1..2,
             }]
         );
     }
@@ -673,7 +671,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::UnterminatedString {
-                span: SourceSpan::from((7, 1))
+                span: 7..8,
             }]
         );
     }
@@ -690,7 +688,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::InvalidStringEscape {
-                span: SourceSpan::from((1, 1))
+                span: 1..2,
             }]
         );
     }
@@ -707,7 +705,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::InvalidStringEscape {
-                span: SourceSpan::from((1, 2))
+                span: 1..3,
             }]
         );
     }
@@ -779,7 +777,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::NestedBlockComment {
-                span: SourceSpan::from((7, 2))
+                span: 7..9,
             }]
         );
     }
@@ -797,7 +795,7 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::NestedBlockComment {
-                span: SourceSpan::from((7, 2))
+                span: 7..9,
             }]
         );
     }

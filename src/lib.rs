@@ -6,7 +6,10 @@ mod parse;
 
 use std::{fmt, path::Path};
 
+use parse::ParseError;
 use prost_types::FileDescriptorSet;
+use thiserror::Error;
+use miette::{Diagnostic, NamedSource};
 
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
@@ -21,20 +24,21 @@ pub fn compile(
     Ok(compiler.build_file_descriptor_set())
 }
 
+#[derive(Debug, Diagnostic, Error)]
+#[error(transparent)]
+#[diagnostic(transparent)]
 pub struct Error {
-    msg: String,
+    kind: ErrorKind,
 }
 
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.msg.fmt(f)
-    }
+#[derive(Debug, Diagnostic, Error)]
+#[error("oops!")]
+#[diagnostic()]
+enum ErrorKind {
+    ParseErrors {
+        #[source_code]
+        src: NamedSource,
+        #[related]
+        related: Vec<ParseError>,
+    },
 }
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.msg.fmt(f)
-    }
-}
-
-impl std::error::Error for Error {}
