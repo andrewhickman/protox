@@ -461,9 +461,9 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                 }
             }
             None => {
-                lex.extras
-                    .errors
-                    .push(ParseError::UnexpectedEof { expected: None });
+                lex.extras.errors.push(ParseError::UnexpectedEof {
+                    expected: "string terminator".to_owned(),
+                });
                 break;
             }
         }
@@ -558,9 +558,9 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                     // This must be a nested block comment
                     break last_end;
                 } else {
-                    lex.extras
-                        .errors
-                        .push(ParseError::UnexpectedEof { expected: None });
+                    lex.extras.errors.push(ParseError::UnexpectedEof {
+                        expected: "comment terminator".to_owned(),
+                    });
                     break lex.remainder().len();
                 }
             }
@@ -799,7 +799,9 @@ mod tests {
 
         debug_assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::UnexpectedEof { expected: None }]
+            vec![ParseError::UnexpectedEof {
+                expected: "comment terminator".to_owned()
+            }]
         );
     }
 

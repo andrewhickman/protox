@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use clap::Parser;
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use prost::Message;
 use protox::compile;
 

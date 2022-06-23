@@ -1,4 +1,7 @@
-use std::{fmt::Write, iter::once};
+use std::{
+    fmt::{self, Write},
+    iter::once,
+};
 
 use logos::{Lexer, Logos, Span};
 use miette::Diagnostic;
@@ -14,44 +17,64 @@ use self::lex::Token;
 use crate::ast::{self, FieldLabel, FullIdent};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
-#[error("error parsing file")]
 #[diagnostic()]
 pub(crate) enum ParseError {
+    #[error("invalid token")]
     InvalidToken {
+        #[label("token defined here")]
         span: Span,
     },
+    #[error("integer is too large")]
     IntegerOutOfRange {
+        #[label("integer defined here")]
         span: Span,
     },
+    #[error("invalid string character")]
     InvalidStringCharacters {
+        #[label("invalid characters")]
         span: Span,
     },
+    #[error("unterminated string")]
     UnterminatedString {
+        #[label("string starts here")]
         span: Span,
     },
+    #[error("invalid string escape")]
     InvalidStringEscape {
+        #[label("defined here")]
         span: Span,
     },
+    #[error("nested block comments are not supported")]
     NestedBlockComment {
+        #[label("defined here")]
         span: Span,
     },
+    #[error("unknown syntax")]
     UnknownSyntax {
+        #[label("defined here")]
         span: Span,
     },
+    #[error("invalid identifier")]
+    #[help("identifiers must consist of an letter followed by letters or numbers")]
     InvalidIdentifier {
+        #[label("defined here")]
         span: Span,
     },
+    #[error("invalid group name")]
+    #[help("group names must consist of a capital letter followed by letters or numbers")]
     InvalidGroupName {
+        #[label("defined here")]
         span: Span,
     },
+    #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
         found: Token<'static>,
+        #[label("defined here")]
         span: Span,
     },
-    UnexpectedEof {
-        expected: Option<String>,
-    },
+    #[error("expected {expected}, but reached end of file")]
+    UnexpectedEof { expected: String },
 }
 
 pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
@@ -176,7 +199,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Package)?;
 
-        let name = self.parse_full_ident(&[Token::Semicolon])?;
+        let name = self.parse_full_ident(&[ExpectedToken::SEMICOLON])?;
 
         self.expect_eq(Token::Semicolon)?;
 
@@ -337,7 +360,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             _ => {
-                let ty = self.parse_field_type(&[Token::Ident(Default::default())])?;
+                let ty = self.parse_field_type(&[ExpectedToken::Ident])?;
 
                 let name = self.parse_ident()?;
 
@@ -387,7 +410,7 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::LeftAngleBracket)?;
         let key_ty = self.parse_key_type()?;
         self.expect_eq(Token::Comma)?;
-        let ty = self.parse_field_type(&[Token::RightAngleBracket])?;
+        let ty = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
         self.expect_eq(Token::RightAngleBracket)?;
 
         let name = self.parse_ident()?;
@@ -426,7 +449,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Extend)?;
 
-        let extendee = self.parse_type_name(&[Token::LeftBrace])?;
+        let extendee = self.parse_type_name(&[ExpectedToken::LEFT_BRACE])?;
 
         self.expect_eq(Token::LeftBrace)?;
         let comments = self.parse_trailing_comment(leading_comments);
@@ -515,7 +538,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("'stream' or a type name")?,
         };
 
-        let input_ty = self.parse_type_name(&[Token::RightParen])?;
+        let input_ty = self.parse_type_name(&[ExpectedToken::RIGHT_PAREN])?;
 
         self.expect_eq(Token::RightParen)?;
         self.expect_eq(Token::Returns)?;
@@ -530,7 +553,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("'stream' or a type name")?,
         };
 
-        let output_ty = self.parse_type_name(&[Token::RightParen])?;
+        let output_ty = self.parse_type_name(&[ExpectedToken::RIGHT_PAREN])?;
 
         self.expect_eq(Token::RightParen)?;
 
@@ -703,7 +726,7 @@ impl<'a> Parser<'a> {
         Ok(ty)
     }
 
-    fn parse_field_type(&mut self, terminators: &[Token]) -> Result<ast::Ty, ()> {
+    fn parse_field_type(&mut self, terminators: &[ExpectedToken]) -> Result<ast::Ty, ()> {
         let scalar_ty = match self.peek() {
             Some((Token::Double, _)) => ast::Ty::Double,
             Some((Token::Float, _)) => ast::Ty::Float,
@@ -836,12 +859,16 @@ impl<'a> Parser<'a> {
     fn parse_options_list(&mut self) -> Result<Vec<ast::Option>, ()> {
         self.expect_eq(Token::LeftBracket)?;
 
-        let mut options = vec![self.parse_option_body(&[Token::Comma, Token::RightBracket])?];
+        let mut options =
+            vec![self.parse_option_body(&[ExpectedToken::COMMA, ExpectedToken::RIGHT_BRACKET])?];
         loop {
             match self.peek() {
                 Some((Token::Comma, _)) => {
                     self.bump();
-                    options.push(self.parse_option_body(&[Token::Comma, Token::RightBracket])?);
+                    options.push(self.parse_option_body(&[
+                        ExpectedToken::COMMA,
+                        ExpectedToken::RIGHT_BRACKET,
+                    ])?);
                 }
                 Some((Token::RightBracket, _)) => {
                     self.bump();
@@ -858,7 +885,7 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         self.expect_eq(Token::Option)?;
 
-        let option = self.parse_option_body(&[Token::Semicolon])?;
+        let option = self.parse_option_body(&[ExpectedToken::SEMICOLON])?;
 
         self.expect_eq(Token::Semicolon)?;
         let comments = self.parse_trailing_comment(leading_comments);
@@ -866,11 +893,11 @@ impl<'a> Parser<'a> {
         Ok(ast::Option { comments, ..option })
     }
 
-    fn parse_option_body(&mut self, terminators: &[Token]) -> Result<ast::Option, ()> {
+    fn parse_option_body(&mut self, terminators: &[ExpectedToken]) -> Result<ast::Option, ()> {
         let name = match self.peek() {
             Some((Token::LeftParen, _)) => {
                 self.bump();
-                let full_ident = self.parse_full_ident(&[Token::RightParen])?;
+                let full_ident = self.parse_full_ident(&[ExpectedToken::RIGHT_PAREN])?;
                 self.expect_eq(Token::RightParen)?;
                 full_ident
             }
@@ -958,7 +985,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_type_name(&mut self, terminators: &[Token]) -> Result<ast::TypeName, ()> {
+    fn parse_type_name(&mut self, terminators: &[ExpectedToken]) -> Result<ast::TypeName, ()> {
         let leading_dot = match self.peek() {
             Some((Token::Dot, span)) => {
                 self.bump();
@@ -973,7 +1000,7 @@ impl<'a> Parser<'a> {
         Ok(ast::TypeName { name, leading_dot })
     }
 
-    fn parse_full_ident(&mut self, terminators: &[Token]) -> Result<ast::FullIdent, ()> {
+    fn parse_full_ident(&mut self, terminators: &[ExpectedToken]) -> Result<ast::FullIdent, ()> {
         let mut result = vec![self.parse_ident()?];
 
         loop {
@@ -981,11 +1008,11 @@ impl<'a> Parser<'a> {
                 Some((Token::Dot, _)) => {
                     self.bump();
                 }
-                Some((tok, _)) if terminators.contains(&tok) => {
+                Some((tok, _)) if terminators.iter().any(|e| e.matches(&tok)) => {
                     return Ok(result.into());
                 }
                 _ => self.unexpected_token(fmt_expected(
-                    once(Token::Dot).chain(terminators.iter().cloned()),
+                    once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned()),
                 ))?,
             }
 
@@ -1202,20 +1229,51 @@ impl<'a> Parser<'a> {
                 Err(())
             }
             None => {
-                self.eof(Some(expected));
+                self.eof(expected);
                 Err(())
             }
         }
     }
 
-    fn eof(&mut self, expected: Option<impl ToString>) {
+    fn eof(&mut self, expected: impl ToString) {
         self.add_error(ParseError::UnexpectedEof {
-            expected: expected.map(|s| s.to_string()),
+            expected: expected.to_string(),
         });
     }
 
     fn add_error(&mut self, err: ParseError) {
         self.lexer.extras.errors.push(err);
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ExpectedToken {
+    Token(Token<'static>),
+    Ident,
+}
+
+impl ExpectedToken {
+    const COMMA: Self = ExpectedToken::Token(Token::Comma);
+    const SEMICOLON: Self = ExpectedToken::Token(Token::Semicolon);
+    const LEFT_BRACE: Self = ExpectedToken::Token(Token::LeftBrace);
+    const RIGHT_PAREN: Self = ExpectedToken::Token(Token::RightParen);
+    const RIGHT_BRACKET: Self = ExpectedToken::Token(Token::RightBracket);
+    const RIGHT_ANGLE_BRACKET: Self = ExpectedToken::Token(Token::RightAngleBracket);
+
+    fn matches(&self, t: &Token) -> bool {
+        match self {
+            ExpectedToken::Token(e) => e == t,
+            ExpectedToken::Ident => t.as_ident().is_some(),
+        }
+    }
+}
+
+impl fmt::Display for ExpectedToken {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ExpectedToken::Token(e) => write!(f, "'{}'", e),
+            ExpectedToken::Ident => write!(f, "an identifier"),
+        }
     }
 }
 
@@ -1246,26 +1304,18 @@ fn is_field_start_token(tok: &Token) -> bool {
     )
 }
 
-fn fmt_expected<'a>(ts: impl Iterator<Item = Token<'a>>) -> String {
-    fn fmt_token(s: &mut String, t: &Token) {
-        if let Token::Ident(_) = t {
-            s.push_str("an identifier");
-        } else {
-            write!(s, "'{}'", t).unwrap();
-        }
-    }
-
+fn fmt_expected(ts: impl Iterator<Item = ExpectedToken>) -> String {
     let ts: Vec<_> = ts.collect();
 
     let mut s = String::with_capacity(32);
-    fmt_token(&mut s, &ts[0]);
+    write!(s, "{}", ts[0]).unwrap();
     if ts.len() > 1 {
         for t in &ts[1..][..ts.len() - 2] {
             s.push_str(", ");
-            fmt_token(&mut s, t);
+            write!(s, "{}", t).unwrap();
         }
         s.push_str(" or ");
-        fmt_token(&mut s, &ts[ts.len() - 1]);
+        write!(s, "{}", ts[ts.len() - 1]).unwrap();
     }
     s
 }

@@ -4,7 +4,10 @@ mod ast;
 mod compile;
 mod parse;
 
-use std::path::Path;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 
 use miette::{Diagnostic, NamedSource};
 use parse::ParseError;
@@ -32,13 +35,19 @@ pub struct Error {
 }
 
 #[derive(Debug, Diagnostic, Error)]
-#[error("oops!")]
-#[diagnostic()]
 enum ErrorKind {
+    #[error("error parsing file")]
     ParseErrors {
         #[source_code]
         src: NamedSource,
+        #[diagnostic(transparent)]
         #[related]
-        related: Vec<ParseError>,
+        errors: Vec<ParseError>,
+    },
+    #[error("error opening file '{path}'")]
+    OpenFile {
+        path: PathBuf,
+        #[source]
+        err: io::Error,
     },
 }

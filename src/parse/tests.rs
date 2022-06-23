@@ -1105,6 +1105,50 @@ pub fn parse_message() {
         },
         comments: ast::Comments::default(),
     });
+    case!(parse_message("message Foo { repeated Bar a = 1; }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            fields: vec![ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Repeated),
+                ty: ast::Ty::Named(ast::TypeName {
+                    leading_dot: None,
+                    name: ast::FullIdent::from(ast::Ident::new("Bar", 23..26)),
+                }),
+                name: ast::Ident::new("a", 27..28),
+                number: ast::Int {
+                    negative: false,
+                    value: 1,
+                    span: 31..32,
+                },
+                options: vec![],
+                comments: ast::Comments::default(),
+            })],
+            ..ast::MessageBody::default()
+        },
+        comments: Default::default(),
+    });
+    case!(parse_message("message Foo { repeated Bar service = 2; }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            fields: vec![ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Repeated),
+                ty: ast::Ty::Named(ast::TypeName {
+                    leading_dot: None,
+                    name: ast::FullIdent::from(ast::Ident::new("Bar", 23..26)),
+                }),
+                name: ast::Ident::new("service", 27..34),
+                number: ast::Int {
+                    negative: false,
+                    value: 2,
+                    span: 37..38,
+                },
+                options: vec![],
+                comments: ast::Comments::default(),
+            })],
+            ..ast::MessageBody::default()
+        },
+        comments: Default::default(),
+    });
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::Comma,
