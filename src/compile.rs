@@ -221,7 +221,7 @@ fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::{once, empty};
+    use std::iter::{empty, once};
 
     use assert_fs::TempDir;
 
@@ -832,9 +832,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn shadow_invalid_file() {
-
-    }
+    fn shadow_invalid_file() {}
 
     #[test]
     #[ignore]

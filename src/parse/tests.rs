@@ -554,6 +554,46 @@ pub fn parse_import() {
         found: Token::Message,
         span: 13..20,
     }]));
+    case!(parse_import("import 'foo\\\\bar';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo\\bar".to_owned(),
+            span: 7..17,
+        },
+        comments: ast::Comments::default(),
+    }, Err(vec![ParseError::InvalidImport {
+        span: 7..17,
+    }]));
+    case!(parse_import("import 'foo//bar';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo//bar".to_owned(),
+            span: 7..17,
+        },
+        comments: ast::Comments::default(),
+    }, Err(vec![ParseError::InvalidImport {
+        span: 7..17,
+    }]));
+    case!(parse_import("import 'foo/./bar';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo/./bar".to_owned(),
+            span: 7..18,
+        },
+        comments: ast::Comments::default(),
+    }, Err(vec![ParseError::InvalidImport {
+        span: 7..18,
+    }]));
+    case!(parse_import("import 'foo/../bar';") => ast::Import {
+        kind: None,
+        value: ast::String {
+            value: "foo/../bar".to_owned(),
+            span: 7..19,
+        },
+        comments: ast::Comments::default(),
+    }, Err(vec![ParseError::InvalidImport {
+        span: 7..19,
+    }]));
 }
 
 #[test]

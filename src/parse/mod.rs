@@ -66,6 +66,14 @@ pub(crate) enum ParseError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("invalid group name")]
+    #[help(
+        "imports may not contain backslashes, repeated forward slashes, '.' or '..' components"
+    )]
+    InvalidImport {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
@@ -227,6 +235,11 @@ impl<'a> Parser<'a> {
         };
 
         let value = self.parse_string()?;
+        if !is_valid_import(&value.value) {
+            self.add_error(ParseError::InvalidImport {
+                span: value.span.clone(),
+            });
+        }
 
         self.expect_eq(Token::Semicolon)?;
 
@@ -1334,4 +1347,15 @@ fn is_valid_group_name(s: &str) -> bool {
         && s.as_bytes()[1..]
             .iter()
             .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
+}
+
+fn is_valid_import(s: &str) -> bool {
+    for component in s.split('/') {
+        if component.is_empty() || component.contains('\\') || component == "." || component == ".."
+        {
+            return false;
+        }
+    }
+
+    true
 }
