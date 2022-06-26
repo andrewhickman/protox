@@ -117,7 +117,8 @@ impl Compiler {
             Ok(ast) => ast,
             Err(errors) => {
                 return Err(Error::new(ErrorKind::ParseErrors {
-                    src: NamedSource::new(&name, source.clone()),
+                    name,
+                    src: NamedSource::new(path.display().to_string(), source.clone()),
                     errors,
                 }))
             }
@@ -128,7 +129,7 @@ impl Compiler {
             self.add_import(
                 import,
                 &mut import_stack,
-                NamedSource::new(&name, source.clone()),
+                NamedSource::new(path.display().to_string(), source.clone()),
             )?;
         }
 
@@ -193,7 +194,8 @@ impl Compiler {
             Ok(ast) => ast,
             Err(errors) => {
                 return Err(Error::new(ErrorKind::ParseErrors {
-                    src: NamedSource::new(&import.value.value, source.clone()),
+                    name: import.value.value.clone(),
+                    src: NamedSource::new(path.display().to_string(), source.clone()),
                     errors,
                 }))
             }
@@ -204,7 +206,7 @@ impl Compiler {
             self.add_import(
                 import,
                 import_stack,
-                NamedSource::new(&import.value.value, source.clone()),
+                NamedSource::new(path.display().to_string(), source.clone()),
             )?;
         }
         import_stack.pop();

@@ -37,8 +37,9 @@ pub struct Error {
 
 #[derive(Debug, Diagnostic, Error)]
 enum ErrorKind {
-    #[error("error parsing file")]
+    #[error("error parsing file '{name}'")]
     ParseErrors {
+        name: String,
         #[source_code]
         src: NamedSource,
         #[diagnostic(transparent)]
