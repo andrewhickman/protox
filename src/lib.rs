@@ -53,7 +53,6 @@ enum ErrorKind {
         #[source]
         err: io::Error,
     },
-    #[allow(unused)]
     #[error("error opening imported file '{path}'")]
     OpenImport {
         path: PathBuf,
@@ -64,15 +63,16 @@ enum ErrorKind {
         #[label("imported here")]
         span: Span,
     },
-    #[allow(unused)]
     #[error("import '{name}' not found")]
     ImportNotFound {
-        name: PathBuf,
+        name: String,
         #[source_code]
         src: NamedSource,
         #[label("imported here")]
         span: Span,
     },
+    #[error("import cycle detected: {cycle}")]
+    CircularImport { cycle: String },
     #[error("path '{path}' is not in any include path")]
     FileNotIncluded { path: PathBuf },
     #[error("path '{path}' is shadowed by '{shadow}' in the include paths")]
