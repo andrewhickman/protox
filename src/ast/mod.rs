@@ -1,4 +1,4 @@
-use std::{ops::Range, vec};
+use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 use prost_types::FileDescriptorProto;
@@ -345,8 +345,12 @@ impl From<Vec<Ident>> for FullIdent {
     }
 }
 
-impl File {
-    pub fn to_file_descriptor(&self) -> FileDescriptorProto {
-        todo!()
+impl fmt::Display for FullIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.parts[0].value)?;
+        for part in &self.parts[1..] {
+            write!(f, ".{}", part.value)?;
+        }
+        Ok(())
     }
 }
