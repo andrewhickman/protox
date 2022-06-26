@@ -135,11 +135,10 @@ impl Compiler {
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
-                return Err(Error::new(ErrorKind::ParseErrors {
-                    name,
-                    src: NamedSource::new(path.display().to_string(), source.clone()),
+                return Err(Error::parse_error(
                     errors,
-                }))
+                    NamedSource::new(path.display().to_string(), source.clone()),
+                ));
             }
         };
 
@@ -213,11 +212,10 @@ impl Compiler {
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
-                return Err(Error::new(ErrorKind::ParseErrors {
-                    name: import.value.value.clone(),
-                    src: NamedSource::new(path.display().to_string(), source.clone()),
+                return Err(Error::parse_error(
                     errors,
-                }))
+                    NamedSource::new(path.display().to_string(), source.clone()),
+                ));
             }
         };
 

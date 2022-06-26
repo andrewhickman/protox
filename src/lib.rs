@@ -7,15 +7,16 @@ mod ast;
 mod compile;
 mod parse;
 
+use core::fmt;
 use std::{
     io,
     path::{Path, PathBuf},
 };
 
 use logos::Span;
-use miette::{Diagnostic, NamedSource};
+use miette::{Diagnostic, NamedSource, SourceCode};
 use parse::ParseError;
-use prost_types::FileDescriptorSet;
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 use thiserror::Error;
 
 pub use self::compile::Compiler;
@@ -51,6 +52,18 @@ pub fn compile(
     Ok(compiler.build_file_descriptor_set())
 }
 
+/// Parse a single protobuf source file into a [`FileDescriptorProto`].
+///
+/// This function only looks at the syntax of the file, without resolving type names or reading
+/// imported files.
+pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
+    let ast =
+        parse::parse(source).map_err(|errors| Error::parse_error(errors, source.to_owned()))?;
+    let file = ast.to_file_descriptor();
+    // TODO check
+    Ok(file)
+}
+
 /// An error that can occur when compiling protobuf files.
 #[derive(Debug, Diagnostic, Error)]
 #[error(transparent)]
@@ -61,12 +74,12 @@ pub struct Error {
 
 #[derive(Debug, Diagnostic, Error)]
 enum ErrorKind {
-    #[error("error parsing file '{name}'")]
+    #[error("{}", err)]
+    #[diagnostic(forward(err))]
     ParseErrors {
-        name: String,
+        err: ParseError,
         #[source_code]
-        src: NamedSource,
-        #[diagnostic(transparent)]
+        src: DynSourceCode,
         #[related]
         errors: Vec<ParseError>,
     },
@@ -105,9 +118,50 @@ enum ErrorKind {
     FileShadowed { path: PathBuf, shadow: PathBuf },
 }
 
+struct DynSourceCode(Box<dyn SourceCode>);
+
+impl fmt::Debug for DynSourceCode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DynSourceCode").finish_non_exhaustive()
+    }
+}
+
+impl SourceCode for DynSourceCode {
+    fn read_span<'a>(
+        &'a self,
+        span: &miette::SourceSpan,
+        context_lines_before: usize,
+        context_lines_after: usize,
+    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
+        self.0
+            .read_span(span, context_lines_before, context_lines_after)
+    }
+}
+
+impl From<String> for DynSourceCode {
+    fn from(source: String) -> Self {
+        DynSourceCode(Box::new(source))
+    }
+}
+
+impl From<NamedSource> for DynSourceCode {
+    fn from(source: NamedSource) -> Self {
+        DynSourceCode(Box::new(source))
+    }
+}
+
 impl Error {
     fn new(kind: ErrorKind) -> Self {
         Error { kind }
+    }
+
+    fn parse_error(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
+        let err = errors.remove(0);
+        Error::new(ErrorKind::ParseErrors {
+            err,
+            src: src.into(),
+            errors,
+        })
     }
 }
 

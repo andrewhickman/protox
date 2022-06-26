@@ -1,6 +1,7 @@
 use std::{ops::Range, vec};
 
 use logos::Span;
+use prost_types::FileDescriptorProto;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct File {
@@ -341,5 +342,11 @@ impl From<Vec<Ident>> for FullIdent {
     fn from(parts: Vec<Ident>) -> Self {
         debug_assert!(!parts.is_empty());
         FullIdent { parts }
+    }
+}
+
+impl File {
+    pub fn to_file_descriptor(&self) -> FileDescriptorProto {
+        todo!()
     }
 }

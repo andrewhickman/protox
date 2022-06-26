@@ -17,11 +17,10 @@ use self::lex::Token;
 use crate::ast::{self, FieldLabel, FullIdent};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
-#[diagnostic()]
 pub(crate) enum ParseError {
     #[error("invalid token")]
     InvalidToken {
-        #[label("token defined here")]
+        #[label("found here")]
         span: Span,
     },
     #[error("integer is too large")]
@@ -78,7 +77,7 @@ pub(crate) enum ParseError {
     UnexpectedToken {
         expected: String,
         found: Token<'static>,
-        #[label("defined here")]
+        #[label("found here")]
         span: Span,
     },
     #[error("expected {expected}, but reached end of file")]
