@@ -18,6 +18,8 @@ mod tests;
 pub struct Compiler {
     includes: Vec<PathBuf>,
     files: Vec<File>,
+    include_imports: bool,
+    include_source_info: bool,
 }
 
 #[derive(Debug)]
@@ -61,18 +63,21 @@ impl Compiler {
         Ok(Compiler {
             includes,
             files: Vec::new(),
+            include_imports: false,
+            include_source_info: false,
         })
     }
 
     /// Set whether the output `FileDescriptorSet` should have source info such as source locations and comments included.
-    pub fn include_source_info(&mut self, _yes: bool) -> &mut Self {
-        // todo!()
+    pub fn include_source_info(&mut self, yes: bool) -> &mut Self {
+        self.include_source_info = yes;
         self
     }
 
     /// Set whether the output `FileDescriptorSet` should include dependency files.
-    pub fn include_imports(&mut self, _yes: bool) -> &mut Self {
-        // todo!()
+    pub fn include_imports(&mut self, yes: bool) -> &mut Self {
+        self.include_imports = yes;
+        // TODO: implement it
         self
     }
 
@@ -161,10 +166,26 @@ impl Compiler {
         Ok(self)
     }
 
-    /// Convert all added files into an instance [`FileDescriptorSet`].
+    /// Convert all added files into an instance of [`FileDescriptorSet`].
+    ///
+    /// Files are sorted topologically, with dependency files ordered before the files that import them.
     pub fn build_file_descriptor_set(&mut self) -> FileDescriptorSet {
-        // todo!()
-        FileDescriptorSet::default()
+        let file = self
+            .files
+            .iter()
+            .map(|f| {
+                let src = if self.include_source_info {
+                    Some(f.source.as_ref())
+                } else {
+                    None
+                };
+                f.ast.to_file_descriptor(src)
+            })
+            .collect();
+
+        // TODO: CHECK / RESOLVE
+
+        FileDescriptorSet { file }
     }
 
     fn add_import(

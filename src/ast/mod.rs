@@ -2,6 +2,8 @@ use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 
+mod convert;
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub syntax: Syntax,
@@ -342,11 +344,26 @@ impl From<Vec<Ident>> for FullIdent {
     }
 }
 
+impl fmt::Display for Syntax {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Syntax::Proto2 => write!(f, "proto2"),
+            Syntax::Proto3 => write!(f, "proto3"),
+        }
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value)
+    }
+}
+
 impl fmt::Display for FullIdent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.parts[0].value)?;
+        write!(f, "{}", self.parts[0])?;
         for part in &self.parts[1..] {
-            write!(f, ".{}", part.value)?;
+            write!(f, ".{}", part)?;
         }
         Ok(())
     }

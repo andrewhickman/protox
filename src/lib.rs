@@ -21,6 +21,8 @@ use thiserror::Error;
 
 pub use self::compile::Compiler;
 
+const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;
+
 /// Convenience function for compiling a set of protobuf files.
 ///
 /// This function is equivalent to:
@@ -57,9 +59,9 @@ pub fn compile(
 /// This function only looks at the syntax of the file, without resolving type names or reading
 /// imported files.
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
-    let _ast =
+    let ast =
         parse::parse(source).map_err(|errors| Error::parse_error(errors, source.to_owned()))?;
-    // let file = ast.to_file_descriptor();
+    let _file = ast.to_file_descriptor(Some(source));
     // TODO check
     todo!()
 }
