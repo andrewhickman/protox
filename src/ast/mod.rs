@@ -6,7 +6,7 @@ use prost_types::FileDescriptorProto;
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub syntax: Syntax,
-    pub packages: Vec<Package>,
+    pub package: std::option::Option<Package>,
     pub imports: Vec<Import>,
     pub options: Vec<Option>,
     pub definitions: Vec<Definition>,
@@ -315,7 +315,7 @@ impl Default for File {
     fn default() -> Self {
         File {
             syntax: Syntax::Proto2,
-            packages: vec![],
+            package: None,
             imports: vec![],
             options: vec![],
             definitions: vec![],

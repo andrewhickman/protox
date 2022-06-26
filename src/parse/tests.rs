@@ -1379,7 +1379,7 @@ pub fn parse_oneof() {
 pub fn parse_file() {
     case!(parse_file("") => ast::File {
         syntax: ast::Syntax::Proto2,
-        packages: vec![],
+        package: None,
         imports: vec![],
         options: vec![],
         definitions: vec![],
@@ -1388,25 +1388,45 @@ pub fn parse_file() {
         package protox.lib;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        packages: vec![ast::Package {
+        package: Some(ast::Package {
             name: ast::FullIdent::from(vec![
                 ast::Ident::new("protox", 17..23),
                 ast::Ident::new("lib", 24..27),
             ]),
             comments: ast::Comments::default(),
             span: 9..28,
-        }],
+        }),
         imports: vec![],
         options: vec![],
         definitions: vec![],
     });
+    case!(parse_file("
+        package protox.lib;
+        package another.one;
+    ") => ast::File {
+        syntax: ast::Syntax::Proto2,
+        package: Some(ast::Package {
+            name: ast::FullIdent::from(vec![
+                ast::Ident::new("protox", 17..23),
+                ast::Ident::new("lib", 24..27),
+            ]),
+            comments: ast::Comments::default(),
+            span: 9..28,
+        }),
+        imports: vec![],
+        options: vec![],
+        definitions: vec![],
+    }, Err(vec![ParseError::DuplicatePackage {
+        first: 9..28,
+        second: 37..57,
+    }]));
     case!(parse_file("
         syntax = 'proto2';
 
         option optimize_for = SPEED;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        packages: vec![],
+        package: None,
         imports: vec![],
         definitions: vec![],
         options: vec![ast::Option {
@@ -1425,7 +1445,7 @@ pub fn parse_file() {
         import \"foo.proto\";
     ") => ast::File {
         syntax: ast::Syntax::Proto3,
-        packages: vec![],
+        package: None,
         imports: vec![ast::Import {
             kind: None,
             value: ast::String {
@@ -1451,7 +1471,7 @@ pub fn parse_file() {
         option quz 1;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        packages: vec![],
+        package: None,
         imports: vec![],
         definitions: vec![ast::Definition::Enum(ast::Enum {
             name: ast::Ident::new("Bar", 68..71),
@@ -1488,7 +1508,7 @@ pub fn parse_file() {
         }
     ") => ast::File {
         syntax: ast::Syntax::Proto3,
-        packages: vec![],
+        package: None,
         imports: vec![],
         definitions: vec![ast::Definition::Message(ast::Message {
             name: ast::Ident::new("Foo", 45..48),

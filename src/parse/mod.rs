@@ -73,6 +73,13 @@ pub(crate) enum ParseError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("multiple package names specified")]
+    DuplicatePackage {
+        #[label("defined here...")]
+        first: Span,
+        #[label("...and again here")]
+        second: Span,
+    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
@@ -139,7 +146,7 @@ impl<'a> Parser<'a> {
             ast::Syntax::Proto2
         };
 
-        let mut packages = Vec::new();
+        let mut package: Option<ast::Package> = None;
         let mut imports = Vec::new();
         let mut options = Vec::new();
         let mut definitions = Vec::new();
@@ -147,7 +154,16 @@ impl<'a> Parser<'a> {
         loop {
             match self.parse_statement() {
                 Ok(Some(Statement::Empty)) => continue,
-                Ok(Some(Statement::Package(package))) => packages.push(package),
+                Ok(Some(Statement::Package(new_package))) => {
+                    if let Some(existing_package) = &package {
+                        self.add_error(ParseError::DuplicatePackage {
+                            first: existing_package.span.clone(),
+                            second: new_package.span,
+                        })
+                    } else {
+                        package = Some(new_package);
+                    }
+                }
                 Ok(Some(Statement::Import(import))) => imports.push(import),
                 Ok(Some(Statement::Option(option))) => options.push(option),
                 Ok(Some(Statement::Definition(definition))) => definitions.push(definition),
@@ -166,7 +182,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::File {
             syntax,
-            packages,
+            package,
             imports,
             options,
             definitions,
