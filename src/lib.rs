@@ -9,6 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use logos::Span;
 use miette::{Diagnostic, NamedSource};
 use parse::ParseError;
 use prost_types::FileDescriptorSet;
@@ -44,10 +45,68 @@ enum ErrorKind {
         #[related]
         errors: Vec<ParseError>,
     },
+    #[error("at least once include path must be provided")]
+    NoIncludePaths,
     #[error("error opening file '{path}'")]
     OpenFile {
         path: PathBuf,
         #[source]
         err: io::Error,
     },
+    #[allow(unused)]
+    #[error("error opening imported file '{path}'")]
+    OpenImport {
+        path: PathBuf,
+        #[source]
+        err: io::Error,
+        #[source_code]
+        src: NamedSource,
+        #[label("imported here")]
+        span: Span,
+    },
+    #[allow(unused)]
+    #[error("import '{name}' not found")]
+    ImportNotFound {
+        name: PathBuf,
+        #[source_code]
+        src: NamedSource,
+        #[label("imported here")]
+        span: Span,
+    },
+    #[error("path '{path}' is not in any include path")]
+    FileNotIncluded { path: PathBuf },
+    #[error("path '{path}' is shadowed by '{shadow}' in the include paths")]
+    #[help("Either pass '{shadow}' as the input file, or re-order the include paths so that '{path}' comes first")]
+    FileShadowed { path: PathBuf, shadow: PathBuf },
+}
+
+impl Error {
+    fn new(kind: ErrorKind) -> Self {
+        Error { kind }
+    }
+}
+
+#[cfg(test)]
+fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
+    use std::{
+        env::{current_dir, set_current_dir},
+        sync::Mutex,
+    };
+
+    use once_cell::sync::Lazy;
+    use scopeguard::defer;
+
+    static CURRENT_DIR_LOCK: Lazy<Mutex<()>> = Lazy::new(Default::default);
+
+    let _lock = CURRENT_DIR_LOCK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+
+    let prev_dir = current_dir().unwrap();
+    defer!({
+        let _ = set_current_dir(prev_dir);
+    });
+
+    set_current_dir(path).unwrap();
+    f();
 }
