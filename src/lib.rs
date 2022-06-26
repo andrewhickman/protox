@@ -1,6 +1,9 @@
-#[allow(dead_code)]
+//! A rust implementation of the protobuf compiler.
+#![warn(missing_debug_implementations, missing_docs)]
+#![deny(unsafe_code)]
+#![doc(html_root_url = "https://docs.rs/protox/0.1.0/")]
+
 mod ast;
-#[allow(dead_code)]
 mod compile;
 mod parse;
 
@@ -15,6 +18,26 @@ use parse::ParseError;
 use prost_types::FileDescriptorSet;
 use thiserror::Error;
 
+pub use self::compile::Compiler;
+
+/// Convenience function for compiling a set of protobuf files.
+///
+/// This function is equivalent to:
+/// ```rust
+/// # use protox::Compiler;
+/// # fn main() -> Result<(), protox::Error> {
+/// # let files: Vec<std::path::PathBuf> = vec![];
+/// # let includes: Vec<std::path::PathBuf> = vec![".".into()];
+/// let mut compiler = Compiler::new(includes)?;
+/// compiler.include_source_info(true);
+/// compiler.include_imports(true);
+/// for file in files {
+///     compiler.add_file(file)?;
+/// }
+/// compiler.build_file_descriptor_set();
+/// # Ok(())
+/// # }
+/// ```
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
@@ -28,6 +51,7 @@ pub fn compile(
     Ok(compiler.build_file_descriptor_set())
 }
 
+/// An error that can occur when compiling protobuf files.
 #[derive(Debug, Diagnostic, Error)]
 #[error(transparent)]
 #[diagnostic(transparent)]

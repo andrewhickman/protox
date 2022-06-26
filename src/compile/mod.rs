@@ -13,6 +13,7 @@ use crate::{ast, parse, Error, ErrorKind};
 #[cfg(test)]
 mod tests;
 
+/// Options for compiling protobuf files.
 #[derive(Debug)]
 pub struct Compiler {
     includes: Vec<PathBuf>,
@@ -48,6 +49,7 @@ enum ImportResult {
 }
 
 impl Compiler {
+    /// Create a new compiler with default options and the given non-empty set of include paths.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
         let includes: Vec<_> = includes
             .into_iter()
@@ -62,7 +64,24 @@ impl Compiler {
         })
     }
 
-    pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<(), Error> {
+    /// Set whether the output `FileDescriptorSet` should have source info such as source locations and comments included.
+    pub fn include_source_info(&mut self, _yes: bool) -> &mut Self {
+        // todo!()
+        self
+    }
+
+    /// Set whether the output `FileDescriptorSet` should include dependency files.
+    pub fn include_imports(&mut self, _yes: bool) -> &mut Self {
+        // todo!()
+        self
+    }
+
+    /// Compile the file at the given path, and add it to this `Compiler` instance.
+    ///
+    /// If the path is absolute, or relative to the current directory, it must reside under one of the
+    /// include paths. Otherwise, it is looked up relative to the given include paths in the same way as
+    /// `import` statements.
+    pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<&mut Self, Error> {
         let relative_path = relative_path.as_ref();
         let (resolved_include, name) =
             self.resolve_import_name(relative_path).ok_or_else(|| {
@@ -93,7 +112,7 @@ impl Compiler {
                         shadow: path,
                     }));
                 } else {
-                    return Ok(());
+                    return Ok(self);
                 }
             }
             ImportResult::NotFound => {
@@ -140,12 +159,13 @@ impl Compiler {
             include,
             path,
         });
-        Ok(())
+        Ok(self)
     }
 
-    pub fn build_file_descriptor_set(self) -> FileDescriptorSet {
-        FileDescriptorSet::default()
+    /// Convert all added files into an instance [`FileDescriptorSet`].
+    pub fn build_file_descriptor_set(&mut self) -> FileDescriptorSet {
         // todo!()
+        FileDescriptorSet::default()
     }
 
     fn add_import(
