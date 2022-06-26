@@ -1,7 +1,6 @@
 use std::{fmt, ops::Range, vec};
 
 use logos::Span;
-use prost_types::FileDescriptorProto;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct File {
@@ -9,7 +8,10 @@ pub(crate) struct File {
     pub package: std::option::Option<Package>,
     pub imports: Vec<Import>,
     pub options: Vec<Option>,
-    pub definitions: Vec<Definition>,
+    pub enums: Vec<Enum>,
+    pub messages: Vec<Message>,
+    pub extends: Vec<Extend>,
+    pub services: Vec<Service>,
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -23,14 +25,6 @@ pub(crate) struct Comments {
 pub(crate) enum Syntax {
     Proto2,
     Proto3,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Definition {
-    Message(Message),
-    Enum(Enum),
-    Service(Service),
-    Extend(Extend),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -148,7 +142,7 @@ pub(crate) enum FieldLabel {
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct MessageBody {
     pub fields: Vec<MessageField>,
-    pub(crate) enums: Vec<Enum>,
+    pub enums: Vec<Enum>,
     pub messages: Vec<Message>,
     pub extends: Vec<Extend>,
     pub extensions: Vec<Extensions>,
@@ -318,7 +312,10 @@ impl Default for File {
             package: None,
             imports: vec![],
             options: vec![],
-            definitions: vec![],
+            enums: vec![],
+            messages: vec![],
+            extends: vec![],
+            services: vec![],
         }
     }
 }

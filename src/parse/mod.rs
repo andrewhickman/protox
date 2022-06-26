@@ -110,7 +110,10 @@ enum Statement {
     Package(ast::Package),
     Import(ast::Import),
     Option(ast::Option),
-    Definition(ast::Definition),
+    Message(ast::Message),
+    Enum(ast::Enum),
+    Service(ast::Service),
+    Extend(ast::Extend),
 }
 
 impl<'a> Parser<'a> {
@@ -149,7 +152,10 @@ impl<'a> Parser<'a> {
         let mut package: Option<ast::Package> = None;
         let mut imports = Vec::new();
         let mut options = Vec::new();
-        let mut definitions = Vec::new();
+        let mut messages = Vec::new();
+        let mut enums = Vec::new();
+        let mut services = Vec::new();
+        let mut extends = Vec::new();
 
         loop {
             match self.parse_statement() {
@@ -166,7 +172,10 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Some(Statement::Import(import))) => imports.push(import),
                 Ok(Some(Statement::Option(option))) => options.push(option),
-                Ok(Some(Statement::Definition(definition))) => definitions.push(definition),
+                Ok(Some(Statement::Message(message))) => messages.push(message),
+                Ok(Some(Statement::Enum(enm))) => enums.push(enm),
+                Ok(Some(Statement::Service(service))) => services.push(service),
+                Ok(Some(Statement::Extend(extend))) => extends.push(extend),
                 Ok(None) => break,
                 Err(()) => self.skip_until(&[
                     Token::Enum,
@@ -185,7 +194,10 @@ impl<'a> Parser<'a> {
             package,
             imports,
             options,
-            definitions,
+            messages,
+            enums,
+            services,
+            extends,
         })
     }
 
@@ -198,18 +210,10 @@ impl<'a> Parser<'a> {
             Some((Token::Import, _)) => Ok(Some(Statement::Import(self.parse_import()?))),
             Some((Token::Package, _)) => Ok(Some(Statement::Package(self.parse_package()?))),
             Some((Token::Option, _)) => Ok(Some(Statement::Option(self.parse_option()?))),
-            Some((Token::Extend, _)) => Ok(Some(Statement::Definition(ast::Definition::Extend(
-                self.parse_extends()?,
-            )))),
-            Some((Token::Message, _)) => Ok(Some(Statement::Definition(ast::Definition::Message(
-                self.parse_message()?,
-            )))),
-            Some((Token::Enum, _)) => Ok(Some(Statement::Definition(ast::Definition::Enum(
-                self.parse_enum()?,
-            )))),
-            Some((Token::Service, _)) => Ok(Some(Statement::Definition(ast::Definition::Service(
-                self.parse_service()?,
-            )))),
+            Some((Token::Extend, _)) => Ok(Some(Statement::Extend(self.parse_extend()?))),
+            Some((Token::Message, _)) => Ok(Some(Statement::Message(self.parse_message()?))),
+            Some((Token::Enum, _)) => Ok(Some(Statement::Enum(self.parse_enum()?))),
+            Some((Token::Service, _)) => Ok(Some(Statement::Service(self.parse_service()?))),
             None => Ok(None),
             _ => self.unexpected_token(
                 "'enum', 'extend', 'import', 'message', 'option', 'service', 'package' or ';'",
@@ -308,7 +312,7 @@ impl<'a> Parser<'a> {
                 Some((Token::Oneof, _)) => oneofs.push(self.parse_oneof()?),
                 Some((Token::Enum, _)) => enums.push(self.parse_enum()?),
                 Some((Token::Message, _)) => messages.push(self.parse_message()?),
-                Some((Token::Extend, _)) => extends.push(self.parse_extends()?),
+                Some((Token::Extend, _)) => extends.push(self.parse_extend()?),
                 Some((Token::Option, _)) => options.push(self.parse_option()?),
                 Some((Token::Reserved, _)) => reserved.push(self.parse_reserved()?),
                 Some((Token::Extensions, _)) => extensions.push(self.parse_extensions()?),
@@ -482,7 +486,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_extends(&mut self) -> Result<ast::Extend, ()> {
+    fn parse_extend(&mut self) -> Result<ast::Extend, ()> {
         let leading_comments = self.parse_leading_comments();
 
         let start = self.expect_eq(Token::Extend)?;

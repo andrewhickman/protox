@@ -57,11 +57,11 @@ pub fn compile(
 /// This function only looks at the syntax of the file, without resolving type names or reading
 /// imported files.
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
-    let ast =
+    let _ast =
         parse::parse(source).map_err(|errors| Error::parse_error(errors, source.to_owned()))?;
-    let file = ast.to_file_descriptor();
+    // let file = ast.to_file_descriptor();
     // TODO check
-    Ok(file)
+    todo!()
 }
 
 /// An error that can occur when compiling protobuf files.

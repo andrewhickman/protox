@@ -653,7 +653,7 @@ pub fn parse_import() {
 
 #[test]
 pub fn parse_extension() {
-    case!(parse_extends("extend Foo { }") => ast::Extend {
+    case!(parse_extend("extend Foo { }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
@@ -662,7 +662,7 @@ pub fn parse_extension() {
         comments: ast::Comments::default(),
         span: 0..14,
     });
-    case!(parse_extends("/*leading*/extend Foo {\n//trailing\n }") => ast::Extend {
+    case!(parse_extend("/*leading*/extend Foo {\n//trailing\n }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Foo", 18..21)),
@@ -675,7 +675,7 @@ pub fn parse_extension() {
         },
         span: 11..37,
     });
-    case!(parse_extends("extend Foo { ; ; }") => ast::Extend {
+    case!(parse_extend("extend Foo { ; ; }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
@@ -684,7 +684,7 @@ pub fn parse_extension() {
         comments: ast::Comments::default(),
         span: 0..18,
     });
-    case!(parse_extends("extend Foo.Foo { optional int32 bar = 126; }") => ast::Extend {
+    case!(parse_extend("extend Foo.Foo { optional int32 bar = 126; }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(vec![
@@ -710,7 +710,7 @@ pub fn parse_extension() {
         comments: ast::Comments::default(),
         span: 0..44,
     });
-    case!(parse_extends("extend .Foo { optional int32 bar = 126; repeated string quz = 127; }") => ast::Extend {
+    case!(parse_extend("extend .Foo { optional int32 bar = 126; repeated string quz = 127; }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: Some(7..8),
             name: ast::FullIdent::from(ast::Ident::new("Foo", 8..11)),
@@ -746,7 +746,7 @@ pub fn parse_extension() {
         comments: ast::Comments::default(),
         span: 0..68,
     });
-    case!(parse_extends("extend Foo { repeated group A = 1 { optional string name = 2; } }") => ast::Extend {
+    case!(parse_extend("extend Foo { repeated group A = 1 { optional string name = 2; } }") => ast::Extend {
         extendee: ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Foo", 7..10)),
@@ -785,17 +785,17 @@ pub fn parse_extension() {
         comments: ast::Comments::default(),
         span: 0..65,
     });
-    case!(parse_extends("extend ] ") => Err(vec![ParseError::UnexpectedToken {
+    case!(parse_extend("extend ] ") => Err(vec![ParseError::UnexpectedToken {
         expected: "a type name".to_owned(),
         found: Token::RightBracket,
         span: 7..8,
     }]));
-    case!(parse_extends("extend Foo =") => Err(vec![ParseError::UnexpectedToken {
+    case!(parse_extend("extend Foo =") => Err(vec![ParseError::UnexpectedToken {
         expected: "'.' or '{'".to_owned(),
         found: Token::Equals,
         span: 11..12,
     }]));
-    case!(parse_extends("extend Foo { )") => Err(vec![ParseError::UnexpectedToken {
+    case!(parse_extend("extend Foo { )") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, '}' or ';'".to_owned(),
         found: Token::RightParen,
         span: 13..14,
@@ -1377,17 +1377,10 @@ pub fn parse_oneof() {
 
 #[test]
 pub fn parse_file() {
-    case!(parse_file("") => ast::File {
-        syntax: ast::Syntax::Proto2,
-        package: None,
-        imports: vec![],
-        options: vec![],
-        definitions: vec![],
-    });
+    case!(parse_file("") => ast::File::default());
     case!(parse_file("
         package protox.lib;
     ") => ast::File {
-        syntax: ast::Syntax::Proto2,
         package: Some(ast::Package {
             name: ast::FullIdent::from(vec![
                 ast::Ident::new("protox", 17..23),
@@ -1396,15 +1389,12 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 9..28,
         }),
-        imports: vec![],
-        options: vec![],
-        definitions: vec![],
+        ..Default::default()
     });
     case!(parse_file("
         package protox.lib;
         package another.one;
     ") => ast::File {
-        syntax: ast::Syntax::Proto2,
         package: Some(ast::Package {
             name: ast::FullIdent::from(vec![
                 ast::Ident::new("protox", 17..23),
@@ -1413,9 +1403,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 9..28,
         }),
-        imports: vec![],
-        options: vec![],
-        definitions: vec![],
+        ..Default::default()
     }, Err(vec![ParseError::DuplicatePackage {
         first: 9..28,
         second: 37..57,
@@ -1426,9 +1414,6 @@ pub fn parse_file() {
         option optimize_for = SPEED;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        package: None,
-        imports: vec![],
-        definitions: vec![],
         options: vec![ast::Option {
             body: ast::OptionBody {
                 name: ast::FullIdent::from(ast::Ident::new("optimize_for", 44..56)),
@@ -1438,6 +1423,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 37..65,
         }],
+        ..Default::default()
     });
     case!(parse_file("
         syntax = \"proto3\";
@@ -1445,7 +1431,6 @@ pub fn parse_file() {
         import \"foo.proto\";
     ") => ast::File {
         syntax: ast::Syntax::Proto3,
-        package: None,
         imports: vec![ast::Import {
             kind: None,
             value: ast::String {
@@ -1455,8 +1440,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 37..56,
         }],
-        definitions: vec![],
-        options: vec![],
+        ..Default::default()
     });
     case!(parse_file("
         syntax = 'unknown';
@@ -1471,17 +1455,15 @@ pub fn parse_file() {
         option quz 1;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        package: None,
-        imports: vec![],
-        definitions: vec![ast::Definition::Enum(ast::Enum {
+        enums: vec![ast::Enum {
             name: ast::Ident::new("Bar", 68..71),
             values: vec![],
             options: vec![],
             reserved: vec![],
             comments: ast::Comments::default(),
             span: 63..77,
-        })],
-        options: vec![],
+        }],
+        ..Default::default()
     }, Err(vec![
         ParseError::UnexpectedToken {
             expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_string(),
@@ -1508,9 +1490,7 @@ pub fn parse_file() {
         }
     ") => ast::File {
         syntax: ast::Syntax::Proto3,
-        package: None,
-        imports: vec![],
-        definitions: vec![ast::Definition::Message(ast::Message {
+        messages: vec![ast::Message {
             name: ast::Ident::new("Foo", 45..48),
             body: ast::MessageBody {
                 fields: vec![ast::MessageField::Field(ast::Field {
@@ -1538,7 +1518,7 @@ pub fn parse_file() {
                 trailing_comment: Some(" trailing\n".to_owned()),
             },
             span: 37..185,
-        })],
-        options: vec![],
+        }],
+        ..Default::default()
     });
 }
