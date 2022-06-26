@@ -29,7 +29,7 @@ pub(crate) enum Definition {
     Message(Message),
     Enum(Enum),
     Service(Service),
-    Extension(Extension),
+    Extend(Extend),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -88,6 +88,7 @@ pub(crate) struct Import {
     pub kind: std::option::Option<ImportKind>,
     pub value: String,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -100,14 +101,21 @@ pub(crate) enum ImportKind {
 pub(crate) struct Package {
     pub name: FullIdent,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Option {
+    pub body: OptionBody,
+    pub comments: Comments,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct OptionBody {
     pub name: FullIdent,
     pub field_name: std::option::Option<FullIdent>,
     pub value: Constant,
-    pub comments: Comments,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -115,6 +123,7 @@ pub(crate) struct Message {
     pub name: Ident,
     pub body: MessageBody,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -123,8 +132,9 @@ pub(crate) struct Field {
     pub name: Ident,
     pub ty: Ty,
     pub number: Int,
-    pub options: Vec<Option>,
+    pub options: Vec<OptionBody>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -139,8 +149,8 @@ pub(crate) struct MessageBody {
     pub fields: Vec<MessageField>,
     pub(crate) enums: Vec<Enum>,
     pub messages: Vec<Message>,
-    pub extensions: Vec<Extension>,
-    pub extension_ranges: Vec<ReservedRange>,
+    pub extends: Vec<Extend>,
+    pub extensions: Vec<Extensions>,
     pub options: Vec<Option>,
     pub oneofs: Vec<Oneof>,
     pub reserved: Vec<Reserved>,
@@ -195,6 +205,7 @@ pub(crate) struct Oneof {
     pub options: Vec<Option>,
     pub fields: Vec<MessageField>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -203,15 +214,17 @@ pub(crate) struct Map {
     pub ty: Ty,
     pub name: Ident,
     pub number: Int,
-    pub options: Vec<Option>,
+    pub options: Vec<OptionBody>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Extension {
+pub(crate) struct Extend {
     pub extendee: TypeName,
     pub fields: Vec<MessageField>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -221,12 +234,27 @@ pub(crate) struct Group {
     pub number: Int,
     pub body: MessageBody,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Reserved {
-    Ranges(Vec<ReservedRange>, Comments),
-    Names(Vec<Ident>, Comments),
+pub(crate) struct Reserved {
+    pub kind: ReservedKind,
+    pub comments: Comments,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Extensions {
+    pub ranges: Vec<ReservedRange>,
+    pub comments: Comments,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum ReservedKind {
+    Ranges(Vec<ReservedRange>),
+    Names(Vec<Ident>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -249,14 +277,16 @@ pub(crate) struct Enum {
     pub values: Vec<EnumValue>,
     pub reserved: Vec<Reserved>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct EnumValue {
     pub name: Ident,
     pub value: Int,
-    pub options: Vec<Option>,
+    pub options: Vec<OptionBody>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -265,6 +295,7 @@ pub(crate) struct Service {
     pub options: Vec<Option>,
     pub methods: Vec<Method>,
     pub comments: Comments,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -276,6 +307,7 @@ pub(crate) struct Method {
     pub is_client_streaming: bool,
     pub is_server_streaming: bool,
     pub comments: Comments,
+    pub span: Span,
 }
 
 impl Default for File {
