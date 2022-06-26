@@ -820,8 +820,9 @@ mod tests {
 
     proptest! {
         #[test]
-        fn lex_random_string(s in ".{0,256}") {
-            let _: Vec<_> = Token::lexer(&s).collect();
+        fn lex_random_string(s in ".{1,256}") {
+            // Should produce at least one 'Error' token.
+            assert_ne!(Token::lexer(&s).count(), 0);
         }
     }
 }
