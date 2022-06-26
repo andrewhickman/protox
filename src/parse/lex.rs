@@ -582,6 +582,8 @@ fn cow_push_str<'a>(cow: &mut Option<Cow<'a, str>>, s: &'a str) {
 mod tests {
     use super::*;
 
+    use proptest::prelude::*;
+
     #[test]
     fn simple_tokens() {
         let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true
@@ -814,5 +816,12 @@ mod tests {
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    proptest! {
+        #[test]
+        fn lex_random_string(s in ".{0,256}") {
+            let _: Vec<_> = Token::lexer(&s).collect();
+        }
     }
 }
