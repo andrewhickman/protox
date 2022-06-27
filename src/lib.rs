@@ -4,7 +4,10 @@
 #![doc(html_root_url = "https://docs.rs/protox/0.1.0/")]
 
 mod ast;
+mod check;
 mod compile;
+mod files;
+mod lines;
 mod parse;
 
 use core::fmt;
@@ -13,6 +16,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use check::CheckError;
 use logos::Span;
 use miette::{Diagnostic, NamedSource, SourceCode};
 use parse::ParseError;
@@ -22,6 +26,7 @@ use thiserror::Error;
 pub use self::compile::Compiler;
 
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;
+const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 /// Convenience function for compiling a set of protobuf files.
 ///
@@ -60,10 +65,9 @@ pub fn compile(
 /// imported files.
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
     let ast =
-        parse::parse(source).map_err(|errors| Error::parse_error(errors, source.to_owned()))?;
-    let _file = ast.to_file_descriptor(Some(source));
-    // TODO check
-    todo!()
+        parse::parse(source).map_err(|errors| Error::parse_errors(errors, source.to_owned()))?;
+    ast.to_file_descriptor(None, Some(source), None)
+        .map_err(|errors| Error::check_errors(errors, source.to_owned()))
 }
 
 /// An error that can occur when compiling protobuf files.
@@ -84,6 +88,15 @@ enum ErrorKind {
         src: DynSourceCode,
         #[related]
         errors: Vec<ParseError>,
+    },
+    #[error("{}", err)]
+    #[diagnostic(forward(err))]
+    CheckErrors {
+        err: CheckError,
+        #[source_code]
+        src: DynSourceCode,
+        #[related]
+        errors: Vec<CheckError>,
     },
     #[error("at least once include path must be provided")]
     NoIncludePaths,
@@ -157,9 +170,18 @@ impl Error {
         Error { kind }
     }
 
-    fn parse_error(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
+    fn parse_errors(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
         let err = errors.remove(0);
         Error::new(ErrorKind::ParseErrors {
+            err,
+            src: src.into(),
+            errors,
+        })
+    }
+
+    fn check_errors(mut errors: Vec<CheckError>, src: impl Into<DynSourceCode>) -> Self {
+        let err = errors.remove(0);
+        Error::new(ErrorKind::CheckErrors {
             err,
             src: src.into(),
             errors,

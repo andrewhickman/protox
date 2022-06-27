@@ -2,8 +2,6 @@ use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 
-mod convert;
-
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub syntax: Syntax,
@@ -23,7 +21,7 @@ pub(crate) struct Comments {
     pub trailing_comment: std::option::Option<std::string::String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Syntax {
     Proto2,
     Proto3,

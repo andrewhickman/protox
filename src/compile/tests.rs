@@ -1,6 +1,10 @@
-use std::iter::{empty, once};
+use std::{
+    fs, io,
+    iter::{empty, once},
+};
 
 use assert_fs::TempDir;
+use prost_types::FileDescriptorProto;
 
 use super::*;
 use crate::with_current_dir;
@@ -21,11 +25,15 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     let mut compiler = Compiler::new(once(include)).unwrap();
     compiler.add_file(file).unwrap();
 
-    assert_eq!(compiler.files.len(), 1);
-    assert_eq!(compiler.files[0].ast, ast::File::default());
-    assert_eq!(compiler.files[0].name.as_str(), name);
-    assert_eq!(compiler.files[0].path, include.join(name));
-    assert_eq!(compiler.files[0].include, include);
+    assert_eq!(compiler.file_map.iter().count(), 1);
+    // TODO name
+    assert_eq!(compiler.file_map[name].name, name);
+    assert_eq!(
+        compiler.file_map[name].descriptor,
+        FileDescriptorProto::default()
+    );
+    assert_eq!(compiler.file_map[name].path, include.join(name));
+    assert_eq!(compiler.file_map[name].include, include.join(name));
 }
 
 fn test_compile_error(
@@ -53,7 +61,7 @@ fn test_compile_error(
         ) => assert_eq!(lpath, rpath),
         (err, _) => panic!("unexpected error: {}", err),
     }
-    assert_eq!(compiler.files.len(), 0);
+    assert_eq!(compiler.file_map.iter().count(), 0);
 }
 
 #[test]
@@ -589,7 +597,7 @@ fn complex_include_complex_file() {
 
 #[test]
 fn no_include_paths() {
-    let err = Compiler::new(empty::<PathBuf>()).unwrap_err();
+    let err = Compiler::new(empty::<std::path::PathBuf>()).unwrap_err();
     match err.kind {
         ErrorKind::NoIncludePaths => (),
         kind => panic!("unexpected error {}", kind),
@@ -704,22 +712,22 @@ fn import_files() {
     let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
-    assert_eq!(compiler.files.len(), 3);
+    assert_eq!(compiler.file_map.iter().count(), 3);
 
-    assert_eq!(compiler.files[0].name.as_str(), "dep2.proto");
-    assert_eq!(compiler.files[0].path, dir.join("dep2.proto"));
-    assert_eq!(compiler.files[0].include, dir.path());
+    assert_eq!(compiler.file_map[0].name.as_str(), "dep2.proto");
+    assert_eq!(compiler.file_map[0].path, dir.join("dep2.proto"));
+    assert_eq!(compiler.file_map[0].include, dir.path());
 
-    assert_eq!(compiler.files[1].name.as_str(), "dep.proto");
+    assert_eq!(compiler.file_map[1].name.as_str(), "dep.proto");
     assert_eq!(
-        compiler.files[1].path,
+        compiler.file_map[1].path,
         dir.join("include").join("dep.proto")
     );
-    assert_eq!(compiler.files[1].include, dir.join("include"));
+    assert_eq!(compiler.file_map[1].include, dir.join("include"));
 
-    assert_eq!(compiler.files[2].name.as_str(), "root.proto");
-    assert_eq!(compiler.files[2].path, dir.join("root.proto"));
-    assert_eq!(compiler.files[2].include, dir.path());
+    assert_eq!(compiler.file_map[2].name.as_str(), "root.proto");
+    assert_eq!(compiler.file_map[2].path, dir.join("root.proto"));
+    assert_eq!(compiler.file_map[2].include, dir.path());
 }
 
 #[test]
@@ -783,20 +791,20 @@ fn duplicated_import() {
     let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
-    assert_eq!(compiler.files.len(), 3);
+    assert_eq!(compiler.file_map.iter().count(), 3);
 
-    assert_eq!(compiler.files[0].name.as_str(), "dep2.proto");
-    assert_eq!(compiler.files[0].path, dir.join("dep2.proto"));
-    assert_eq!(compiler.files[0].include, dir.path());
+    assert_eq!(compiler.file_map[0].name.as_str(), "dep2.proto");
+    assert_eq!(compiler.file_map[0].path, dir.join("dep2.proto"));
+    assert_eq!(compiler.file_map[0].include, dir.path());
 
-    assert_eq!(compiler.files[1].name.as_str(), "dep.proto");
+    assert_eq!(compiler.file_map[1].name.as_str(), "dep.proto");
     assert_eq!(
-        compiler.files[1].path,
+        compiler.file_map[1].path,
         dir.join("include").join("dep.proto")
     );
-    assert_eq!(compiler.files[1].include, dir.join("include"));
+    assert_eq!(compiler.file_map[1].include, dir.join("include"));
 
-    assert_eq!(compiler.files[2].name.as_str(), "root.proto");
-    assert_eq!(compiler.files[2].path, dir.join("root.proto"));
-    assert_eq!(compiler.files[2].include, dir.path());
+    assert_eq!(compiler.file_map[2].name.as_str(), "root.proto");
+    assert_eq!(compiler.file_map[2].path, dir.join("root.proto"));
+    assert_eq!(compiler.file_map[2].include, dir.path());
 }

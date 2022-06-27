@@ -1,14 +1,13 @@
-use std::{
-    fmt::Write,
-    fs, io,
-    path::{self, Component, Path, PathBuf},
-    sync::Arc,
-};
+use std::{fmt::Write, path::Path, sync::Arc};
 
 use miette::NamedSource;
-use prost_types::FileDescriptorSet;
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
-use crate::{ast, parse, Error, ErrorKind};
+use crate::{
+    ast,
+    files::{File, FileMap, ImportResult},
+    parse, Error, ErrorKind,
+};
 
 #[cfg(test)]
 mod tests;
@@ -16,38 +15,9 @@ mod tests;
 /// Options for compiling protobuf files.
 #[derive(Debug)]
 pub struct Compiler {
-    includes: Vec<PathBuf>,
-    files: Vec<File>,
+    file_map: FileMap,
     include_imports: bool,
     include_source_info: bool,
-}
-
-#[derive(Debug)]
-struct File {
-    ast: ast::File,
-    source: Arc<str>,
-    include: PathBuf,
-    path: PathBuf,
-    name: String,
-}
-
-#[derive(Debug)]
-enum ImportResult {
-    Found {
-        include: PathBuf,
-        path: PathBuf,
-        source: Arc<str>,
-    },
-    AlreadyImported {
-        include: PathBuf,
-        path: PathBuf,
-    },
-    NotFound,
-    OpenError {
-        include: PathBuf,
-        path: PathBuf,
-        err: io::Error,
-    },
 }
 
 impl Compiler {
@@ -61,8 +31,7 @@ impl Compiler {
             return Err(Error::new(ErrorKind::NoIncludePaths));
         }
         Ok(Compiler {
-            includes,
-            files: Vec::new(),
+            file_map: FileMap::new(includes),
             include_imports: false,
             include_source_info: false,
         })
@@ -88,14 +57,16 @@ impl Compiler {
     /// `import` statements.
     pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<&mut Self, Error> {
         let relative_path = relative_path.as_ref();
-        let (resolved_include, name) =
-            self.resolve_import_name(relative_path).ok_or_else(|| {
+        let (resolved_include, name) = self
+            .file_map
+            .resolve_import_name(relative_path)
+            .ok_or_else(|| {
                 Error::new(ErrorKind::FileNotIncluded {
                     path: relative_path.to_owned(),
                 })
             })?;
 
-        let (source, include, path) = match self.resolve_import(&name) {
+        let (source, include, path) = match self.file_map.resolve_import(&name) {
             ImportResult::Found {
                 include,
                 path,
@@ -117,6 +88,7 @@ impl Compiler {
                         shadow: path,
                     }));
                 } else {
+                    self.file_map[name.as_str()].is_root = true;
                     return Ok(self);
                 }
             }
@@ -140,7 +112,7 @@ impl Compiler {
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
-                return Err(Error::parse_error(
+                return Err(Error::parse_errors(
                     errors,
                     NamedSource::new(path.display().to_string(), source.clone()),
                 ));
@@ -156,12 +128,14 @@ impl Compiler {
             )?;
         }
 
-        self.files.push(File {
-            ast,
-            source,
+        let descriptor = self.check_file(&name, &ast, source, &path)?;
+
+        self.file_map.add(File {
+            descriptor,
             name,
             include,
             path,
+            is_root: true,
         });
         Ok(self)
     }
@@ -170,20 +144,15 @@ impl Compiler {
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
     pub fn build_file_descriptor_set(&mut self) -> FileDescriptorSet {
-        let file = self
-            .files
-            .iter()
-            .map(|f| {
-                let src = if self.include_source_info {
-                    Some(f.source.as_ref())
-                } else {
-                    None
-                };
-                f.ast.to_file_descriptor(src)
-            })
-            .collect();
-
-        // TODO: CHECK / RESOLVE
+        let file = if self.include_imports {
+            self.file_map.iter().map(|f| f.descriptor.clone()).collect()
+        } else {
+            self.file_map
+                .iter()
+                .filter(|f| f.is_root)
+                .map(|f| f.descriptor.clone())
+                .collect()
+        };
 
         FileDescriptorSet { file }
     }
@@ -204,7 +173,7 @@ impl Compiler {
             return Err(Error::new(ErrorKind::CircularImport { cycle }));
         }
 
-        let (source, include, path) = match self.resolve_import(&import.value.value) {
+        let (source, include, path) = match self.file_map.resolve_import(&import.value.value) {
             ImportResult::Found {
                 include,
                 path,
@@ -233,7 +202,7 @@ impl Compiler {
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
-                return Err(Error::parse_error(
+                return Err(Error::parse_errors(
                     errors,
                     NamedSource::new(path.display().to_string(), source.clone()),
                 ));
@@ -250,108 +219,34 @@ impl Compiler {
         }
         import_stack.pop();
 
-        self.files.push(File {
-            ast,
-            source,
+        let descriptor = self.check_file(&import.value.value, &ast, source, &path)?;
+
+        self.file_map.add(File {
+            descriptor,
             name: import.value.value.clone(),
             include,
             path,
+            is_root: false,
         });
         Ok(())
     }
 
-    fn resolve_import_name(&self, path: &Path) -> Option<(Option<&Path>, String)> {
-        for include in &self.includes {
-            if let Some(relative_path) = strip_prefix(path, include) {
-                if let Some(import_name) = get_import_name(relative_path) {
-                    return Some((Some(include), import_name));
-                } else {
-                    continue;
-                }
-            }
-        }
+    fn check_file(
+        &self,
+        name: &str,
+        ast: &ast::File,
+        source: Arc<str>,
+        path: &Path,
+    ) -> Result<FileDescriptorProto, Error> {
+        let source_info = if self.include_source_info {
+            Some(source.as_ref())
+        } else {
+            None
+        };
 
-        get_import_name(path).map(|import_name| (None, import_name))
-    }
-
-    fn resolve_import(&self, name: &str) -> ImportResult {
-        if let Some(file) = self.files.iter().find(|f| f.name == name) {
-            return ImportResult::AlreadyImported {
-                include: file.include.clone(),
-                path: file.path.clone(),
-            };
-        }
-
-        for include in &self.includes {
-            let candidate_path = include.join(name);
-            match fs::read_to_string(&candidate_path) {
-                Ok(source) => {
-                    return ImportResult::Found {
-                        include: include.to_owned(),
-                        path: candidate_path,
-                        source: source.into(),
-                    }
-                }
-                Err(err) if err.kind() == io::ErrorKind::NotFound => continue,
-                Err(err) => {
-                    return ImportResult::OpenError {
-                        include: include.to_owned(),
-                        path: candidate_path,
-                        err,
-                    };
-                }
-            }
-        }
-
-        ImportResult::NotFound
-    }
-}
-
-fn get_import_name(path: &Path) -> Option<String> {
-    let mut name = String::new();
-    for component in path.components() {
-        match component {
-            path::Component::Normal(component) => {
-                if let Some(component) = component.to_str() {
-                    if !name.is_empty() {
-                        name.push('/');
-                    }
-                    name.push_str(component);
-                } else {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-    }
-
-    Some(name)
-}
-
-/// Modification of std::path::Path::strip_prefix which ignores '.' components
-fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
-    let mut path = path.components();
-    let mut prefix = prefix.components();
-
-    loop {
-        let mut path_next = path.clone();
-        let mut prefix_next = prefix.clone();
-
-        match (path_next.next(), prefix_next.next()) {
-            (Some(Component::CurDir), _) => {
-                path = path_next;
-            }
-            (_, Some(Component::CurDir)) => {
-                prefix = prefix_next;
-            }
-            (Some(ref x), Some(ref y)) if x == y => {
-                path = path_next;
-                prefix = prefix_next;
-            }
-            (Some(_), Some(_)) => return None,
-            (Some(_), None) => return Some(path.as_path()),
-            (None, None) => return Some(path.as_path()),
-            (None, Some(_)) => return None,
-        }
+        ast.to_file_descriptor(Some(name), source_info, Some(&self.file_map))
+            .map_err(|errors| {
+                Error::check_errors(errors, NamedSource::new(path.display().to_string(), source))
+            })
     }
 }

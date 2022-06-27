@@ -1,15 +1,36 @@
 use std::convert::TryFrom;
 
+use miette::Diagnostic;
 use prost_types::{
     descriptor_proto::{ExtensionRange, ReservedRange},
     DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileOptions,
     MessageOptions, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
 };
 
-use crate::{ast, MAX_MESSAGE_FIELD_NUMBER};
+use crate::{ast, files::FileMap, lines::LineResolver, Error, MAX_MESSAGE_FIELD_NUMBER};
+
+#[derive(Error, Debug, Diagnostic, PartialEq)]
+pub(crate) enum CheckError {}
+
+struct Context {
+    syntax: ast::Syntax,
+    errors: Vec<CheckError>,
+}
 
 impl ast::File {
-    pub fn to_file_descriptor(&self, source_code: Option<&str>) -> FileDescriptorProto {
+    pub fn to_file_descriptor(
+        &self,
+        name: Option<&str>,
+        source_code: Option<&str>,
+        file_map: Option<&FileMap>,
+    ) -> Result<FileDescriptorProto, Vec<CheckError>> {
+        let mut ctx = Context {
+            syntax: self.syntax,
+            errors: vec![],
+        };
+
+        let name = name.map(ToOwned::to_owned);
+
         let package = self.package.as_ref().map(|p| p.name.to_string());
 
         let dependency = self.imports.iter().map(|i| i.value.value.clone()).collect();
@@ -18,6 +39,7 @@ impl ast::File {
             .iter()
             .enumerate()
             .filter(|(_, i)| i.kind == Some(ast::ImportKind::Public))
+            // TODO check
             .map(|(index, _)| i32::try_from(index).unwrap())
             .collect();
         let weak_dependency = self
@@ -25,13 +47,14 @@ impl ast::File {
             .iter()
             .enumerate()
             .filter(|(_, i)| i.kind == Some(ast::ImportKind::Weak))
+            // TODO check
             .map(|(index, _)| i32::try_from(index).unwrap())
             .collect();
 
         let message_type = self
             .messages
             .iter()
-            .map(|m| m.to_message_descriptor())
+            .map(|m| m.to_message_descriptor(&mut ctx))
             .collect();
         let enum_type = self.enums.iter().map(|e| e.to_enum_descriptor()).collect();
         let service = self
@@ -58,19 +81,23 @@ impl ast::File {
 
         let syntax = Some(self.syntax.to_string());
 
-        FileDescriptorProto {
-            name: None,
-            package,
-            dependency,
-            public_dependency,
-            weak_dependency,
-            message_type,
-            enum_type,
-            service,
-            extension,
-            options,
-            source_code_info,
-            syntax,
+        if ctx.errors.is_empty() {
+            Ok(FileDescriptorProto {
+                name,
+                package,
+                dependency,
+                public_dependency,
+                weak_dependency,
+                message_type,
+                enum_type,
+                service,
+                extension,
+                options,
+                source_code_info,
+                syntax,
+            })
+        } else {
+            Err(ctx.errors)
         }
     }
 
@@ -80,7 +107,7 @@ impl ast::File {
 }
 
 impl ast::Message {
-    fn to_message_descriptor(&self) -> DescriptorProto {
+    fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
         let name = Some(self.name.value.clone());
 
         let field: Vec<_> = self
@@ -100,7 +127,7 @@ impl ast::Message {
             .body
             .messages
             .iter()
-            .map(|m| m.to_message_descriptor())
+            .map(|m| m.to_message_descriptor(ctx))
             .collect();
         let enum_type = self
             .body
@@ -129,18 +156,18 @@ impl ast::Message {
             Some(ast::Option::to_message_options(&self.body.options))
         };
 
-        let mut reserved_range = vec![];
-        let mut reserved_name = vec![];
-        for reserved in &self.body.reserved {
-            match &reserved.kind {
-                ast::ReservedKind::Ranges(ranges) => {
-                    reserved_range.extend(ranges.iter().map(|r| r.to_message_reserved_range()))
-                }
-                ast::ReservedKind::Names(names) => {
-                    reserved_name.extend(names.iter().map(|n| n.to_string()))
-                }
-            }
-        }
+        let reserved_range = self
+            .body
+            .reserved
+            .iter()
+            .flat_map(|r| r.ranges().map(|r| r.to_message_reserved_range()))
+            .collect();
+        let reserved_name = self
+            .body
+            .reserved
+            .iter()
+            .flat_map(|r| r.names().map(|i| i.value.to_owned()))
+            .collect::<Vec<_>>();
 
         DescriptorProto {
             name,
@@ -159,20 +186,37 @@ impl ast::Message {
 
 impl ast::MessageField {
     fn to_field_descriptor(&self) -> FieldDescriptorProto {
+        match self {
+            ast::MessageField::Field(field) => field.to_field_descriptor(),
+            ast::MessageField::Group(group) => group.to_field_descriptor(),
+            ast::MessageField::Map(map) => map.to_field_descriptor(),
+        }
+    }
+}
+
+impl ast::Field {
+    fn to_field_descriptor(&self) -> FieldDescriptorProto {
         todo!()
-        // FieldDescriptorProto {
-        //     name: (),
-        //     number: (),
-        //     label: (),
-        //     r#type: (),
-        //     type_name: (),
-        //     extendee: (),
-        //     default_value: (),
-        //     oneof_index: (),
-        //     json_name: (),
-        //     options: (),
-        //     proto3_optional: (),
-        // }
+    }
+}
+
+impl ast::Map {
+    fn to_field_descriptor(&self) -> FieldDescriptorProto {
+        todo!()
+    }
+
+    fn generated_message_name(&self) -> String {
+        todo!()
+    }
+}
+
+impl ast::Group {
+    fn to_field_descriptor(&self) -> FieldDescriptorProto {
+        todo!()
+    }
+
+    fn generated_message_name(&self) -> String {
+        todo!()
     }
 }
 
@@ -194,15 +238,34 @@ impl ast::Oneof {
     }
 }
 
+impl ast::Reserved {
+    fn ranges(&self) -> impl Iterator<Item = &ast::ReservedRange> {
+        match &self.kind {
+            ast::ReservedKind::Ranges(ranges) => ranges.iter(),
+            _ => [].iter(),
+        }
+    }
+
+    fn names(&self) -> impl Iterator<Item = &ast::Ident> {
+        match &self.kind {
+            ast::ReservedKind::Names(names) => names.iter(),
+            _ => [].iter(),
+        }
+    }
+}
+
 impl ast::ReservedRange {
     fn to_message_reserved_range(&self) -> ReservedRange {
         let end = match &self.end {
+            // TODO check
             ast::ReservedRangeEnd::None => i32::try_from(self.start.value + 1).unwrap(),
+            // TODO check
             ast::ReservedRangeEnd::Int(value) => i32::try_from(value.value).unwrap(),
             ast::ReservedRangeEnd::Max => MAX_MESSAGE_FIELD_NUMBER + 1,
         };
 
         ReservedRange {
+            // TODO check
             start: Some(i32::try_from(self.start.value).unwrap()),
             end: Some(end),
         }
@@ -210,12 +273,15 @@ impl ast::ReservedRange {
 
     fn to_enum_reserved_range(&self) -> ReservedRange {
         let end = match &self.end {
+            // TODO check
             ast::ReservedRangeEnd::None => i32::try_from(self.start.value).unwrap(),
+            // TODO check
             ast::ReservedRangeEnd::Int(value) => i32::try_from(value.value).unwrap(),
             ast::ReservedRangeEnd::Max => i32::MAX,
         };
 
         ReservedRange {
+            // TODO check
             start: Some(i32::try_from(self.start.value).unwrap()),
             end: Some(end),
         }
@@ -242,45 +308,4 @@ impl ast::Option {
     fn to_message_options(this: &[Self]) -> MessageOptions {
         todo!()
     }
-}
-
-struct LineResolver {
-    lines: Vec<usize>,
-}
-
-impl LineResolver {
-    fn new(source_code: &str) -> Self {
-        let lines = source_code
-            .match_indices('\n')
-            .map(|(index, _)| index + 1)
-            .collect();
-        LineResolver { lines }
-    }
-
-    fn resolve(&self, offset: usize) -> (usize, usize) {
-        match self.lines.binary_search(&offset) {
-            Ok(index) => (index + 1, 0),
-            Err(0) => (0, offset),
-            Err(index) => (index, offset - self.lines[index - 1]),
-        }
-    }
-}
-
-#[test]
-fn resolve_line_number() {
-    let resolver = LineResolver::new("hello\nworld\nfoo");
-
-    dbg!(&resolver.lines);
-
-    assert_eq!(resolver.resolve(0), (0, 0));
-    assert_eq!(resolver.resolve(4), (0, 4));
-    assert_eq!(resolver.resolve(5), (0, 5));
-    assert_eq!(resolver.resolve(6), (1, 0));
-    assert_eq!(resolver.resolve(7), (1, 1));
-    assert_eq!(resolver.resolve(10), (1, 4));
-    assert_eq!(resolver.resolve(11), (1, 5));
-    assert_eq!(resolver.resolve(12), (2, 0));
-    assert_eq!(resolver.resolve(13), (2, 1));
-    assert_eq!(resolver.resolve(14), (2, 2));
-    assert_eq!(resolver.resolve(15), (2, 3));
 }
