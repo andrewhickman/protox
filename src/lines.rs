@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use logos::Span;
 
 use crate::index_to_i32;

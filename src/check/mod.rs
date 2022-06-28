@@ -11,7 +11,11 @@ use prost_types::{
 use thiserror::Error;
 
 use crate::{
-    ast, case::to_camel_case, files::FileMap, index_to_i32, lines::LineResolver,
+    ast,
+    case::{to_camel_case, to_pascal_case},
+    files::FileMap,
+    index_to_i32,
+    lines::LineResolver,
     MAX_MESSAGE_FIELD_NUMBER,
 };
 
@@ -22,6 +26,12 @@ mod tests;
 pub(crate) enum CheckError {
     #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
     InvalidMessageNumber {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("{kind} fields may not have default values")]
+    InvalidDefault {
+        kind: &'static str,
         #[label("defined here")]
         span: Span,
     },
@@ -123,70 +133,67 @@ impl ast::Message {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
         let name = Some(self.name.value.clone());
 
+        DescriptorProto {
+            name,
+            ..self.body.to_message_descriptor(ctx)
+        }
+    }
+}
+
+impl ast::MessageBody {
+    fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
         let mut generated_nested_messages = Vec::new();
         let field: Vec<_> = self
-            .body
             .fields
             .iter()
             .map(|e| e.to_field_descriptor(ctx, &mut generated_nested_messages))
             .collect();
         let extension = self
-            .body
             .extends
             .iter()
             .map(|e| e.to_field_descriptor())
             .collect();
 
         let mut nested_type: Vec<_> = self
-            .body
             .messages
             .iter()
             .map(|m| m.to_message_descriptor(ctx))
             .collect();
         nested_type.extend(generated_nested_messages);
 
-        let enum_type = self
-            .body
-            .enums
-            .iter()
-            .map(|e| e.to_enum_descriptor())
-            .collect();
+        let enum_type = self.enums.iter().map(|e| e.to_enum_descriptor()).collect();
 
         let extension_range = self
-            .body
             .extensions
             .iter()
             .map(|e| e.to_extension_range())
             .collect();
 
         let oneof_decl = self
-            .body
             .oneofs
             .iter()
             .map(|o| o.to_oneof_descriptor())
             .collect();
 
-        let options = if self.body.options.is_empty() {
+        let options = if self.options.is_empty() {
             None
         } else {
-            Some(ast::Option::to_message_options(&self.body.options))
+            Some(ast::Option::to_message_options(&self.options))
         };
 
         let reserved_range = self
-            .body
             .reserved
             .iter()
             .flat_map(|r| r.ranges().map(|r| r.to_message_reserved_range()))
             .collect();
         let reserved_name = self
-            .body
             .reserved
             .iter()
             .flat_map(|r| r.names().map(|i| i.value.to_owned()))
             .collect::<Vec<_>>();
 
         DescriptorProto {
-            name,
+            name: None,
             field,
             extension,
             nested_type,
@@ -223,8 +230,7 @@ impl ast::Field {
                 .unwrap_or(ast::FieldLabel::Optional)
                 .to_field_label() as i32,
         );
-        let (r#type, type_name) = self.ty.to_type(ctx);
-        let r#type = r#type.map(|t| t as i32);
+        let (ty, type_name) = self.ty.to_type(ctx);
 
         let (default_value, options) = if self.options.is_empty() {
             (None, None)
@@ -232,6 +238,13 @@ impl ast::Field {
             let (default_value, options) = ast::OptionBody::to_field_options(&self.options);
             (default_value, Some(options))
         };
+
+        if default_value.is_some() && ty == Some(field_descriptor_proto::Type::Message) {
+            ctx.errors.push(CheckError::InvalidDefault {
+                kind: "message",
+                span: self.span.clone(),
+            })
+        }
 
         let json_name = Some(to_camel_case(&self.name.value));
 
@@ -246,10 +259,10 @@ impl ast::Field {
             name,
             number,
             label,
-            r#type,
+            r#type: ty.map(|t| t as i32),
             type_name,
             extendee: None,
-            default_value: None, // TODO
+            default_value,
             oneof_index: None,
             json_name,
             options,
@@ -273,11 +286,30 @@ impl ast::Int {
 }
 
 impl ast::FieldLabel {
-    fn to_field_label(&self) -> field_descriptor_proto::Label {
+    fn to_field_label(self) -> field_descriptor_proto::Label {
         match self {
             ast::FieldLabel::Optional => field_descriptor_proto::Label::Optional,
             ast::FieldLabel::Required => field_descriptor_proto::Label::Required,
             ast::FieldLabel::Repeated => field_descriptor_proto::Label::Repeated,
+        }
+    }
+}
+
+impl ast::KeyTy {
+    fn to_type(&self) -> field_descriptor_proto::Type {
+        match self {
+            ast::KeyTy::Int32 => field_descriptor_proto::Type::Int32,
+            ast::KeyTy::Int64 => field_descriptor_proto::Type::Int64,
+            ast::KeyTy::Uint32 => field_descriptor_proto::Type::Uint32,
+            ast::KeyTy::Uint64 => field_descriptor_proto::Type::Uint64,
+            ast::KeyTy::Sint32 => field_descriptor_proto::Type::Sint32,
+            ast::KeyTy::Sint64 => field_descriptor_proto::Type::Sint64,
+            ast::KeyTy::Fixed32 => field_descriptor_proto::Type::Fixed32,
+            ast::KeyTy::Fixed64 => field_descriptor_proto::Type::Fixed64,
+            ast::KeyTy::Sfixed32 => field_descriptor_proto::Type::Sfixed32,
+            ast::KeyTy::Sfixed64 => field_descriptor_proto::Type::Sfixed64,
+            ast::KeyTy::Bool => field_descriptor_proto::Type::Bool,
+            ast::KeyTy::String => field_descriptor_proto::Type::String,
         }
     }
 }
@@ -313,9 +345,11 @@ impl ast::Map {
     ) -> FieldDescriptorProto {
         let name = Some(self.name.value.clone());
         let number = self.number.to_field_number(ctx);
-        let label = None;
-        let (r#type, type_name) = self.ty.to_type(ctx);
-        let r#type = r#type.map(|t| t as i32);
+
+        let generated_message = self.generate_message_descriptor(ctx);
+        let r#type = Some(field_descriptor_proto::Type::Message as i32);
+        let type_name = Some(make_name(ctx.scope_name(), generated_message.name()));
+        messages.push(generated_message);
 
         let (default_value, options) = if self.options.is_empty() {
             (None, None)
@@ -324,27 +358,62 @@ impl ast::Map {
             (default_value, Some(options))
         };
 
-        let json_name = Some(to_camel_case(&self.name.value));
+        if default_value.is_some() {
+            ctx.errors.push(CheckError::InvalidDefault {
+                kind: "map",
+                span: self.span.clone(),
+            });
+        }
 
-        let proto3_optional = None;
+        let json_name = Some(to_camel_case(&self.name.value));
 
         FieldDescriptorProto {
             name,
             number,
-            label,
+            label: None,
             r#type,
             type_name,
             extendee: None,
-            default_value: None, // TODO
+            default_value: None,
             oneof_index: None,
             json_name,
             options,
-            proto3_optional,
+            proto3_optional: None,
         }
     }
 
-    fn generate_message_descriptor(&self) -> DescriptorProto {
-        todo!()
+    fn generate_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
+        let mut name = Some(to_pascal_case(&self.name.value) + "Entry");
+
+        let (ty, type_name) = self.ty.to_type(ctx);
+
+        let key_field = FieldDescriptorProto {
+            name: Some("key".to_owned()),
+            number: Some(1),
+            label: Some(field_descriptor_proto::Label::Optional as i32),
+            r#type: Some(self.key_ty.to_type() as i32),
+            json_name: Some("key".to_owned()),
+            ..Default::default()
+        };
+        let value_field = FieldDescriptorProto {
+            name: Some("value".to_owned()),
+            number: Some(2),
+            label: Some(field_descriptor_proto::Label::Optional as i32),
+            r#type: ty.map(|t| t as i32),
+            type_name,
+            json_name: Some("key".to_owned()),
+            ..Default::default()
+        };
+
+        DescriptorProto {
+            name,
+            field: vec![key_field, value_field],
+            options: Some(MessageOptions {
+                map_entry: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }
     }
 }
 
@@ -354,11 +423,49 @@ impl ast::Group {
         ctx: &mut Context,
         messages: &mut Vec<DescriptorProto>,
     ) -> FieldDescriptorProto {
-        todo!()
-    }
+        let field_name = Some(self.name.value.to_ascii_lowercase());
+        let message_name = Some(self.name.value.clone());
 
-    fn generated_message_name(&self) -> String {
-        todo!()
+        let number = self.number.to_field_number(ctx);
+
+        let generated_message = DescriptorProto {
+            name: message_name,
+            ..self.body.to_message_descriptor(ctx)
+        };
+
+        let r#type = Some(field_descriptor_proto::Type::Group as i32);
+        let type_name = Some(make_name(ctx.scope_name(), generated_message.name()));
+        messages.push(generated_message);
+
+        let (default_value, options) = if self.options.is_empty() {
+            (None, None)
+        } else {
+            let (default_value, options) = ast::OptionBody::to_field_options(&self.options);
+            (default_value, Some(options))
+        };
+
+        if default_value.is_some() {
+            ctx.errors.push(CheckError::InvalidDefault {
+                kind: "group",
+                span: self.span.clone(),
+            });
+        }
+
+        let json_name = Some(to_camel_case(&self.name.value));
+
+        FieldDescriptorProto {
+            name: field_name,
+            number,
+            label: None,
+            r#type,
+            type_name,
+            extendee: None,
+            default_value: None,
+            oneof_index: None,
+            json_name,
+            options,
+            proto3_optional: None,
+        }
     }
 }
 
@@ -455,5 +562,23 @@ impl ast::Option {
 impl ast::OptionBody {
     fn to_field_options(this: &[Self]) -> (Option<String>, FieldOptions) {
         todo!()
+    }
+}
+
+impl Context {
+    // resolve top-level scope
+
+    // push scope
+
+    fn scope_name(&self) -> &str {
+        todo!()
+    }
+}
+
+fn make_name(namespace: &str, name: &str) -> String {
+    if namespace.is_empty() {
+        name.to_owned()
+    } else {
+        format!("{}.{}", namespace, name)
     }
 }

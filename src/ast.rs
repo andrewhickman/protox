@@ -366,3 +366,12 @@ impl fmt::Display for FullIdent {
         Ok(())
     }
 }
+
+impl fmt::Display for TypeName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.leading_dot.is_some() {
+            write!(f, ".")?;
+        }
+        write!(f, "{}", self.name)
+    }
+}

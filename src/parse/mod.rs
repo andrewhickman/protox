@@ -376,9 +376,9 @@ impl<'a> Parser<'a> {
                     self.add_error(ParseError::MapWithLabel { span: start })
                 }
 
-                return Ok(ast::MessageField::Map(
+                Ok(ast::MessageField::Map(
                     self.parse_map_inner(leading_comments)?,
-                ));
+                ))
             }
             Some((Token::Group, _)) => {
                 self.bump();

@@ -56,6 +56,13 @@ fn name_resolution() {
 }
 
 #[test]
+fn name_collision() {
+    // message vs message vs service etc
+    // field vs submessage
+    // message vs package
+}
+
+#[test]
 fn message_field_default_value() {
     // bytes/string etc
 }
@@ -68,3 +75,9 @@ fn map_field_with_label() {}
 
 #[test]
 fn map_field_with_default() {}
+
+#[test]
+fn message_field_with_default() {}
+
+#[test]
+fn group_field_with_default() {}
