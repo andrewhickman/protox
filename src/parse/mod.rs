@@ -839,7 +839,8 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::Extensions)?;
 
-        let ranges = self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON, ExpectedToken::LEFT_BRACKET])?;
+        let ranges =
+            self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON, ExpectedToken::LEFT_BRACKET])?;
 
         let options = match self.peek() {
             Some((Token::Semicolon, _)) => vec![],
@@ -892,7 +893,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_reserved_ranges(&mut self, terminators: &[ExpectedToken]) -> Result<Vec<ast::ReservedRange>, ()> {
+    fn parse_reserved_ranges(
+        &mut self,
+        terminators: &[ExpectedToken],
+    ) -> Result<Vec<ast::ReservedRange>, ()> {
         let mut ranges = vec![self.parse_reserved_range()?];
 
         let end = loop {
@@ -903,7 +907,9 @@ impl<'a> Parser<'a> {
                     continue;
                 }
                 Some((tok, _)) if terminators.iter().any(|e| e.matches(&tok)) => break,
-                _ => self.unexpected_token(fmt_expected(once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned())))?,
+                _ => self.unexpected_token(fmt_expected(
+                    once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned()),
+                ))?,
             }
         };
 

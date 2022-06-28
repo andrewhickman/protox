@@ -42,7 +42,7 @@ pub(crate) enum CheckError {
         span: Span,
     },
     #[error("extensions fields may not be required")]
-    RequiredExtendField{
+    RequiredExtendField {
         #[label("defined here")]
         span: Span,
     },
@@ -483,33 +483,37 @@ impl ast::Group {
 impl ast::Extend {
     fn to_field_descriptors(&self, ctx: &mut Context) -> Vec<FieldDescriptorProto> {
         let extendee = ctx.resolve_type_name(&self.extendee);
-        self.fields.iter().filter_map(|field| match field {
-            ast::MessageField::Field(field) => {
-                if field.label == Some(ast::FieldLabel::Required) {
-                    ctx.errors.push(CheckError::RequiredExtendField { span: field.span.clone() });
-                }
+        self.fields
+            .iter()
+            .filter_map(|field| match field {
+                ast::MessageField::Field(field) => {
+                    if field.label == Some(ast::FieldLabel::Required) {
+                        ctx.errors.push(CheckError::RequiredExtendField {
+                            span: field.span.clone(),
+                        });
+                    }
 
-                Some(FieldDescriptorProto {
-                    extendee: Some(extendee.clone()),
-                    ..field.to_field_descriptor(ctx)
-                })
-            },
-            ast::MessageField::Group(field) => {
-                ctx.errors.push(CheckError::InvalidExtendFieldKind {
-                    kind: "group",
-                    span: field.span.clone(),
-                });
-                None
-            }
-            ast::MessageField::Map(field) => {
-                ctx.errors.push(CheckError::InvalidExtendFieldKind {
-                    kind: "map",
-                    span: field.span.clone(),
-                });
-                None
-            }
-        })
-        .collect()
+                    Some(FieldDescriptorProto {
+                        extendee: Some(extendee.clone()),
+                        ..field.to_field_descriptor(ctx)
+                    })
+                }
+                ast::MessageField::Group(field) => {
+                    ctx.errors.push(CheckError::InvalidExtendFieldKind {
+                        kind: "group",
+                        span: field.span.clone(),
+                    });
+                    None
+                }
+                ast::MessageField::Map(field) => {
+                    ctx.errors.push(CheckError::InvalidExtendFieldKind {
+                        kind: "map",
+                        span: field.span.clone(),
+                    });
+                    None
+                }
+            })
+            .collect()
     }
 }
 
