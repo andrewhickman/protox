@@ -132,7 +132,7 @@ pub(crate) struct Field {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum FieldLabel {
     Optional = 1,
     Required = 2,

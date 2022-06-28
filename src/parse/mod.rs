@@ -80,6 +80,11 @@ pub(crate) enum ParseError {
         #[label("...and again here")]
         second: Span,
     },
+    #[error("map fields cannot have labels")]
+    MapWithLabel {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
@@ -361,16 +366,20 @@ impl<'a> Parser<'a> {
                 self.bump();
                 (Some(FieldLabel::Repeated), span)
             }
-            Some((Token::Map, _)) => {
-                return Ok(ast::MessageField::Map(
-                    self.parse_map_inner(leading_comments)?,
-                ));
-            }
             Some((tok, span)) if is_field_start_token(&tok) => (None, span),
             _ => self.unexpected_token("a message field")?,
         };
 
         match self.peek() {
+            Some((Token::Map, _)) => {
+                if label.is_some() {
+                    self.add_error(ParseError::MapWithLabel { span: start })
+                }
+
+                return Ok(ast::MessageField::Map(
+                    self.parse_map_inner(leading_comments)?,
+                ));
+            }
             Some((Token::Group, _)) => {
                 self.bump();
 

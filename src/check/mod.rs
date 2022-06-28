@@ -326,12 +326,7 @@ impl ast::Map {
 
         let json_name = Some(to_camel_case(&self.name.value));
 
-        let proto3_optional =
-            if ctx.syntax == ast::Syntax::Proto3 && self.label == Some(ast::FieldLabel::Optional) {
-                Some(true)
-            } else {
-                None
-            };
+        let proto3_optional = None;
 
         FieldDescriptorProto {
             name,

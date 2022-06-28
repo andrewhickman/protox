@@ -10,6 +10,10 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
 #[test]
 fn invalid_message_number() {
     assert_eq!(
+        check("message Foo { int32 i = -5; }"),
+        Err(vec![CheckError::InvalidMessageNumber { span: 0..0 }])
+    );
+    assert_eq!(
         check("message Foo { int32 i = 0; }"),
         Err(vec![CheckError::InvalidMessageNumber { span: 0..0 }])
     );
@@ -58,3 +62,9 @@ fn message_field_default_value() {
 
 #[test]
 fn message_field_json_name() {}
+
+#[test]
+fn map_field_with_label() {}
+
+#[test]
+fn map_field_with_default() {}

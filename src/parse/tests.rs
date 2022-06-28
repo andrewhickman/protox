@@ -1300,6 +1300,27 @@ pub fn parse_message() {
         comments: Default::default(),
         span: 0..41,
     });
+    case!(parse_message("message Foo { repeated map<sint32, fixed64> m = 1; }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            fields: vec![ast::MessageField::Map(ast::Map {
+                key_ty: ast::KeyTy::Sint32,
+                ty: ast::Ty::Fixed64,
+                name: ast::Ident::new("m", 44..45),
+                number: ast::Int {
+                    negative: false,
+                    value: 1,
+                    span: 48..49,
+                },
+                options: vec![],
+                comments: ast::Comments::default(),
+                span: 23..50,
+            })],
+            ..ast::MessageBody::default()
+        },
+        comments: Default::default(),
+        span: 0..52,
+    }, Err(vec![ParseError::MapWithLabel { span: 14..22 }]));
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::Comma,
