@@ -1327,6 +1327,56 @@ pub fn parse_message() {
         comments: Default::default(),
         span: 0..41,
     });
+    case!(parse_message("message Foo { extensions 5, 7 to 8, 10 to max [deprecated = false]; }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            extensions: vec![ast::Extensions {
+                ranges: vec![
+                    ast::ReservedRange {
+                        start: ast::Int {
+                            negative: false,
+                            value: 5,
+                            span: 25..26,
+                        },
+                        end: ast::ReservedRangeEnd::None,
+                    },
+                    ast::ReservedRange {
+                        start: ast::Int {
+                            negative: false,
+                            value: 7,
+                            span: 28..29,
+                        },
+                        end: ast::ReservedRangeEnd::Int(ast::Int {
+                            negative: false,
+                            value: 8,
+                            span: 33..34,
+                        })
+                    },
+                    ast::ReservedRange {
+                        start: ast::Int {
+                            negative: false,
+                            value: 10,
+                            span: 36..38,
+                        },
+                        end: ast::ReservedRangeEnd::Max,
+                    },
+                ],
+                options: vec![ast::OptionBody {
+                    name: FullIdent::from(ast::Ident::new("deprecated", 47..57)),
+                    field_name: None,
+                    value: ast::Constant::Bool(ast::Bool {
+                        value: false,
+                        span: 60..65,
+                    }),
+                }],
+                comments: ast::Comments::default(),
+                span: 14..67,
+            }],
+            ..ast::MessageBody::default()
+        },
+        comments: Default::default(),
+        span: 0..69,
+    });
     case!(parse_message("message Foo { repeated map<sint32, fixed64> m = 1; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {

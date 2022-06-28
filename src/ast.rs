@@ -243,6 +243,7 @@ pub(crate) struct Reserved {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Extensions {
     pub ranges: Vec<ReservedRange>,
+    pub options: Vec<OptionBody>,
     pub comments: Comments,
     pub span: Span,
 }

@@ -425,19 +425,13 @@ impl<'a> Parser<'a> {
 
                 let number = self.parse_positive_int()?;
 
-                let (options, end) = match self.peek() {
-                    Some((Token::LeftBracket, _)) => {
-                        let options = self.parse_options_list()?;
-                        let span = self.expect_eq(Token::Semicolon)?;
-                        (options, span)
-                    }
-                    Some((Token::Semicolon, span)) => {
-                        self.bump();
-                        (vec![], span)
-                    }
+                let options = match self.peek() {
+                    Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+                    Some((Token::Semicolon, _)) => vec![],
                     _ => self.unexpected_token("';' or '['")?,
                 };
 
+                let end = self.expect_eq(Token::Semicolon)?;
                 let comments = self.parse_trailing_comment(leading_comments);
 
                 Ok(ast::MessageField::Field(ast::Field {
@@ -477,19 +471,13 @@ impl<'a> Parser<'a> {
 
         let number = self.parse_positive_int()?;
 
-        let (options, end) = match self.peek() {
-            Some((Token::LeftBracket, _)) => {
-                let options = self.parse_options_list()?;
-                let span = self.expect_eq(Token::Semicolon)?;
-                (options, span)
-            }
-            Some((Token::Semicolon, span)) => {
-                self.bump();
-                (vec![], span)
-            }
+        let options = match self.peek() {
+            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            Some((Token::Semicolon, _)) => vec![],
             _ => self.unexpected_token("';' or '['")?,
         };
 
+        let end = self.expect_eq(Token::Semicolon)?;
         let comments = self.parse_trailing_comment(leading_comments);
 
         Ok(ast::Map {
@@ -825,7 +813,8 @@ impl<'a> Parser<'a> {
 
         match self.peek() {
             Some((Token::IntLiteral(_) | Token::Minus, _)) => {
-                let (ranges, end) = self.parse_reserved_ranges()?;
+                let ranges = self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON])?;
+                let end = self.expect_eq(Token::Semicolon)?;
                 let comments = self.parse_trailing_comment(leading_comments);
                 Ok(ast::Reserved {
                     kind: ast::ReservedKind::Ranges(ranges),
@@ -850,12 +839,21 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::Extensions)?;
 
-        let (ranges, end) = self.parse_reserved_ranges()?;
+        let ranges = self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON, ExpectedToken::LEFT_BRACKET])?;
+
+        let options = match self.peek() {
+            Some((Token::Semicolon, _)) => vec![],
+            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            _ => self.unexpected_token("';' or '['")?,
+        };
+
+        let end = self.expect_eq(Token::Semicolon)?;
 
         let comments = self.parse_trailing_comment(leading_comments);
 
         Ok(ast::Extensions {
             ranges,
+            options,
             comments,
             span: join_span(start, end),
         })
@@ -894,7 +892,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_reserved_ranges(&mut self) -> Result<(Vec<ast::ReservedRange>, Span), ()> {
+    fn parse_reserved_ranges(&mut self, terminators: &[ExpectedToken]) -> Result<Vec<ast::ReservedRange>, ()> {
         let mut ranges = vec![self.parse_reserved_range()?];
 
         let end = loop {
@@ -904,15 +902,12 @@ impl<'a> Parser<'a> {
                     ranges.push(self.parse_reserved_range()?);
                     continue;
                 }
-                Some((Token::Semicolon, span)) => {
-                    self.bump();
-                    break span;
-                }
-                _ => self.unexpected_token("',' or ';'")?,
+                Some((tok, _)) if terminators.iter().any(|e| e.matches(&tok)) => break,
+                _ => self.unexpected_token(fmt_expected(once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned())))?,
             }
         };
 
-        Ok((ranges, end))
+        Ok(ranges)
     }
 
     fn parse_reserved_range(&mut self) -> Result<ast::ReservedRange, ()> {
@@ -1337,6 +1332,7 @@ impl ExpectedToken {
     const COMMA: Self = ExpectedToken::Token(Token::Comma);
     const SEMICOLON: Self = ExpectedToken::Token(Token::Semicolon);
     const LEFT_BRACE: Self = ExpectedToken::Token(Token::LeftBrace);
+    const LEFT_BRACKET: Self = ExpectedToken::Token(Token::LeftBracket);
     const RIGHT_PAREN: Self = ExpectedToken::Token(Token::RightParen);
     const RIGHT_BRACKET: Self = ExpectedToken::Token(Token::RightBracket);
     const RIGHT_ANGLE_BRACKET: Self = ExpectedToken::Token(Token::RightAngleBracket);
