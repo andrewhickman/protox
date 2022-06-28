@@ -228,6 +228,7 @@ pub(crate) struct Group {
     pub name: Ident,
     pub number: Int,
     pub body: MessageBody,
+    pub options: Vec<OptionBody>,
     pub comments: Comments,
     pub span: Span,
 }

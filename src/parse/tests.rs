@@ -778,6 +778,7 @@ pub fn parse_extension() {
                     ],
                     ..Default::default()
                 },
+                options: vec![],
                 comments: ast::Comments::default(),
                 span: 13..63,
             }),
@@ -880,6 +881,7 @@ pub fn parse_group() {
             span: 29..30,
         },
         body: ast::MessageBody::default(),
+        options: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec![],
             leading_comment: Some("leading\n".to_owned()),
@@ -896,6 +898,7 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        options: vec![],
         comments: ast::Comments::default(),
         span: 0..24,
     }));
@@ -908,8 +911,29 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        options: vec![],
         comments: ast::Comments::default(),
         span: 0..28,
+    }));
+    case!(parse_field("optional group A = 1 [deprecated = true] { }") => ast::MessageField::Group(ast::Group {
+        label: Some(ast::FieldLabel::Optional),
+        name: ast::Ident::new("A", 15..16),
+        number: ast::Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        body: ast::MessageBody::default(),
+        options: vec![ast::OptionBody {
+            name: ast::FullIdent::from(ast::Ident::new("deprecated", 22..32)),
+            field_name: None,
+            value: ast::Constant::Bool(ast::Bool {
+                value: true,
+                span: 35..39,
+            })
+        }],
+        comments: ast::Comments::default(),
+        span: 0..44,
     }));
     case!(parse_field("optional group A = 1 { optional sint32 foo = 2; }") => ast::MessageField::Group(ast::Group {
         label: Some(ast::FieldLabel::Optional),
@@ -937,6 +961,7 @@ pub fn parse_group() {
             ],
             ..Default::default()
         },
+        options: vec![],
         comments: ast::Comments::default(),
         span: 0..49,
     }));
@@ -949,6 +974,7 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody::default(),
+        options: vec![],
         comments: ast::Comments::default(),
         span: 0..24,
     }), Err(vec![ParseError::InvalidGroupName {
@@ -975,7 +1001,7 @@ pub fn parse_group() {
         span: 19..20,
     }]));
     case!(parse_field("optional group A = 1 ;") => Err(vec![ParseError::UnexpectedToken {
-        expected: "'{'".to_owned(),
+        expected: "'{' or '['".to_owned(),
         found: Token::Semicolon,
         span: 21..22,
     }]));
@@ -1224,6 +1250,7 @@ pub fn parse_message() {
                         ],
                         ..Default::default()
                     },
+                    options: vec![],
                     comments: ast::Comments::default(),
                     span: 78..144,
                 }),

@@ -394,13 +394,21 @@ impl<'a> Parser<'a> {
 
                 let number = self.parse_positive_int()?;
 
+                let options = match self.peek() {
+                    Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+                    Some((Token::LeftBrace, _)) => vec![],
+                    _ => self.unexpected_token("'{' or '['")?,
+                };
+
                 self.expect_eq(Token::LeftBrace)?;
+
                 let comments = self.parse_trailing_comment(leading_comments);
 
                 let (body, end) = self.parse_message_body()?;
 
                 Ok(ast::MessageField::Group(ast::Group {
                     label,
+                    options,
                     name,
                     number,
                     body,
