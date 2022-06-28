@@ -81,3 +81,15 @@ fn message_field_with_default() {}
 
 #[test]
 fn group_field_with_default() {}
+
+#[test]
+fn extend_required_field() {}
+
+#[test]
+fn extend_map_field() {}
+
+#[test]
+fn extend_group_field() {}
+
+#[test]
+fn repeated_field_default_value() {}

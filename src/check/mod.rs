@@ -35,6 +35,17 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("{kind} fields are not allowed in extensions")]
+    InvalidExtendFieldKind {
+        kind: &'static str,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("extensions fields may not be required")]
+    RequiredExtendField{
+        #[label("defined here")]
+        span: Span,
+    },
 }
 
 struct Context {
@@ -88,7 +99,7 @@ impl ast::File {
         let extension = self
             .extends
             .iter()
-            .map(|e| e.to_field_descriptor())
+            .flat_map(|e| e.to_field_descriptors(&mut ctx))
             .collect();
 
         let options = if self.options.is_empty() {
@@ -151,7 +162,7 @@ impl ast::MessageBody {
         let extension = self
             .extends
             .iter()
-            .map(|e| e.to_field_descriptor())
+            .flat_map(|e| e.to_field_descriptors(ctx))
             .collect();
 
         let mut nested_type: Vec<_> = self
@@ -383,7 +394,7 @@ impl ast::Map {
     }
 
     fn generate_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
-        let mut name = Some(to_pascal_case(&self.name.value) + "Entry");
+        let name = Some(to_pascal_case(&self.name.value) + "Entry");
 
         let (ty, type_name) = self.ty.to_type(ctx);
 
@@ -470,14 +481,35 @@ impl ast::Group {
 }
 
 impl ast::Extend {
-    fn to_field_descriptor(&self) -> FieldDescriptorProto {
-        todo!()
-    }
-}
+    fn to_field_descriptors(&self, ctx: &mut Context) -> Vec<FieldDescriptorProto> {
+        let extendee = ctx.resolve_type_name(&self.extendee);
+        self.fields.iter().filter_map(|field| match field {
+            ast::MessageField::Field(field) => {
+                if field.label == Some(ast::FieldLabel::Required) {
+                    ctx.errors.push(CheckError::RequiredExtendField { span: field.span.clone() });
+                }
 
-impl ast::Extensions {
-    fn to_extension_range(&self) -> ExtensionRange {
-        todo!()
+                Some(FieldDescriptorProto {
+                    extendee: Some(extendee.clone()),
+                    ..field.to_field_descriptor(ctx)
+                })
+            },
+            ast::MessageField::Group(field) => {
+                ctx.errors.push(CheckError::InvalidExtendFieldKind {
+                    kind: "group",
+                    span: field.span.clone(),
+                });
+                None
+            }
+            ast::MessageField::Map(field) => {
+                ctx.errors.push(CheckError::InvalidExtendFieldKind {
+                    kind: "map",
+                    span: field.span.clone(),
+                });
+                None
+            }
+        })
+        .collect()
     }
 }
 
@@ -500,6 +532,12 @@ impl ast::Reserved {
             ast::ReservedKind::Names(names) => names.iter(),
             _ => [].iter(),
         }
+    }
+}
+
+impl ast::Extensions {
+    fn to_extension_range(&self) -> ExtensionRange {
+        todo!()
     }
 }
 
@@ -569,6 +607,12 @@ impl Context {
     // resolve top-level scope
 
     // push scope
+
+    fn resolve_type_name(&self, name: &ast::TypeName) -> String {
+        // TODO resolve
+        // return name unchanged if no imports?
+        name.to_string()
+    }
 
     fn scope_name(&self) -> &str {
         todo!()
