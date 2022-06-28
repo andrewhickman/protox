@@ -134,9 +134,9 @@ pub(crate) struct Field {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum FieldLabel {
-    Required,
-    Optional,
-    Repeated,
+    Optional = 1,
+    Required = 2,
+    Repeated = 3,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]

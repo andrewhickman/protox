@@ -4,6 +4,7 @@
 #![doc(html_root_url = "https://docs.rs/protox/0.1.0/")]
 
 mod ast;
+mod case;
 mod check;
 mod compile;
 mod files;
@@ -12,6 +13,7 @@ mod parse;
 
 use core::fmt;
 use std::{
+    convert::TryInto,
     io,
     path::{Path, PathBuf},
 };
@@ -24,9 +26,6 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 use thiserror::Error;
 
 pub use self::compile::Compiler;
-
-const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;
-const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 /// Convenience function for compiling a set of protobuf files.
 ///
@@ -187,6 +186,15 @@ impl Error {
             errors,
         })
     }
+}
+
+const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;
+const MAX_FILE_LEN: u64 = i32::MAX as u64;
+
+fn index_to_i32(index: usize) -> i32 {
+    // We enforce that all files parsed are at most i32::MAX bytes long. Therefore the indices of any
+    // definitions in a single file must fit into an i32.
+    index.try_into().unwrap()
 }
 
 #[cfg(test)]

@@ -2,6 +2,8 @@ use std::convert::TryFrom;
 
 use logos::Span;
 
+use crate::index_to_i32;
+
 pub(crate) struct LineResolver {
     lines: Vec<usize>,
 }
@@ -28,20 +30,20 @@ impl LineResolver {
         let (end_line, end_col) = self.resolve(span.end);
 
         if start_line == end_line {
-            vec![to_i32(start_line), to_i32(start_col), to_i32(end_col)]
+            vec![
+                index_to_i32(start_line),
+                index_to_i32(start_col),
+                index_to_i32(end_col),
+            ]
         } else {
             vec![
-                to_i32(start_col),
-                to_i32(start_col),
-                to_i32(end_line),
-                to_i32(end_col),
+                index_to_i32(start_col),
+                index_to_i32(start_col),
+                index_to_i32(end_line),
+                index_to_i32(end_col),
             ]
         }
     }
-}
-
-fn to_i32(i: usize) -> i32 {
-    i32::try_from(i).unwrap()
 }
 
 #[test]
