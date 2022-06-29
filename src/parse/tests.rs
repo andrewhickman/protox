@@ -159,7 +159,7 @@ fn parse_enum() {
             value: ast::Int {
                 negative: true,
                 value: 1,
-                span: 39..40,
+                span: 38..40,
             },
             options: vec![],
             comments: ast::Comments::default(),
@@ -225,7 +225,7 @@ fn parse_enum() {
                 start: ast::Int {
                     negative: true,
                     value: 1,
-                    span: 30..31,
+                    span: 29..31,
                 },
                 end: ast::ReservedRangeEnd::Max,
             }]),
@@ -835,7 +835,7 @@ pub fn parse_reserved() {
     case!(parse_reserved("reserved -1;") => ast::Reserved {
         kind: ast::ReservedKind::Ranges(vec![
             ast::ReservedRange {
-                start: ast::Int { negative: true, value: 1, span: 10..11 },
+                start: ast::Int { negative: true, value: 1, span: 9..11 },
                 end: ast::ReservedRangeEnd::None,
             }
         ]),
@@ -992,7 +992,7 @@ pub fn parse_group() {
         },
     ]));
     case!(parse_field("optional group A = {") => Err(vec![ParseError::UnexpectedToken {
-        expected: "a positive integer".to_owned(),
+        expected: "an integer".to_owned(),
         found: Token::LeftBrace,
         span: 19..20,
     }]));
@@ -1112,7 +1112,7 @@ pub fn parse_map() {
         span: 21..22,
     }]));
     case!(parse_map("map<string, Foo> foo = x") => Err(vec![ParseError::UnexpectedToken {
-        expected: "a positive integer".to_owned(),
+        expected: "an integer".to_owned(),
         found: Token::Ident("x".into()),
         span: 23..24,
     }]));

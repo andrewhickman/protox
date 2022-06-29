@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
             lexer: Token::lexer(source),
             comments: Comments::new(),
             peek: None,
-            syntax: ast::Syntax::Proto2,
+            syntax: ast::Syntax::default(),
         }
     }
 
@@ -381,7 +381,7 @@ impl<'a> Parser<'a> {
 
                 self.expect_eq(Token::Equals)?;
 
-                let number = self.parse_positive_int()?;
+                let number = self.parse_int()?;
 
                 let options = match self.peek() {
                     Some((Token::LeftBracket, _)) => self.parse_options_list()?,
@@ -412,7 +412,7 @@ impl<'a> Parser<'a> {
 
                 self.expect_eq(Token::Equals)?;
 
-                let number = self.parse_positive_int()?;
+                let number = self.parse_int()?;
 
                 let options = match self.peek() {
                     Some((Token::LeftBracket, _)) => self.parse_options_list()?,
@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Equals)?;
 
-        let number = self.parse_positive_int()?;
+        let number = self.parse_int()?;
 
         let options = match self.peek() {
             Some((Token::LeftBracket, _)) => self.parse_options_list()?,
@@ -1106,10 +1106,23 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_int(&mut self) -> Result<ast::Int, ()> {
-        let negative = self.bump_if_eq(Token::Minus);
-        match self.peek() {
-            Some((Token::IntLiteral(value), span)) => {
+        let (negative, start) = match self.peek() {
+            Some((Token::Minus, span)) => {
                 self.bump();
+                (true, Some(span))
+            }
+            _ => (false, None),
+        };
+
+        match self.peek() {
+            Some((Token::IntLiteral(value), end)) => {
+                self.bump();
+
+                let span = match start {
+                    None => end,
+                    Some(start) => join_span(start, end),
+                };
+
                 Ok(ast::Int {
                     negative,
                     value,
@@ -1117,20 +1130,6 @@ impl<'a> Parser<'a> {
                 })
             }
             _ => self.unexpected_token("an integer"),
-        }
-    }
-
-    fn parse_positive_int(&mut self) -> Result<ast::Int, ()> {
-        match self.peek() {
-            Some((Token::IntLiteral(value), span)) => {
-                self.bump();
-                Ok(ast::Int {
-                    negative: false,
-                    value,
-                    span,
-                })
-            }
-            _ => self.unexpected_token("a positive integer")?,
         }
     }
 
@@ -1351,8 +1350,8 @@ impl fmt::Display for ExpectedToken {
     }
 }
 
-fn join_span(l: Span, r: Span) -> Span {
-    l.start..r.end
+fn join_span(start: Span, end: Span) -> Span {
+    start.start..end.end
 }
 
 fn is_field_start_token(tok: &Token) -> bool {

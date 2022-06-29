@@ -10,20 +10,52 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
 #[test]
 fn invalid_message_number() {
     assert_eq!(
-        check("message Foo { int32 i = -5; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 0..0 }])
+        check("message Foo { optional int32 i = -5; }"),
+        Err(vec![CheckError::InvalidMessageNumber { span: 33..35 }])
     );
     assert_eq!(
-        check("message Foo { int32 i = 0; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 0..0 }])
+        check("message Foo { optional int32 i = 0; }"),
+        Err(vec![CheckError::InvalidMessageNumber { span: 33..34 }])
     );
     assert_eq!(
-        check("message Foo { int32 i = 536870912; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 0..0 }])
+        check("message Foo { optional int32 i = 536870912; }"),
+        Err(vec![CheckError::InvalidMessageNumber { span: 33..42 }])
     );
     assert_eq!(
-        check("message Foo { int32 i = 536870911; }"),
-        Ok(FileDescriptorProto::default())
+        check("message Foo { optional int32 i = 1; }"),
+        Ok(FileDescriptorProto {
+            message_type: vec![DescriptorProto {
+                name: Some("Foo".to_owned()),
+                field: vec![FieldDescriptorProto {
+                    name: Some("i".to_owned()),
+                    number: Some(1),
+                    label: Some(field_descriptor_proto::Label::Optional as _),
+                    r#type: Some(field_descriptor_proto::Type::Int32 as _),
+                    json_name: Some("i".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        })
+    );
+    assert_eq!(
+        check("message Foo { optional int32 i = 536870911; }"),
+        Ok(FileDescriptorProto {
+            message_type: vec![DescriptorProto {
+                name: Some("Foo".to_owned()),
+                field: vec![FieldDescriptorProto {
+                    name: Some("i".to_owned()),
+                    number: Some(536870911),
+                    label: Some(field_descriptor_proto::Label::Optional as _),
+                    r#type: Some(field_descriptor_proto::Type::Int32 as _),
+                    json_name: Some("i".to_owned()),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            }],
+            ..Default::default()
+        })
     );
 }
 

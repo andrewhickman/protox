@@ -2,7 +2,7 @@ use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub syntax: Syntax,
     pub package: std::option::Option<Package>,
@@ -308,18 +308,9 @@ pub(crate) struct Method {
     pub span: Span,
 }
 
-impl Default for File {
+impl Default for Syntax {
     fn default() -> Self {
-        File {
-            syntax: Syntax::Proto2,
-            package: None,
-            imports: vec![],
-            options: vec![],
-            enums: vec![],
-            messages: vec![],
-            extends: vec![],
-            services: vec![],
-        }
+        Syntax::Proto2
     }
 }
 

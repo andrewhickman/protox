@@ -30,10 +30,13 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     assert_eq!(compiler.file_map[name].name, name);
     assert_eq!(
         compiler.file_map[name].descriptor,
-        FileDescriptorProto::default()
+        FileDescriptorProto {
+            name: Some(name.to_owned()),
+            ..Default::default()
+        }
     );
     assert_eq!(compiler.file_map[name].path, include.join(name));
-    assert_eq!(compiler.file_map[name].include, include.join(name));
+    assert_eq!(compiler.file_map[name].include, include);
 }
 
 fn test_compile_error(

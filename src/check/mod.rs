@@ -166,7 +166,11 @@ impl ast::File {
             self.get_source_code_info(&lines)
         });
 
-        let syntax = Some(self.syntax.to_string());
+        let syntax = if self.syntax == ast::Syntax::default() {
+            None
+        } else {
+            Some(self.syntax.to_string())
+        };
 
         if ctx.errors.is_empty() {
             Ok(FileDescriptorProto {
