@@ -581,7 +581,7 @@ fn cow_push_str<'a>(cow: &mut Option<Cow<'a, str>>, s: &'a str) {
 mod tests {
     use super::*;
 
-    use proptest::prelude::*;
+    // use proptest::prelude::*;
 
     #[test]
     fn simple_tokens() {

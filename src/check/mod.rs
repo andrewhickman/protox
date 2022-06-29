@@ -4,9 +4,9 @@ use logos::Span;
 use miette::Diagnostic;
 use prost_types::{
     descriptor_proto::{ExtensionRange, ReservedRange},
-    field, field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, FileOptions, MessageOptions, OneofDescriptorProto,
-    ServiceDescriptorProto, SourceCodeInfo,
+    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, ExtensionRangeOptions,
+    FieldDescriptorProto, FieldOptions, FileDescriptorProto, FileOptions, MessageOptions,
+    OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, SourceCodeInfo,
 };
 use thiserror::Error;
 
@@ -26,6 +26,11 @@ mod tests;
 pub(crate) enum CheckError {
     #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
     InvalidMessageNumber {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("enum numbers must be between {} and {}", i32::MIN, i32::MAX)]
+    InvalidEnumNumber {
         #[label("defined here")]
         span: Span,
     },
@@ -66,11 +71,33 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("{kind} fields are not allowed in a oneof")]
+    InvalidOneofFieldKind {
+        kind: &'static str,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("oneof fields cannot have labels")]
+    OneofFieldWithLabel {
+        #[label("defined here")]
+        span: Span,
+    },
 }
 
 struct Context {
     syntax: ast::Syntax,
     errors: Vec<CheckError>,
+    package: String,
+    stack: Vec<Definition>,
+}
+
+enum Definition {
+    Message { full_name: String },
+    Enum { full_name: String },
+    Service { full_name: String },
+    Oneof { full_name: String, index: i32 },
+    Extend { extendee: String },
+    Group { full_name: String },
 }
 
 impl ast::File {
@@ -83,6 +110,12 @@ impl ast::File {
         let mut ctx = Context {
             syntax: self.syntax,
             errors: vec![],
+            package: self
+                .package
+                .as_ref()
+                .map(|p| p.name.to_string())
+                .unwrap_or_default(),
+            stack: vec![],
         };
 
         let name = name.map(ToOwned::to_owned);
@@ -105,7 +138,7 @@ impl ast::File {
             .map(|(index, _)| index_to_i32(index))
             .collect();
 
-        let message_type = self
+        let mut message_type: Vec<_> = self
             .messages
             .iter()
             .map(|m| m.to_message_descriptor(&mut ctx))
@@ -116,11 +149,11 @@ impl ast::File {
             .iter()
             .map(|s| s.to_service_descriptor())
             .collect();
-        let extension = self
-            .extends
+        let mut extension = Vec::new();
+        self.extends
             .iter()
-            .flat_map(|e| e.to_field_descriptors(&mut ctx))
-            .collect();
+            // TODO message ordering is wrong
+            .for_each(|e| e.to_field_descriptors(&mut ctx, &mut message_type, &mut extension));
 
         let options = if self.options.is_empty() {
             None
@@ -162,28 +195,37 @@ impl ast::File {
 
 impl ast::Message {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
-        let name = Some(self.name.value.clone());
+        ctx.enter(Definition::Message {
+            full_name: make_name(ctx.scope_name(), &self.name.value),
+        });
 
-        DescriptorProto {
-            name,
-            ..self.body.to_message_descriptor(ctx)
-        }
+        let name = Some(self.name.value.clone());
+        let body = self.body.to_message_descriptor(ctx);
+
+        ctx.exit();
+        DescriptorProto { name, ..body }
     }
 }
 
 impl ast::MessageBody {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
+        // TODO ordering of nested messages is wrong
         let mut generated_nested_messages = Vec::new();
-        let field: Vec<_> = self
-            .fields
-            .iter()
-            .map(|e| e.to_field_descriptor(ctx, &mut generated_nested_messages))
-            .collect();
-        let extension = self
-            .extends
-            .iter()
-            .flat_map(|e| e.to_field_descriptors(ctx))
-            .collect();
+        let mut oneof_decl = Vec::new();
+        let mut field = Vec::new();
+
+        self.fields.iter().for_each(|e| {
+            e.to_field_descriptors(
+                ctx,
+                &mut generated_nested_messages,
+                &mut field,
+                &mut oneof_decl,
+            )
+        });
+        let mut extension = Vec::new();
+        self.extends.iter().for_each(|e| {
+            e.to_field_descriptors(ctx, &mut generated_nested_messages, &mut extension)
+        });
 
         let mut nested_type: Vec<_> = self
             .messages
@@ -194,17 +236,10 @@ impl ast::MessageBody {
 
         let enum_type = self.enums.iter().map(|e| e.to_enum_descriptor()).collect();
 
-        let extension_range = self
-            .extensions
+        let mut extension_range = Vec::new();
+        self.extensions
             .iter()
-            .map(|e| e.to_extension_range())
-            .collect();
-
-        let oneof_decl = self
-            .oneofs
-            .iter()
-            .map(|o| o.to_oneof_descriptor())
-            .collect();
+            .for_each(|e| e.to_extension_ranges(ctx, &mut extension_range));
 
         let options = if self.options.is_empty() {
             None
@@ -212,11 +247,12 @@ impl ast::MessageBody {
             Some(ast::Option::to_message_options(&self.options))
         };
 
-        let reserved_range = self
-            .reserved
-            .iter()
-            .flat_map(|r| r.ranges().map(|r| r.to_message_reserved_range()))
-            .collect();
+        let mut reserved_range = Vec::new();
+        for r in &self.reserved {
+            for range in r.ranges() {
+                reserved_range.push(range.to_message_reserved_range(ctx));
+            }
+        }
         let reserved_name = self
             .reserved
             .iter()
@@ -239,15 +275,64 @@ impl ast::MessageBody {
 }
 
 impl ast::MessageField {
-    fn to_field_descriptor(
+    fn to_field_descriptors(
         &self,
         ctx: &mut Context,
         messages: &mut Vec<DescriptorProto>,
-    ) -> FieldDescriptorProto {
+        fields: &mut Vec<FieldDescriptorProto>,
+        oneofs: &mut Vec<OneofDescriptorProto>,
+    ) {
+        if ctx.in_oneof()
+            && matches!(
+                self,
+                ast::MessageField::Oneof(_) | ast::MessageField::Map(_)
+            )
+        {
+            ctx.errors.push(CheckError::InvalidOneofFieldKind {
+                kind: self.kind_name(),
+                span: self.span(),
+            });
+            return;
+        } else if ctx.in_extend()
+            && matches!(
+                self,
+                ast::MessageField::Oneof(_) | ast::MessageField::Map(_)
+            )
+        {
+            ctx.errors.push(CheckError::InvalidExtendFieldKind {
+                kind: self.kind_name(),
+                span: self.span(),
+            });
+            return;
+        }
+
         match self {
-            ast::MessageField::Field(field) => field.to_field_descriptor(ctx),
-            ast::MessageField::Group(group) => group.to_field_descriptor(ctx, messages),
-            ast::MessageField::Map(map) => map.to_field_descriptor(ctx, messages),
+            ast::MessageField::Field(field) => fields.push(field.to_field_descriptor(ctx)),
+            ast::MessageField::Group(group) => {
+                fields.push(group.to_field_descriptor(ctx, messages))
+            }
+            ast::MessageField::Map(map) => fields.push(map.to_field_descriptor(ctx, messages)),
+            ast::MessageField::Oneof(oneof) => {
+                oneofs.push(oneof.to_oneof_descriptor(ctx, messages, fields, oneofs.len()))
+            }
+        }
+    }
+
+    fn kind_name(&self) -> &'static str {
+        match self {
+            ast::MessageField::Field(_) => "normal",
+            ast::MessageField::Group(_) => "group",
+            ast::MessageField::Map(_) => "map",
+            ast::MessageField::Oneof(_) => "oneof",
+        }
+    }
+
+    fn span(&self) -> Span {
+        match self {
+            ast::MessageField::Field(field) => field.span.clone(),
+            ast::MessageField::Group(field) => field.span.clone(),
+            ast::MessageField::Map(field) => field.span.clone(),
+            ast::MessageField::Oneof(field) => field.span.clone(),
         }
     }
 }
@@ -270,13 +355,7 @@ impl ast::Field {
             (default_value, Some(options))
         };
 
-        if ctx.syntax == ast::Syntax::Proto3 {
-            if self.label == Some(ast::FieldLabel::Required) {
-                ctx.errors.push(CheckError::Proto3RequiredField { span: self.span.clone() });
-            }
-        } else if label.is_none() {
-            ctx.errors.push(CheckError::Proto2FieldMissingLabel { span: self.span.clone() });
-        }
+        ctx.check_label(self.label, self.span.clone());
 
         if default_value.is_some() && ty == Some(field_descriptor_proto::Type::Message) {
             ctx.errors.push(CheckError::InvalidDefault {
@@ -300,9 +379,9 @@ impl ast::Field {
             label,
             r#type: ty.map(|t| t as i32),
             type_name,
-            extendee: None,
+            extendee: ctx.parent_extendee(),
             default_value,
-            oneof_index: None,
+            oneof_index: ctx.parent_oneof(),
             json_name,
             options,
             proto3_optional,
@@ -321,6 +400,22 @@ impl ast::Int {
                 None
             }
         }
+    }
+
+    fn to_enum_number(&self, ctx: &mut Context) -> Option<i32> {
+        let as_i32 = if self.negative {
+            self.value.checked_neg().and_then(|n| i32::try_from(n).ok())
+        } else {
+            i32::try_from(self.value).ok()
+        };
+
+        if as_i32.is_none() {
+            ctx.errors.push(CheckError::InvalidEnumNumber {
+                span: self.span.clone(),
+            });
+        }
+
+        as_i32
     }
 }
 
@@ -398,7 +493,9 @@ impl ast::Map {
         };
 
         if self.label.is_some() {
-            ctx.errors.push(CheckError::MapFieldWithLabel { span: self.span.clone() });
+            ctx.errors.push(CheckError::MapFieldWithLabel {
+                span: self.span.clone(),
+            });
         }
 
         if default_value.is_some() {
@@ -416,9 +513,9 @@ impl ast::Map {
             label: None,
             r#type,
             type_name,
-            extendee: None,
+            extendee: ctx.parent_extendee(),
             default_value: None,
-            oneof_index: None,
+            oneof_index: ctx.parent_oneof(),
             json_name,
             options,
             proto3_optional: None,
@@ -466,6 +563,10 @@ impl ast::Group {
         ctx: &mut Context,
         messages: &mut Vec<DescriptorProto>,
     ) -> FieldDescriptorProto {
+        ctx.enter(Definition::Group {
+            full_name: make_name(ctx.scope_name(), &self.name.value),
+        });
+
         let field_name = Some(self.name.value.to_ascii_lowercase());
         let message_name = Some(self.name.value.clone());
 
@@ -488,9 +589,11 @@ impl ast::Group {
         };
 
         if ctx.syntax == ast::Syntax::Proto3 {
-            ctx.errors.push(CheckError::Proto3GroupField { span: self.span.clone() });
-        } else if self.label.is_none() {
-            ctx.errors.push(CheckError::Proto2FieldMissingLabel { span: self.span.clone() });
+            ctx.errors.push(CheckError::Proto3GroupField {
+                span: self.span.clone(),
+            });
+        } else {
+            ctx.check_label(self.label, self.span.clone());
         }
 
         if default_value.is_some() {
@@ -502,15 +605,16 @@ impl ast::Group {
 
         let json_name = Some(to_camel_case(&self.name.value));
 
+        ctx.exit();
         FieldDescriptorProto {
             name: field_name,
             number,
             label: None,
             r#type,
             type_name,
-            extendee: None,
+            extendee: ctx.parent_extendee(),
             default_value: None,
-            oneof_index: None,
+            oneof_index: ctx.parent_oneof(),
             json_name,
             options,
             proto3_optional: None,
@@ -519,57 +623,65 @@ impl ast::Group {
 }
 
 impl ast::Extend {
-    fn to_field_descriptors(&self, ctx: &mut Context) -> Vec<FieldDescriptorProto> {
+    fn to_field_descriptors(
+        &self,
+        ctx: &mut Context,
+        messages: &mut Vec<DescriptorProto>,
+        fields: &mut Vec<FieldDescriptorProto>,
+    ) {
         let extendee = ctx.resolve_type_name(&self.extendee);
-        self.fields
-            .iter()
-            .filter_map(|field| match field {
-                ast::MessageField::Field(field) => {
-                    if field.label == Some(ast::FieldLabel::Required) {
-                        ctx.errors.push(CheckError::RequiredExtendField {
-                            span: field.span.clone(),
-                        });
-                    }
+        ctx.enter(Definition::Extend { extendee });
 
-                    Some(FieldDescriptorProto {
-                        extendee: Some(extendee.clone()),
-                        ..field.to_field_descriptor(ctx)
-                    })
-                }
-                ast::MessageField::Group(field) => {
-                    ctx.errors.push(CheckError::InvalidExtendFieldKind {
-                        kind: "group",
-                        span: field.span.clone(),
-                    });
-                    None
-                }
-                ast::MessageField::Map(field) => {
-                    ctx.errors.push(CheckError::InvalidExtendFieldKind {
-                        kind: "map",
-                        span: field.span.clone(),
-                    });
-                    None
-                }
-            })
-            .collect()
+        for field in &self.fields {
+            let mut oneofs = Vec::new();
+            field.to_field_descriptors(ctx, messages, fields, &mut oneofs);
+            debug_assert_eq!(oneofs, vec![]);
+        }
+        ctx.exit();
     }
 }
 
 impl ast::Oneof {
-    fn to_oneof_descriptor(&self) -> OneofDescriptorProto {
-        todo!()
+    fn to_oneof_descriptor(
+        &self,
+        ctx: &mut Context,
+        messages: &mut Vec<DescriptorProto>,
+        fields: &mut Vec<FieldDescriptorProto>,
+        index: usize,
+    ) -> OneofDescriptorProto {
+        ctx.enter(Definition::Oneof {
+            full_name: make_name(ctx.scope_name(), &self.name.value),
+            index: index_to_i32(index),
+        });
+
+        let name = Some(self.name.value.clone());
+
+        for field in &self.fields {
+            let mut oneofs = Vec::new();
+            field.to_field_descriptors(ctx, messages, fields, &mut oneofs);
+            debug_assert_eq!(oneofs, vec![]);
+        }
+
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::Option::to_oneof_options(&self.options))
+        };
+
+        ctx.exit();
+        OneofDescriptorProto { name, options }
     }
 }
 
 impl ast::Reserved {
-    fn ranges(&self) -> impl Iterator<Item = &ast::ReservedRange> {
+    fn ranges(&self) -> impl Iterator<Item = &'_ ast::ReservedRange> + '_ {
         match &self.kind {
             ast::ReservedKind::Ranges(ranges) => ranges.iter(),
             _ => [].iter(),
         }
     }
 
-    fn names(&self) -> impl Iterator<Item = &ast::Ident> {
+    fn names(&self) -> impl Iterator<Item = &ast::Ident> + '_ {
         match &self.kind {
             ast::ReservedKind::Names(names) => names.iter(),
             _ => [].iter(),
@@ -578,42 +690,58 @@ impl ast::Reserved {
 }
 
 impl ast::Extensions {
-    fn to_extension_range(&self) -> ExtensionRange {
-        todo!()
+    fn to_extension_ranges(&self, ctx: &mut Context, ranges: &mut Vec<ExtensionRange>) {
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::OptionBody::to_extension_range_options(&self.options))
+        };
+
+        for range in &self.ranges {
+            ranges.push(ExtensionRange {
+                options: options.clone(),
+                ..range.to_extension_range(ctx)
+            });
+        }
     }
 }
 
 impl ast::ReservedRange {
-    fn to_message_reserved_range(&self) -> ReservedRange {
+    fn to_message_reserved_range(&self, ctx: &mut Context) -> ReservedRange {
+        let start = self.start.to_field_number(ctx);
         let end = match &self.end {
-            // TODO check
-            ast::ReservedRangeEnd::None => i32::try_from(self.start.value + 1).unwrap(),
-            // TODO check
-            ast::ReservedRangeEnd::Int(value) => i32::try_from(value.value).unwrap(),
-            ast::ReservedRangeEnd::Max => MAX_MESSAGE_FIELD_NUMBER + 1,
+            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::Int(value) => value.to_field_number(ctx),
+            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
         };
 
-        ReservedRange {
-            // TODO check
-            start: Some(i32::try_from(self.start.value).unwrap()),
-            end: Some(end),
+        ReservedRange { start, end }
+    }
+
+    fn to_extension_range(&self, ctx: &mut Context) -> ExtensionRange {
+        let start = self.start.to_field_number(ctx);
+        let end = match &self.end {
+            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::Int(value) => value.to_field_number(ctx),
+            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+        };
+
+        ExtensionRange {
+            start,
+            end,
+            ..Default::default()
         }
     }
 
-    fn to_enum_reserved_range(&self) -> ReservedRange {
+    fn to_enum_reserved_range(&self, ctx: &mut Context) -> ReservedRange {
+        let start = self.start.to_enum_number(ctx);
         let end = match &self.end {
-            // TODO check
-            ast::ReservedRangeEnd::None => i32::try_from(self.start.value).unwrap(),
-            // TODO check
-            ast::ReservedRangeEnd::Int(value) => i32::try_from(value.value).unwrap(),
-            ast::ReservedRangeEnd::Max => i32::MAX,
+            ast::ReservedRangeEnd::None => start,
+            ast::ReservedRangeEnd::Int(value) => value.to_enum_number(ctx),
+            ast::ReservedRangeEnd::Max => Some(i32::MAX),
         };
 
-        ReservedRange {
-            // TODO check
-            start: Some(i32::try_from(self.start.value).unwrap()),
-            end: Some(end),
-        }
+        ReservedRange { start, end }
     }
 }
 
@@ -637,10 +765,18 @@ impl ast::Option {
     fn to_message_options(this: &[Self]) -> MessageOptions {
         todo!()
     }
+
+    fn to_oneof_options(this: &[Self]) -> OneofOptions {
+        todo!()
+    }
 }
 
 impl ast::OptionBody {
     fn to_field_options(this: &[Self]) -> (Option<String>, FieldOptions) {
+        todo!()
+    }
+
+    fn to_extension_range_options(this: &[Self]) -> ExtensionRangeOptions {
         todo!()
     }
 }
@@ -648,7 +784,15 @@ impl ast::OptionBody {
 impl Context {
     // resolve top-level scope
 
-    // push scope
+    // add name for conflict checking / later resolution
+
+    fn enter(&mut self, def: Definition) {
+        self.stack.push(def);
+    }
+
+    fn exit(&mut self) {
+        self.stack.pop().expect("unbalanced stack");
+    }
 
     fn resolve_type_name(&self, name: &ast::TypeName) -> String {
         // TODO resolve
@@ -657,7 +801,53 @@ impl Context {
     }
 
     fn scope_name(&self) -> &str {
-        todo!()
+        for def in self.stack.iter().rev() {
+            match def {
+                Definition::Message { full_name }
+                | Definition::Group { full_name }
+                | Definition::Oneof { full_name, .. }
+                | Definition::Enum { full_name }
+                | Definition::Service { full_name } => return full_name.as_str(),
+                Definition::Extend { .. } => continue,
+            }
+        }
+
+        self.package.as_str()
+    }
+
+    fn in_oneof(&self) -> bool {
+        matches!(self.stack.last(), Some(Definition::Oneof { .. }))
+    }
+
+    fn in_extend(&self) -> bool {
+        matches!(self.stack.last(), Some(Definition::Extend { .. }))
+    }
+
+    fn parent_extendee(&self) -> Option<String> {
+        match self.stack.last() {
+            Some(Definition::Extend { extendee, .. }) => Some(extendee.clone()),
+            _ => None,
+        }
+    }
+
+    fn parent_oneof(&self) -> Option<i32> {
+        match self.stack.last() {
+            Some(Definition::Oneof { index, .. }) => Some(*index),
+            _ => None,
+        }
+    }
+
+    fn check_label(&mut self, label: Option<ast::FieldLabel>, span: Span) {
+        if self.in_extend() && label == Some(ast::FieldLabel::Required) {
+            self.errors.push(CheckError::RequiredExtendField { span });
+        } else if self.in_oneof() && label.is_some() {
+            self.errors.push(CheckError::OneofFieldWithLabel { span });
+        } else if self.syntax == ast::Syntax::Proto2 && label.is_none() && !self.in_oneof() {
+            self.errors
+                .push(CheckError::Proto2FieldMissingLabel { span });
+        } else if self.syntax == ast::Syntax::Proto3 && label == Some(ast::FieldLabel::Required) {
+            self.errors.push(CheckError::Proto3RequiredField { span });
+        }
     }
 }
 

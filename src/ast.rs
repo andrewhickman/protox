@@ -147,7 +147,6 @@ pub(crate) struct MessageBody {
     pub extends: Vec<Extend>,
     pub extensions: Vec<Extensions>,
     pub options: Vec<Option>,
-    pub oneofs: Vec<Oneof>,
     pub reserved: Vec<Reserved>,
 }
 
@@ -156,6 +155,7 @@ pub(crate) enum MessageField {
     Field(Field),
     Group(Group),
     Map(Map),
+    Oneof(Oneof),
 }
 
 #[derive(Clone, Debug, PartialEq)]

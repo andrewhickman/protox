@@ -89,7 +89,12 @@ fn extend_required_field() {}
 fn extend_map_field() {}
 
 #[test]
-fn extend_group_field() {}
+fn extend_group_field() {
+    // allow
+}
+
+#[test]
+fn extend_oneof_field() {}
 
 #[test]
 fn extend_non_options_type_proto3() {}
@@ -105,3 +110,26 @@ fn proto3_required_field() {}
 
 #[test]
 fn proto2_field_missing_label() {}
+
+#[test]
+fn oneof_field_with_label() {}
+
+#[test]
+fn oneof_map_field() {}
+
+#[test]
+fn oneof_group_field() {
+    // allow
+}
+
+#[test]
+fn oneof_oneof_field() {}
+
+#[test]
+fn empty_oneof() {}
+
+#[test]
+fn enum_value_extrema() {}
+
+#[test]
+fn enum_reserved_range_extrema() {}

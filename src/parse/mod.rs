@@ -298,7 +298,6 @@ impl<'a> Parser<'a> {
 
     fn parse_message_body(&mut self) -> Result<(ast::MessageBody, Span), ()> {
         let mut fields = Vec::new();
-        let mut oneofs = Vec::new();
         let mut enums = Vec::new();
         let mut messages = Vec::new();
         let mut extends = Vec::new();
@@ -309,7 +308,9 @@ impl<'a> Parser<'a> {
         let end = loop {
             match self.peek() {
                 Some((tok, _)) if is_field_start_token(&tok) => fields.push(self.parse_field()?),
-                Some((Token::Oneof, _)) => oneofs.push(self.parse_oneof()?),
+                Some((Token::Oneof, _)) => {
+                    fields.push(ast::MessageField::Oneof(self.parse_oneof()?))
+                }
                 Some((Token::Enum, _)) => enums.push(self.parse_enum()?),
                 Some((Token::Message, _)) => messages.push(self.parse_message()?),
                 Some((Token::Extend, _)) => extends.push(self.parse_extend()?),
@@ -333,7 +334,6 @@ impl<'a> Parser<'a> {
         Ok((
             ast::MessageBody {
                 fields,
-                oneofs,
                 enums,
                 messages,
                 extends,
@@ -366,11 +366,9 @@ impl<'a> Parser<'a> {
         };
 
         match self.peek() {
-            Some((Token::Map, _)) => {
-                Ok(ast::MessageField::Map(
-                    self.parse_map_inner(leading_comments, label)?,
-                ))
-            }
+            Some((Token::Map, _)) => Ok(ast::MessageField::Map(
+                self.parse_map_inner(leading_comments, label)?,
+            )),
             Some((Token::Group, _)) => {
                 self.bump();
 
@@ -904,7 +902,7 @@ impl<'a> Parser<'a> {
                     once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned()),
                 ))?,
             }
-        };
+        }
 
         Ok(ranges)
     }
