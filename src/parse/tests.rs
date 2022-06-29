@@ -14,12 +14,8 @@ macro_rules! case {
         assert_eq!(parser.peek(), None);
     };
     ($method:ident($source:expr) => $ast:expr) => {
-        let mut parser = Parser::new($source);
-        let result = parser.$method();
-        assert_eq!(parser.lexer.extras.errors, vec![]);
-        assert_eq!(result.unwrap(), $ast);
-        assert_eq!(parser.peek(), None);
-    };
+        case!($method($source) => $ast, Err(vec![]));
+    }
 }
 
 #[test]
@@ -1015,6 +1011,7 @@ pub fn parse_group() {
 #[test]
 pub fn parse_map() {
     case!(parse_map("map<string, Project> projects = 3;") => ast::Map {
+        label: None,
         key_ty: ast::KeyTy::String,
         ty: ast::Ty::Named(ast::TypeName {
             leading_dot: None,
@@ -1031,6 +1028,7 @@ pub fn parse_map() {
         span: 0..34,
     });
     case!(parse_map("/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n") => ast::Map {
+        label: None,
         key_ty: ast::KeyTy::String,
         ty: ast::Ty::Int32,
         name: ast::Ident::new("projects", 30..38),
@@ -1048,6 +1046,7 @@ pub fn parse_map() {
         span: 11..43,
     });
     case!(parse_map("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];") => ast::Map {
+        label: None,
         key_ty: ast::KeyTy::Int32,
         ty: ast::Ty::Bool,
         name: ast::Ident::new("name", 17..21),
@@ -1185,7 +1184,7 @@ pub fn parse_message() {
     });
     case!(parse_message("message Foo {
         fixed32 a = 1;
-        map<int32, bool> b = 2;
+        optional map<int32, bool> b = 2;
 
         optional group C = 3 {
             required float d = 1;
@@ -1212,72 +1211,73 @@ pub fn parse_message() {
                     span: 22..36,
                 }),
                 ast::MessageField::Map(ast::Map {
+                    label: Some(ast::FieldLabel::Optional),
                     key_ty: ast::KeyTy::Int32,
                     ty: ast::Ty::Bool,
-                    name: ast::Ident::new("b", 62..63),
+                    name: ast::Ident::new("b", 71..72),
                     number: ast::Int {
                         negative: false,
                         value: 2,
-                        span: 66..67,
+                        span: 75..76,
                     },
                     options: vec![],
                     comments: ast::Comments::default(),
-                    span: 45..68,
+                    span: 54..77,
                 }),
                 ast::MessageField::Group(ast::Group {
                     label: Some(ast::FieldLabel::Optional),
-                    name: ast::Ident::new("C", 93..94),
+                    name: ast::Ident::new("C", 102..103),
                     number: ast::Int {
                         negative: false,
                         value: 3,
-                        span: 97..98,
+                        span: 106..107,
                     },
                     body: ast::MessageBody {
                         fields: vec![
                             ast::MessageField::Field(ast::Field {
                                 label: Some(ast::FieldLabel::Required),
-                                name: ast::Ident::new("d", 128..129),
+                                name: ast::Ident::new("d", 137..138),
                                 ty: ast::Ty::Float,
                                 number: ast::Int {
                                     negative: false,
                                     value: 1,
-                                    span: 132..133,
+                                    span: 141..142,
                                 },
                                 options: vec![],
                                 comments: ast::Comments::default(),
-                                span: 113..134,
+                                span: 122..143,
                             })
                         ],
                         ..Default::default()
                     },
                     options: vec![],
                     comments: ast::Comments::default(),
-                    span: 78..144,
+                    span: 87..153,
                 }),
             ],
             oneofs: vec![ast::Oneof {
-                name: ast::Ident::new("x", 160..161),
+                name: ast::Ident::new("x", 169..170),
                 options: vec![],
                 fields: vec![ast::MessageField::Field(ast::Field {
                     label: None,
-                    name: ast::Ident::new("y", 183..184),
+                    name: ast::Ident::new("y", 192..193),
                     ty: ast::Ty::String,
                     number: ast::Int {
                         negative: false,
                         value: 4,
-                        span: 187..188,
+                        span: 196..197,
                     },
                     options: vec![],
                     comments: ast::Comments::default(),
-                    span: 176..189,
+                    span: 185..198,
                 })],
                 comments: ast::Comments::default(),
-                span: 154..199,
+                span: 163..208,
             }],
             ..Default::default()
         },
         comments: ast::Comments::default(),
-        span: 0..205,
+        span: 0..214,
     });
     case!(parse_message("message Foo { repeated Bar a = 1; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
@@ -1381,6 +1381,7 @@ pub fn parse_message() {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
             fields: vec![ast::MessageField::Map(ast::Map {
+                label: Some(ast::FieldLabel::Repeated),
                 key_ty: ast::KeyTy::Sint32,
                 ty: ast::Ty::Fixed64,
                 name: ast::Ident::new("m", 44..45),
@@ -1397,7 +1398,7 @@ pub fn parse_message() {
         },
         comments: Default::default(),
         span: 0..52,
-    }, Err(vec![ParseError::MapWithLabel { span: 14..22 }]));
+    });
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::Comma,

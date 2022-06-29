@@ -205,6 +205,7 @@ pub(crate) struct Oneof {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Map {
+    pub label: std::option::Option<FieldLabel>,
     pub key_ty: KeyTy,
     pub ty: Ty,
     pub name: Ident,

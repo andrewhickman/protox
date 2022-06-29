@@ -80,11 +80,6 @@ pub(crate) enum ParseError {
         #[label("...and again here")]
         second: Span,
     },
-    #[error("map fields cannot have labels")]
-    MapWithLabel {
-        #[label("defined here")]
-        span: Span,
-    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
@@ -108,6 +103,7 @@ struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
     peek: Option<(Token<'a>, Span)>,
     comments: Comments,
+    syntax: ast::Syntax,
 }
 
 enum Statement {
@@ -127,13 +123,14 @@ impl<'a> Parser<'a> {
             lexer: Token::lexer(source),
             comments: Comments::new(),
             peek: None,
+            syntax: ast::Syntax::Proto2,
         }
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
-        let syntax = if self.bump_if_eq(Token::Syntax) {
+        if self.bump_if_eq(Token::Syntax) {
             self.expect_eq(Token::Equals)?;
-            match self.peek() {
+            self.syntax = match self.peek() {
                 Some((Token::StringLiteral(syntax), span)) => match &*syntax {
                     "proto2" => {
                         self.bump();
@@ -150,9 +147,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => self.unexpected_token("an identifier or '('")?,
             }
-        } else {
-            ast::Syntax::Proto2
-        };
+        }
 
         let mut package: Option<ast::Package> = None;
         let mut imports = Vec::new();
@@ -195,7 +190,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(ast::File {
-            syntax,
+            syntax: self.syntax,
             package,
             imports,
             options,
@@ -372,12 +367,8 @@ impl<'a> Parser<'a> {
 
         match self.peek() {
             Some((Token::Map, _)) => {
-                if label.is_some() {
-                    self.add_error(ParseError::MapWithLabel { span: start })
-                }
-
                 Ok(ast::MessageField::Map(
-                    self.parse_map_inner(leading_comments)?,
+                    self.parse_map_inner(leading_comments, label)?,
                 ))
             }
             Some((Token::Group, _)) => {
@@ -450,12 +441,13 @@ impl<'a> Parser<'a> {
     #[cfg(test)]
     fn parse_map(&mut self) -> Result<ast::Map, ()> {
         let leading_comments = self.parse_leading_comments();
-        self.parse_map_inner(leading_comments)
+        self.parse_map_inner(leading_comments, None)
     }
 
     fn parse_map_inner(
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
+        label: Option<FieldLabel>,
     ) -> Result<ast::Map, ()> {
         let start = self.expect_eq(Token::Map)?;
 
@@ -481,6 +473,7 @@ impl<'a> Parser<'a> {
         let comments = self.parse_trailing_comment(leading_comments);
 
         Ok(ast::Map {
+            label,
             key_ty,
             ty,
             name,
@@ -899,7 +892,7 @@ impl<'a> Parser<'a> {
     ) -> Result<Vec<ast::ReservedRange>, ()> {
         let mut ranges = vec![self.parse_reserved_range()?];
 
-        let end = loop {
+        loop {
             match self.peek() {
                 Some((Token::Comma, _)) => {
                     self.bump();

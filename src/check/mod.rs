@@ -41,8 +41,28 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
-    #[error("extensions fields may not be required")]
+    #[error("extension fields may not be required")]
     RequiredExtendField {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("map fields cannot have labels")]
+    MapFieldWithLabel {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("fields must have a label with proto2 syntax (expected one of 'optional', 'repeated' or 'required')")]
+    Proto2FieldMissingLabel {
+        #[label("field defined here")]
+        span: Span,
+    },
+    #[error("groups are not allowed in proto3 syntax")]
+    Proto3GroupField {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("required fields are not allowed in proto3 syntax")]
+    Proto3RequiredField {
         #[label("defined here")]
         span: Span,
     },
@@ -250,6 +270,14 @@ impl ast::Field {
             (default_value, Some(options))
         };
 
+        if ctx.syntax == ast::Syntax::Proto3 {
+            if self.label == Some(ast::FieldLabel::Required) {
+                ctx.errors.push(CheckError::Proto3RequiredField { span: self.span.clone() });
+            }
+        } else if label.is_none() {
+            ctx.errors.push(CheckError::Proto2FieldMissingLabel { span: self.span.clone() });
+        }
+
         if default_value.is_some() && ty == Some(field_descriptor_proto::Type::Message) {
             ctx.errors.push(CheckError::InvalidDefault {
                 kind: "message",
@@ -369,6 +397,10 @@ impl ast::Map {
             (default_value, Some(options))
         };
 
+        if self.label.is_some() {
+            ctx.errors.push(CheckError::MapFieldWithLabel { span: self.span.clone() });
+        }
+
         if default_value.is_some() {
             ctx.errors.push(CheckError::InvalidDefault {
                 kind: "map",
@@ -454,6 +486,12 @@ impl ast::Group {
             let (default_value, options) = ast::OptionBody::to_field_options(&self.options);
             (default_value, Some(options))
         };
+
+        if ctx.syntax == ast::Syntax::Proto3 {
+            ctx.errors.push(CheckError::Proto3GroupField { span: self.span.clone() });
+        } else if self.label.is_none() {
+            ctx.errors.push(CheckError::Proto2FieldMissingLabel { span: self.span.clone() });
+        }
 
         if default_value.is_some() {
             ctx.errors.push(CheckError::InvalidDefault {

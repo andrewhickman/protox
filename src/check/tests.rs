@@ -92,4 +92,16 @@ fn extend_map_field() {}
 fn extend_group_field() {}
 
 #[test]
+fn extend_non_options_type_proto3() {}
+
+#[test]
 fn repeated_field_default_value() {}
+
+#[test]
+fn proto3_group_field() {}
+
+#[test]
+fn proto3_required_field() {}
+
+#[test]
+fn proto2_field_missing_label() {}
