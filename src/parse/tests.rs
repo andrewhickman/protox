@@ -1399,6 +1399,27 @@ pub fn parse_message() {
         comments: Default::default(),
         span: 0..52,
     });
+    case!(parse_message("message Foo { group Baz = 1 {} }") => ast::Message {
+        name: ast::Ident::new("Foo", 8..11),
+        body: ast::MessageBody {
+            fields: vec![ast::MessageField::Group(ast::Group {
+                label: None,
+                name: ast::Ident::new("Baz", 20..23),
+                number: ast::Int {
+                    negative: false,
+                    value: 1,
+                    span: 26..27,
+                },
+                body: ast::MessageBody::default(),
+                options: vec![],
+                comments: ast::Comments::default(),
+                span: 14..30,
+            })],
+            ..ast::MessageBody::default()
+        },
+        comments: Default::default(),
+        span: 0..32,
+    });
     case!(parse_message("message Foo { , }") => Err(vec![ParseError::UnexpectedToken {
         expected: "a message field, oneof, reserved range, enum, message, option or '}'".to_owned(),
         found: Token::Comma,
@@ -1451,6 +1472,44 @@ pub fn parse_oneof() {
         options: vec![],
         comments: ast::Comments::default(),
         span: 0..28,
+    });
+    case!(parse_oneof("oneof Foo { optional group Bar = 1 {} }") => ast::Oneof {
+        name: ast::Ident::new("Foo", 6..9),
+        fields: vec![ast::MessageField::Group(ast::Group {
+            label: Some(ast::FieldLabel::Optional),
+            name: ast::Ident::new("Bar", 27..30),
+            number: ast::Int {
+                negative: false,
+                value: 1,
+                span: 33..34,
+            },
+            body: ast::MessageBody::default(),
+            options: vec![],
+            comments: ast::Comments::default(),
+            span: 12..37,
+        })],
+        options: vec![],
+        comments: ast::Comments::default(),
+        span: 0..39,
+    });
+    case!(parse_oneof("oneof Foo { group Baz = -1 {} }") => ast::Oneof {
+        name: ast::Ident::new("Foo", 6..9),
+        fields: vec![ast::MessageField::Group(ast::Group {
+            label: None,
+            name: ast::Ident::new("Baz", 18..21),
+            number: ast::Int {
+                negative: true,
+                value: 1,
+                span: 24..26,
+            },
+            body: ast::MessageBody::default(),
+            options: vec![],
+            comments: ast::Comments::default(),
+            span: 12..29,
+        })],
+        options: vec![],
+        comments: ast::Comments::default(),
+        span: 0..31,
     });
     case!(parse_oneof("oneof 10.4") => Err(vec![ParseError::UnexpectedToken {
         expected: "an identifier".to_owned(),

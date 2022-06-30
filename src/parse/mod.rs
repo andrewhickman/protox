@@ -493,7 +493,7 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
         let end = loop {
             match self.peek() {
-                Some((tok, _)) if is_field_start_token(&tok) || tok == Token::Group => {
+                Some((tok, _)) if is_field_start_token(&tok) => {
                     fields.push(self.parse_field()?);
                 }
                 Some((Token::Semicolon, _)) => {
@@ -1356,6 +1356,7 @@ fn is_field_start_token(tok: &Token) -> bool {
     matches!(
         tok,
         Token::Map
+            | Token::Group
             | Token::Repeated
             | Token::Optional
             | Token::Required
