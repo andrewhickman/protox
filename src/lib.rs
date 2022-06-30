@@ -197,6 +197,10 @@ fn index_to_i32(index: usize) -> i32 {
     index.try_into().unwrap()
 }
 
+fn s(s: impl ToString) -> Option<String> {
+    Some(s.to_string())
+}
+
 #[cfg(test)]
 fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
     use std::{

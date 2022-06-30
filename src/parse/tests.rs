@@ -1,3 +1,5 @@
+use crate::s;
+
 use super::*;
 
 macro_rules! case {
@@ -45,8 +47,8 @@ pub fn parse_option() {
         },
         comments: ast::Comments {
             leading_detached_comments: vec!["detached\n".to_owned()],
-            leading_comment: Some("leading".to_owned()),
-            trailing_comment: Some("trailing".to_owned()),
+            leading_comment: s("leading"),
+            trailing_comment: s("trailing"),
         },
         span: 25..40,
     });
@@ -129,8 +131,8 @@ fn parse_enum() {
         reserved: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec!["detached".to_owned()],
-            leading_comment: Some("leading".to_owned()),
-            trailing_comment: Some("trailing\n".to_owned()),
+            leading_comment: s("leading"),
+            trailing_comment: s("trailing\n"),
         },
         span: 24..52,
     });
@@ -284,7 +286,7 @@ fn parse_service() {
         methods: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec!["detached\n".to_owned()],
-            leading_comment: Some("leading\n".to_owned()),
+            leading_comment: s("leading\n"),
             trailing_comment: None,
         },
         span: 22..58,
@@ -520,7 +522,7 @@ pub fn parse_package() {
                 "detached3\n".to_owned(),
             ],
             leading_comment: None,
-            trailing_comment: Some("trailing".to_owned()),
+            trailing_comment: s("trailing"),
         },
         span: 37..49,
     });
@@ -563,8 +565,8 @@ pub fn parse_import() {
         },
         comments: ast::Comments {
             leading_detached_comments: vec![],
-            leading_comment: Some("leading".to_owned()),
-            trailing_comment: Some("trailing".to_owned()),
+            leading_comment: s("leading"),
+            trailing_comment: s("trailing"),
         },
         span: 12..25,
     });
@@ -666,8 +668,8 @@ pub fn parse_extension() {
         fields: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec![],
-            leading_comment: Some("leading".to_owned()),
-            trailing_comment: Some("trailing\n".to_owned()),
+            leading_comment: s("leading"),
+            trailing_comment: s("trailing\n"),
         },
         span: 11..37,
     });
@@ -806,7 +808,7 @@ pub fn parse_reserved() {
         comments: ast::Comments {
             leading_detached_comments: vec!["detached\n".to_owned()],
             leading_comment: None,
-            trailing_comment: Some("trailing".to_owned()),
+            trailing_comment: s("trailing"),
         },
         span: 12..27,
     });
@@ -878,8 +880,8 @@ pub fn parse_group() {
         options: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec![],
-            leading_comment: Some("leading\n".to_owned()),
-            trailing_comment: Some("trailing".to_owned()),
+            leading_comment: s("leading\n"),
+            trailing_comment: s("trailing"),
         },
         span: 10..47,
     }));
@@ -1037,7 +1039,7 @@ pub fn parse_map() {
         comments: ast::Comments {
             leading_detached_comments: vec![],
             leading_comment: Some("leading".to_string()),
-            trailing_comment: Some("trailing".to_owned()),
+            trailing_comment: s("trailing"),
         },
         span: 11..43,
     });
@@ -1132,8 +1134,8 @@ pub fn parse_message() {
         body: ast::MessageBody::default(),
         comments: ast::Comments {
             leading_detached_comments: vec!["detached\n".to_owned()],
-            leading_comment: Some("leading".to_owned()),
-            trailing_comment: Some("trailing".to_owned()),
+            leading_comment: s("leading"),
+            trailing_comment: s("trailing"),
         },
         span: 22..48,
     });
@@ -1445,7 +1447,7 @@ pub fn parse_oneof() {
         options: vec![],
         comments: ast::Comments {
             leading_detached_comments: vec!["detached1".to_owned(), "detached2\n".to_owned()],
-            leading_comment: Some("leading\n".to_owned()),
+            leading_comment: s("leading\n"),
             trailing_comment: None,
         },
         span: 36..68,
@@ -1659,8 +1661,8 @@ pub fn parse_file() {
                     options: vec![],
                     comments: ast::Comments {
                         leading_detached_comments: vec![" detached\n".to_owned()],
-                        leading_comment: Some(" leading\n".to_owned()),
-                        trailing_comment: Some(" trailing2\n".to_owned()),
+                        leading_comment: s(" leading\n"),
+                        trailing_comment: s(" trailing2\n"),
                     },
                     span: 136..150,
                 }))],
@@ -1669,7 +1671,7 @@ pub fn parse_file() {
             comments: ast::Comments {
                 leading_detached_comments: vec![],
                 leading_comment: None,
-                trailing_comment: Some(" trailing\n".to_owned()),
+                trailing_comment: s(" trailing\n"),
             },
             span: 37..185,
         })],

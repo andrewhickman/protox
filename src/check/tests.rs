@@ -12,15 +12,12 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
 
 #[track_caller]
 fn check_ok(source: &str) -> DynamicMessage {
-    parse(source).unwrap().to_file_descriptor(None, None, None)
-        .unwrap()
-        .transcode_to_dynamic()
+    check(source).unwrap().transcode_to_dynamic()
 }
 
 #[track_caller]
 fn check_err(source: &str) -> Vec<CheckError> {
-    parse(source).unwrap().to_file_descriptor(None, None, None)
-        .unwrap_err()
+    check(source).unwrap_err()
 }
 
 #[test]
@@ -55,9 +52,8 @@ fn generate_group_message() {
 
 #[test]
 fn generated_message_ordering() {
-    assert_json_snapshot!(
-        check_ok(
-            "extend Bar { optional group Baz = 1 {} }
+    assert_json_snapshot!(check_ok(
+        "extend Bar { optional group Baz = 1 {} }
 
             message Bar {
                 extensions 1;
@@ -69,8 +65,8 @@ fn generated_message_ordering() {
                 }
 
                 message Nest {}
-            }")
-    );
+            }"
+    ));
 }
 
 #[test]

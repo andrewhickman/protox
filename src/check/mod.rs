@@ -18,7 +18,7 @@ use crate::{
     files::FileMap,
     index_to_i32,
     lines::LineResolver,
-    MAX_MESSAGE_FIELD_NUMBER,
+    s, MAX_MESSAGE_FIELD_NUMBER,
 };
 
 #[cfg(test)]
@@ -205,7 +205,7 @@ impl ast::Message {
             full_name: make_name(ctx.scope_name(), &self.name.value),
         });
 
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
         let body = self.body.to_message_descriptor(ctx);
 
         ctx.exit();
@@ -338,7 +338,7 @@ impl ast::MessageField {
 
 impl ast::Field {
     fn to_field_descriptor(&self, ctx: &mut Context) -> FieldDescriptorProto {
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
         let number = self.number.to_field_number(ctx);
         let label = Some(
             self.label
@@ -476,7 +476,7 @@ impl ast::Map {
         ctx: &mut Context,
         messages: &mut Vec<DescriptorProto>,
     ) -> FieldDescriptorProto {
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
         let number = self.number.to_field_number(ctx);
 
         let generated_message = self.generate_message_descriptor(ctx);
@@ -527,20 +527,20 @@ impl ast::Map {
         let (ty, type_name) = self.ty.to_type(ctx);
 
         let key_field = FieldDescriptorProto {
-            name: Some("key".to_owned()),
+            name: s("key"),
             number: Some(1),
             label: Some(field_descriptor_proto::Label::Optional as i32),
             r#type: Some(self.key_ty.to_type() as i32),
-            json_name: Some("key".to_owned()),
+            json_name: s("key"),
             ..Default::default()
         };
         let value_field = FieldDescriptorProto {
-            name: Some("value".to_owned()),
+            name: s("value"),
             number: Some(2),
             label: Some(field_descriptor_proto::Label::Optional as i32),
             r#type: ty.map(|t| t as i32),
             type_name,
-            json_name: Some("key".to_owned()),
+            json_name: s("key"),
             ..Default::default()
         };
 
@@ -653,7 +653,7 @@ impl ast::Oneof {
             index: index_to_i32(index),
         });
 
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
 
         for field in &self.fields {
             let mut oneofs = Vec::new();
@@ -750,7 +750,7 @@ impl ast::Enum {
             full_name: make_name(ctx.scope_name(), &self.name.value),
         });
 
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
 
         let value = self
             .values
@@ -791,7 +791,7 @@ impl ast::Enum {
 
 impl ast::EnumValue {
     fn to_enum_value_descriptor(&self, ctx: &mut Context) -> EnumValueDescriptorProto {
-        let name = Some(self.name.value.clone());
+        let name = s(&self.name.value);
 
         let number = self.value.to_enum_number(ctx);
 
