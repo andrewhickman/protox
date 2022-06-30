@@ -72,6 +72,42 @@ fn generate_group_message() {
 }
 
 #[test]
+fn generated_message_ordering() {
+    assert_eq!(
+        check(
+            "
+            extend Bar { optional group Baz = 1 {} }
+
+            message Bar {
+                extensions 1;
+
+                map<int32, string> x = 3;
+
+                oneof foo {
+                    group Quz = 5 {}
+                }
+
+                message Nest {}
+            }"
+        ),
+        Ok(FileDescriptorProto {
+            name: todo!(),
+            package: todo!(),
+            dependency: todo!(),
+            public_dependency: todo!(),
+            weak_dependency: todo!(),
+            message_type: todo!(),
+            enum_type: todo!(),
+            service: todo!(),
+            extension: todo!(),
+            options: todo!(),
+            source_code_info: todo!(),
+            syntax: todo!()
+        })
+    );
+}
+
+#[test]
 fn generate_synthetic_oneof() {
 
     // conflict with other oneof name
@@ -112,6 +148,18 @@ fn map_field_with_default() {}
 fn message_field_with_default() {}
 
 #[test]
+fn message_field_duplicate_number() {}
+
+#[test]
+fn message_reserved_range_extrema() {}
+
+#[test]
+fn message_reserved_range_overlap() {}
+
+#[test]
+fn message_reserved_range_overlap_with_field() {}
+
+#[test]
 fn group_field_with_default() {}
 
 #[test]
@@ -124,6 +172,12 @@ fn extend_map_field() {}
 fn extend_group_field() {
     // allow
 }
+
+#[test]
+fn extend_field_number_not_in_extensions() {}
+
+#[test]
+fn extend_duplicate_field_number() {}
 
 #[test]
 fn extend_oneof_field() {}
@@ -165,3 +219,9 @@ fn enum_value_extrema() {}
 
 #[test]
 fn enum_reserved_range_extrema() {}
+
+#[test]
+fn enum_reserved_range_overlap_with_value() {}
+
+#[test]
+fn enum_duplicate_number() {}

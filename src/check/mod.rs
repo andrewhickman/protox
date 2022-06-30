@@ -4,9 +4,11 @@ use logos::Span;
 use miette::Diagnostic;
 use prost_types::{
     descriptor_proto::{ExtensionRange, ReservedRange},
-    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, ExtensionRangeOptions,
-    FieldDescriptorProto, FieldOptions, FileDescriptorProto, FileOptions, MessageOptions,
-    OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, SourceCodeInfo,
+    enum_descriptor_proto::EnumReservedRange,
+    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumOptions,
+    EnumValueDescriptorProto, ExtensionRangeOptions, FieldDescriptorProto, FieldOptions,
+    FileDescriptorProto, FileOptions, MessageOptions, OneofDescriptorProto, OneofOptions,
+    ServiceDescriptorProto, SourceCodeInfo,
 };
 use thiserror::Error;
 
@@ -143,7 +145,11 @@ impl ast::File {
             .iter()
             .map(|m| m.to_message_descriptor(&mut ctx))
             .collect();
-        let enum_type = self.enums.iter().map(|e| e.to_enum_descriptor()).collect();
+        let enum_type = self
+            .enums
+            .iter()
+            .map(|e| e.to_enum_descriptor(&mut ctx))
+            .collect();
         let service = self
             .services
             .iter()
@@ -238,7 +244,11 @@ impl ast::MessageBody {
             .collect();
         nested_type.extend(generated_nested_messages);
 
-        let enum_type = self.enums.iter().map(|e| e.to_enum_descriptor()).collect();
+        let enum_type = self
+            .enums
+            .iter()
+            .map(|e| e.to_enum_descriptor(ctx))
+            .collect();
 
         let mut extension_range = Vec::new();
         self.extensions
@@ -252,16 +262,17 @@ impl ast::MessageBody {
         };
 
         let mut reserved_range = Vec::new();
+        let mut reserved_name = Vec::new();
         for r in &self.reserved {
-            for range in r.ranges() {
-                reserved_range.push(range.to_message_reserved_range(ctx));
+            match &r.kind {
+                ast::ReservedKind::Ranges(ranges) => {
+                    reserved_range.extend(ranges.iter().map(|r| r.to_reserved_range(ctx)))
+                }
+                ast::ReservedKind::Names(names) => {
+                    reserved_name.extend(names.iter().map(|n| n.value.clone()))
+                }
             }
         }
-        let reserved_name = self
-            .reserved
-            .iter()
-            .flat_map(|r| r.names().map(|i| i.value.to_owned()))
-            .collect::<Vec<_>>();
 
         DescriptorProto {
             name: None,
@@ -711,7 +722,7 @@ impl ast::Extensions {
 }
 
 impl ast::ReservedRange {
-    fn to_message_reserved_range(&self, ctx: &mut Context) -> ReservedRange {
+    fn to_reserved_range(&self, ctx: &mut Context) -> ReservedRange {
         let start = self.start.to_field_number(ctx);
         let end = match &self.end {
             ast::ReservedRangeEnd::None => start.map(|n| n + 1),
@@ -737,7 +748,7 @@ impl ast::ReservedRange {
         }
     }
 
-    fn to_enum_reserved_range(&self, ctx: &mut Context) -> ReservedRange {
+    fn to_enum_reserved_range(&self, ctx: &mut Context) -> EnumReservedRange {
         let start = self.start.to_enum_number(ctx);
         let end = match &self.end {
             ast::ReservedRangeEnd::None => start,
@@ -745,13 +756,72 @@ impl ast::ReservedRange {
             ast::ReservedRangeEnd::Max => Some(i32::MAX),
         };
 
-        ReservedRange { start, end }
+        EnumReservedRange { start, end }
     }
 }
 
 impl ast::Enum {
-    fn to_enum_descriptor(&self) -> EnumDescriptorProto {
-        todo!()
+    fn to_enum_descriptor(&self, ctx: &mut Context) -> EnumDescriptorProto {
+        ctx.enter(Definition::Enum {
+            full_name: make_name(ctx.scope_name(), &self.name.value),
+        });
+
+        let name = Some(self.name.value.clone());
+
+        let value = self
+            .values
+            .iter()
+            .map(|v| v.to_enum_value_descriptor(ctx))
+            .collect();
+
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::Option::to_enum_options(&self.options))
+        };
+
+        let mut reserved_range = Vec::new();
+        let mut reserved_name = Vec::new();
+
+        for r in &self.reserved {
+            match &r.kind {
+                ast::ReservedKind::Ranges(ranges) => {
+                    reserved_range.extend(ranges.iter().map(|r| r.to_enum_reserved_range(ctx)))
+                }
+                ast::ReservedKind::Names(names) => {
+                    reserved_name.extend(names.iter().map(|n| n.value.clone()))
+                }
+            }
+        }
+
+        ctx.exit();
+        EnumDescriptorProto {
+            name,
+            value,
+            options,
+            reserved_range,
+            reserved_name,
+        }
+    }
+}
+
+impl ast::EnumValue {
+    fn to_enum_value_descriptor(&self, ctx: &mut Context) -> EnumValueDescriptorProto {
+        let name = Some(self.name.value.clone());
+
+        let number = self.value.to_enum_number(ctx);
+
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::OptionBody::to_enum_value_options(&self.options, ctx))
+        };
+
+        EnumValueDescriptorProto {
+            name,
+            number,
+            options,
+        }
     }
 }
 
@@ -773,6 +843,10 @@ impl ast::Option {
     fn to_oneof_options(this: &[Self]) -> OneofOptions {
         todo!()
     }
+
+    fn to_enum_options(this: &[Self]) -> EnumOptions {
+        todo!()
+    }
 }
 
 impl ast::OptionBody {
@@ -781,6 +855,10 @@ impl ast::OptionBody {
     }
 
     fn to_extension_range_options(this: &[Self]) -> ExtensionRangeOptions {
+        todo!()
+    }
+
+    fn to_enum_value_options(options: &[Self], ctx: &mut Context) -> prost_types::EnumValueOptions {
         todo!()
     }
 }
