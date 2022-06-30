@@ -1554,14 +1554,14 @@ pub fn parse_file() {
         option quz 1;
     ") => ast::File {
         syntax: ast::Syntax::Proto2,
-        enums: vec![ast::Enum {
+        items: vec![ast::FileItem::Enum(ast::Enum {
             name: ast::Ident::new("Bar", 68..71),
             values: vec![],
             options: vec![],
             reserved: vec![],
             comments: ast::Comments::default(),
             span: 63..77,
-        }],
+        })],
         ..Default::default()
     }, Err(vec![
         ParseError::UnexpectedToken {
@@ -1589,7 +1589,7 @@ pub fn parse_file() {
         }
     ") => ast::File {
         syntax: ast::Syntax::Proto3,
-        messages: vec![ast::Message {
+        items: vec![ast::FileItem::Message(ast::Message {
             name: ast::Ident::new("Foo", 45..48),
             body: ast::MessageBody {
                 fields: vec![ast::MessageField::Field(ast::Field {
@@ -1617,7 +1617,7 @@ pub fn parse_file() {
                 trailing_comment: Some(" trailing\n".to_owned()),
             },
             span: 37..185,
-        }],
+        })],
         ..Default::default()
     });
 }

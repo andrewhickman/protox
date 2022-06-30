@@ -152,10 +152,7 @@ impl<'a> Parser<'a> {
         let mut package: Option<ast::Package> = None;
         let mut imports = Vec::new();
         let mut options = Vec::new();
-        let mut messages = Vec::new();
-        let mut enums = Vec::new();
-        let mut services = Vec::new();
-        let mut extends = Vec::new();
+        let mut items = Vec::new();
 
         loop {
             match self.parse_statement() {
@@ -172,10 +169,14 @@ impl<'a> Parser<'a> {
                 }
                 Ok(Some(Statement::Import(import))) => imports.push(import),
                 Ok(Some(Statement::Option(option))) => options.push(option),
-                Ok(Some(Statement::Message(message))) => messages.push(message),
-                Ok(Some(Statement::Enum(enm))) => enums.push(enm),
-                Ok(Some(Statement::Service(service))) => services.push(service),
-                Ok(Some(Statement::Extend(extend))) => extends.push(extend),
+                Ok(Some(Statement::Message(message))) => {
+                    items.push(ast::FileItem::Message(message))
+                }
+                Ok(Some(Statement::Enum(enm))) => items.push(ast::FileItem::Enum(enm)),
+                Ok(Some(Statement::Service(service))) => {
+                    items.push(ast::FileItem::Service(service))
+                }
+                Ok(Some(Statement::Extend(extend))) => items.push(ast::FileItem::Extend(extend)),
                 Ok(None) => break,
                 Err(()) => self.skip_until(&[
                     Token::Enum,
@@ -194,10 +195,7 @@ impl<'a> Parser<'a> {
             package,
             imports,
             options,
-            messages,
-            enums,
-            services,
-            extends,
+            items,
         })
     }
 

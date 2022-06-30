@@ -3,6 +3,7 @@ use prost_types::FileDescriptorProto;
 use super::*;
 use crate::parse::parse;
 
+#[track_caller]
 fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
     parse(source).unwrap().to_file_descriptor(None, None, None)
 }

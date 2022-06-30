@@ -8,10 +8,15 @@ pub(crate) struct File {
     pub package: std::option::Option<Package>,
     pub imports: Vec<Import>,
     pub options: Vec<Option>,
-    pub enums: Vec<Enum>,
-    pub messages: Vec<Message>,
-    pub extends: Vec<Extend>,
-    pub services: Vec<Service>,
+    pub items: Vec<FileItem>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum FileItem {
+    Enum(Enum),
+    Message(Message),
+    Extend(Extend),
+    Service(Service),
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]

@@ -140,26 +140,21 @@ impl ast::File {
             .map(|(index, _)| index_to_i32(index))
             .collect();
 
-        let mut message_type: Vec<_> = self
-            .messages
-            .iter()
-            .map(|m| m.to_message_descriptor(&mut ctx))
-            .collect();
-        let enum_type = self
-            .enums
-            .iter()
-            .map(|e| e.to_enum_descriptor(&mut ctx))
-            .collect();
-        let service = self
-            .services
-            .iter()
-            .map(|s| s.to_service_descriptor())
-            .collect();
+        let mut message_type = Vec::new();
+        let mut enum_type = Vec::new();
+        let mut service = Vec::new();
         let mut extension = Vec::new();
-        self.extends
-            .iter()
-            // TODO message ordering is wrong
-            .for_each(|e| e.to_field_descriptors(&mut ctx, &mut message_type, &mut extension));
+
+        for item in &self.items {
+            match item {
+                ast::FileItem::Message(m) => message_type.push(m.to_message_descriptor(&mut ctx)),
+                ast::FileItem::Enum(e) => enum_type.push(e.to_enum_descriptor(&mut ctx)),
+                ast::FileItem::Extend(e) => {
+                    e.to_field_descriptors(&mut ctx, &mut message_type, &mut extension)
+                }
+                ast::FileItem::Service(s) => service.push(s.to_service_descriptor(&mut ctx)),
+            }
+        }
 
         let options = if self.options.is_empty() {
             None
@@ -826,7 +821,7 @@ impl ast::EnumValue {
 }
 
 impl ast::Service {
-    fn to_service_descriptor(&self) -> ServiceDescriptorProto {
+    fn to_service_descriptor(&self, ctx: &mut Context) -> ServiceDescriptorProto {
         todo!()
     }
 }
