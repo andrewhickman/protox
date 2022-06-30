@@ -7,7 +7,10 @@ use crate::parse::parse;
 
 #[track_caller]
 fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    parse(source).unwrap().to_file_descriptor(None, None, None)
+    parse(source)
+        .unwrap()
+        .to_file_descriptor(None, None, None)
+        .map(|(file, _)| file)
 }
 
 #[track_caller]
@@ -19,6 +22,9 @@ fn check_ok(source: &str) -> DynamicMessage {
 fn check_err(source: &str) -> Vec<CheckError> {
     check(source).unwrap_err()
 }
+
+#[test]
+fn name_conflict_in_imported_files() {}
 
 #[test]
 fn invalid_message_number() {

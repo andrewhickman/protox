@@ -14,7 +14,10 @@ mod tests;
 
 use self::comments::Comments;
 use self::lex::Token;
-use crate::ast::{self, FieldLabel, FullIdent};
+use crate::{
+    ast::{self, FieldLabel, FullIdent},
+    join_span,
+};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
 pub(crate) enum ParseError {
@@ -1346,10 +1349,6 @@ impl fmt::Display for ExpectedToken {
             ExpectedToken::Ident => write!(f, "an identifier"),
         }
     }
-}
-
-fn join_span(start: Span, end: Span) -> Span {
-    start.start..end.end
 }
 
 fn is_field_start_token(tok: &Token) -> bool {

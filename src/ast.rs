@@ -333,6 +333,12 @@ impl Ident {
     }
 }
 
+impl FullIdent {
+    pub fn span(&self) -> Span {
+        self.parts.first().unwrap().span.start..self.parts.last().unwrap().span.end
+    }
+}
+
 impl From<Ident> for FullIdent {
     fn from(value: Ident) -> Self {
         FullIdent { parts: vec![value] }

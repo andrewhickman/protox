@@ -5,6 +5,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
+    check::NameMap,
     files::{File, FileMap, ImportResult},
     parse, Error, ErrorKind,
 };
@@ -128,10 +129,11 @@ impl Compiler {
             )?;
         }
 
-        let descriptor = self.check_file(&name, &ast, source, &path)?;
+        let (descriptor, name_map) = self.check_file(&name, &ast, source, &path)?;
 
         self.file_map.add(File {
             descriptor,
+            name_map,
             name,
             include,
             path,
@@ -219,10 +221,11 @@ impl Compiler {
         }
         import_stack.pop();
 
-        let descriptor = self.check_file(&import.value.value, &ast, source, &path)?;
+        let (descriptor, name_map) = self.check_file(&import.value.value, &ast, source, &path)?;
 
         self.file_map.add(File {
             descriptor,
+            name_map,
             name: import.value.value.clone(),
             include,
             path,
@@ -237,7 +240,7 @@ impl Compiler {
         ast: &ast::File,
         source: Arc<str>,
         path: &Path,
-    ) -> Result<FileDescriptorProto, Error> {
+    ) -> Result<(FileDescriptorProto, NameMap), Error> {
         let source_info = if self.include_source_info {
             Some(source.as_ref())
         } else {

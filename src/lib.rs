@@ -65,8 +65,10 @@ pub fn compile(
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
     let ast =
         parse::parse(source).map_err(|errors| Error::parse_errors(errors, source.to_owned()))?;
-    ast.to_file_descriptor(None, Some(source), None)
-        .map_err(|errors| Error::check_errors(errors, source.to_owned()))
+    match ast.to_file_descriptor(None, Some(source), None) {
+        Ok((file_descriptor, _)) => Ok(file_descriptor),
+        Err(errors) => Err(Error::check_errors(errors, source.to_owned())),
+    }
 }
 
 /// An error that can occur when compiling protobuf files.
@@ -199,6 +201,10 @@ fn index_to_i32(index: usize) -> i32 {
 
 fn s(s: impl ToString) -> Option<String> {
     Some(s.to_string())
+}
+
+fn join_span(start: Span, end: Span) -> Span {
+    start.start..end.end
 }
 
 #[cfg(test)]

@@ -21,11 +21,36 @@ use crate::{
     s, MAX_MESSAGE_FIELD_NUMBER,
 };
 
+pub(crate) use self::names::NameMap;
+
+mod names;
 #[cfg(test)]
 mod tests;
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {
+    #[error("name '{name}' is defined twice")]
+    DuplicateNameInFile {
+        name: String,
+        #[label("first defined here...")]
+        first: Span,
+        #[label]
+        #[label("... and defined again here")]
+        second: Span,
+    },
+    #[error("name '{name}' is already defined in imported file '{first_file}'")]
+    DuplicateNameInFileAndImport {
+        name: String,
+        first_file: String,
+        #[label("defined here")]
+        second: Span,
+    },
+    #[error("name '{name}' is defined twice in imported files '{first_file}' and '{second_file}'")]
+    DuplicateNameInImports {
+        name: String,
+        first_file: String,
+        second_file: String,
+    },
     #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
     InvalidMessageNumber {
         #[label("defined here")]
@@ -86,21 +111,44 @@ pub(crate) enum CheckError {
     },
 }
 
-struct Context {
+struct Context<'a> {
     syntax: ast::Syntax,
     errors: Vec<CheckError>,
-    package: String,
     stack: Vec<Definition>,
+    names: NameMap,
+    file_map: Option<&'a FileMap>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Definition {
-    Message { full_name: String },
-    Enum { full_name: String },
-    Service { full_name: String },
-    Oneof { full_name: String, index: i32 },
-    Extend { extendee: String },
-    Group { full_name: String },
+    Package {
+        full_name: String,
+        name_span: Span,
+    },
+    Message {
+        full_name: String,
+        name_span: Span,
+    },
+    Enum {
+        full_name: String,
+        name_span: Span,
+    },
+    Service {
+        full_name: String,
+        name_span: Span,
+    },
+    Oneof {
+        full_name: String,
+        index: i32,
+        name_span: Span,
+    },
+    Extend {
+        extendee: String,
+    },
+    Group {
+        full_name: String,
+        name_span: Span,
+    },
 }
 
 impl ast::File {
@@ -109,17 +157,20 @@ impl ast::File {
         name: Option<&str>,
         source_code: Option<&str>,
         file_map: Option<&FileMap>,
-    ) -> Result<FileDescriptorProto, Vec<CheckError>> {
+    ) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
         let mut ctx = Context {
             syntax: self.syntax,
             errors: vec![],
-            package: self
-                .package
-                .as_ref()
-                .map(|p| p.name.to_string())
-                .unwrap_or_default(),
+            names: NameMap::new(),
             stack: vec![],
+            file_map,
         };
+
+        self.add_names(&mut ctx);
+        if !ctx.errors.is_empty() {
+            // We can't produce any more accurate errors if we can't resolve names reliably.
+            return Err(ctx.errors);
+        }
 
         let name = name.map(ToOwned::to_owned);
 
@@ -175,22 +226,57 @@ impl ast::File {
         };
 
         if ctx.errors.is_empty() {
-            Ok(FileDescriptorProto {
-                name,
-                package,
-                dependency,
-                public_dependency,
-                weak_dependency,
-                message_type,
-                enum_type,
-                service,
-                extension,
-                options,
-                source_code_info,
-                syntax,
-            })
+            Ok((
+                FileDescriptorProto {
+                    name,
+                    package,
+                    dependency,
+                    public_dependency,
+                    weak_dependency,
+                    message_type,
+                    enum_type,
+                    service,
+                    extension,
+                    options,
+                    source_code_info,
+                    syntax,
+                },
+                ctx.names,
+            ))
         } else {
             Err(ctx.errors)
+        }
+    }
+
+    fn add_names(&self, ctx: &mut Context) {
+        if let Some(package) = &self.package {
+            ctx.add_name(
+                package.name.to_string(),
+                Definition::Package {
+                    full_name: package.name.to_string(),
+                    name_span: package.name.span(),
+                },
+            );
+        }
+
+        if let Some(file_map) = &ctx.file_map {
+            for import in &self.imports {
+                let file = &file_map[import.value.value.as_str()];
+                if let Err(err) = ctx.names.merge(&file.name_map, file.name.clone(), import.kind == Some(ast::ImportKind::Public)) {
+                    ctx.errors.push(err);
+                }
+            }
+        }
+
+        for item in &self.items {
+            match item {
+                ast::FileItem::Message(m) => m.add_names(&mut ctx),
+                ast::FileItem::Enum(e) => e.add_names(&mut ctx),
+                ast::FileItem::Extend(e) => {
+                    e.add_names(&mut ctx)
+                }
+                ast::FileItem::Service(s) => s.add_names(&mut ctx),
+            }
         }
     }
 
@@ -202,7 +288,8 @@ impl ast::File {
 impl ast::Message {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
         ctx.enter(Definition::Message {
-            full_name: make_name(ctx.scope_name(), &self.name.value),
+            full_name: ctx.full_name(&self.name.value),
+            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -210,6 +297,17 @@ impl ast::Message {
 
         ctx.exit();
         DescriptorProto { name, ..body }
+    }
+
+    fn add_names(&self, ctx: &mut Context) {
+        ctx.enter(Definition::Message {
+            full_name: ctx.full_name(&self.name.value),
+            name_span: self.name.span.clone(),
+        });
+
+        self.body.add_names(ctx);
+
+        ctx.exit();
     }
 }
 
@@ -270,6 +368,18 @@ impl ast::MessageBody {
             reserved_range,
             reserved_name,
         }
+    }
+
+    fn add_names(&self, ctx: &mut Context) {
+        // for item in &self.items {
+        //     match item {
+        //         ast::MessageItem::Field(f) => f.add_names(ctx),
+        //         ast::MessageItem::Enum(e) => e.add_names(ctx),
+        //         ast::MessageItem::Message(m) => m.add_names(ctx),
+        //         ast::MessageItem::Extend(e) => e.add_names(ctx),
+        //     }
+        // }
+        todo!()
     }
 }
 
@@ -481,7 +591,7 @@ impl ast::Map {
 
         let generated_message = self.generate_message_descriptor(ctx);
         let r#type = Some(field_descriptor_proto::Type::Message as i32);
-        let type_name = Some(make_name(ctx.scope_name(), generated_message.name()));
+        let type_name = Some(ctx.full_name(generated_message.name()));
         messages.push(generated_message);
 
         let (default_value, options) = if self.options.is_empty() {
@@ -591,7 +701,8 @@ impl ast::Group {
         }
 
         ctx.enter(Definition::Group {
-            full_name: make_name(ctx.scope_name(), &self.name.value),
+            full_name: ctx.full_name(&self.name.value),
+            name_span: self.name.span.clone(),
         });
 
         let generated_message = DescriptorProto {
@@ -649,8 +760,9 @@ impl ast::Oneof {
         index: usize,
     ) -> OneofDescriptorProto {
         ctx.enter(Definition::Oneof {
-            full_name: make_name(ctx.scope_name(), &self.name.value),
+            full_name: ctx.full_name(&self.name.value),
             index: index_to_i32(index),
+            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -747,7 +859,8 @@ impl ast::ReservedRange {
 impl ast::Enum {
     fn to_enum_descriptor(&self, ctx: &mut Context) -> EnumDescriptorProto {
         ctx.enter(Definition::Enum {
-            full_name: make_name(ctx.scope_name(), &self.name.value),
+            full_name: ctx.full_name(&self.name.value),
+            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -847,10 +960,12 @@ impl ast::OptionBody {
     }
 }
 
-impl Context {
-    // resolve top-level scope
-
-    // add name for conflict checking / later resolution
+impl<'a> Context<'a> {
+    fn add_name(&mut self, name: impl ToString, def: Definition) {
+        if let Err(err) = self.names.add(name.to_string(), def, None, true) {
+            self.errors.push(err);
+        }
+    }
 
     fn enter(&mut self, def: Definition) {
         self.stack.push(def);
@@ -869,16 +984,26 @@ impl Context {
     fn scope_name(&self) -> &str {
         for def in self.stack.iter().rev() {
             match def {
-                Definition::Message { full_name }
-                | Definition::Group { full_name }
+                Definition::Message { full_name, .. }
+                | Definition::Group { full_name, .. }
                 | Definition::Oneof { full_name, .. }
-                | Definition::Enum { full_name }
-                | Definition::Service { full_name } => return full_name.as_str(),
+                | Definition::Enum { full_name, .. }
+                | Definition::Service { full_name, .. }
+                | Definition::Package { full_name, .. } => return full_name.as_str(),
                 Definition::Extend { .. } => continue,
             }
         }
 
-        self.package.as_str()
+        ""
+    }
+
+    fn full_name(&self, name: &str) -> String {
+        let namespace = self.scope_name();
+        if namespace.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{}.{}", namespace, name)
+        }
     }
 
     fn in_oneof(&self) -> bool {
@@ -915,13 +1040,5 @@ impl Context {
         } else if self.syntax == ast::Syntax::Proto3 && label == Some(ast::FieldLabel::Required) {
             self.errors.push(CheckError::Proto3RequiredField { span });
         }
-    }
-}
-
-fn make_name(namespace: &str, name: &str) -> String {
-    if namespace.is_empty() {
-        name.to_owned()
-    } else {
-        format!("{}.{}", namespace, name)
     }
 }

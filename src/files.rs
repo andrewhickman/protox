@@ -9,7 +9,7 @@ use std::{
 
 use prost_types::FileDescriptorProto;
 
-use crate::MAX_FILE_LEN;
+use crate::{check::NameMap, MAX_FILE_LEN};
 
 #[derive(Debug)]
 pub(crate) struct FileMap {
@@ -21,6 +21,7 @@ pub(crate) struct FileMap {
 #[derive(Debug)]
 pub(crate) struct File {
     pub descriptor: FileDescriptorProto,
+    pub name_map: NameMap,
     pub include: PathBuf,
     pub path: PathBuf,
     pub name: String,
