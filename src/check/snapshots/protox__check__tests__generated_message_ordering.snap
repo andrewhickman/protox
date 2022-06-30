@@ -1,0 +1,82 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            message Bar {\n                extensions 1;\n\n                map<int32, string> x = 5;\n\n                oneof foo {\n                    group Quz = 3 {}\n                }\n\n                message Nest {}\n            }\")"
+---
+{
+  "messageType": [
+    {
+      "name": "Baz"
+    },
+    {
+      "name": "Bar",
+      "field": [
+        {
+          "name": "x",
+          "number": 5,
+          "type": "TYPE_MESSAGE",
+          "typeName": "Bar.xEntry",
+          "jsonName": "x"
+        },
+        {
+          "name": "quz",
+          "number": 3,
+          "type": "TYPE_GROUP",
+          "typeName": "Quz",
+          "oneofIndex": 0,
+          "jsonName": "Quz"
+        }
+      ],
+      "nestedType": [
+        {
+          "name": "xEntry",
+          "field": [
+            {
+              "name": "key",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_INT32",
+              "jsonName": "key"
+            },
+            {
+              "name": "value",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_STRING",
+              "jsonName": "key"
+            }
+          ],
+          "options": {
+            "mapEntry": true
+          }
+        },
+        {
+          "name": "Quz"
+        },
+        {
+          "name": "Nest"
+        }
+      ],
+      "extensionRange": [
+        {
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "oneofDecl": [
+        {
+          "name": "foo"
+        }
+      ]
+    }
+  ],
+  "extension": [
+    {
+      "name": "baz",
+      "extendee": "Bar",
+      "number": 1,
+      "type": "TYPE_GROUP",
+      "typeName": "Baz",
+      "jsonName": "Baz"
+    }
+  ]
+}

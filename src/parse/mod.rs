@@ -295,23 +295,26 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_message_body(&mut self) -> Result<(ast::MessageBody, Span), ()> {
-        let mut fields = Vec::new();
-        let mut enums = Vec::new();
-        let mut messages = Vec::new();
-        let mut extends = Vec::new();
+        let mut items = Vec::new();
         let mut options = Vec::new();
         let mut reserved = Vec::new();
         let mut extensions = Vec::new();
 
         let end = loop {
             match self.peek() {
-                Some((tok, _)) if is_field_start_token(&tok) => fields.push(self.parse_field()?),
-                Some((Token::Oneof, _)) => {
-                    fields.push(ast::MessageField::Oneof(self.parse_oneof()?))
+                Some((tok, _)) if is_field_start_token(&tok) => {
+                    items.push(ast::MessageItem::Field(self.parse_field()?))
                 }
-                Some((Token::Enum, _)) => enums.push(self.parse_enum()?),
-                Some((Token::Message, _)) => messages.push(self.parse_message()?),
-                Some((Token::Extend, _)) => extends.push(self.parse_extend()?),
+                Some((Token::Oneof, _)) => items.push(ast::MessageItem::Field(
+                    ast::MessageField::Oneof(self.parse_oneof()?),
+                )),
+                Some((Token::Enum, _)) => items.push(ast::MessageItem::Enum(self.parse_enum()?)),
+                Some((Token::Message, _)) => {
+                    items.push(ast::MessageItem::Message(self.parse_message()?))
+                }
+                Some((Token::Extend, _)) => {
+                    items.push(ast::MessageItem::Extend(self.parse_extend()?))
+                }
                 Some((Token::Option, _)) => options.push(self.parse_option()?),
                 Some((Token::Reserved, _)) => reserved.push(self.parse_reserved()?),
                 Some((Token::Extensions, _)) => extensions.push(self.parse_extensions()?),
@@ -331,10 +334,7 @@ impl<'a> Parser<'a> {
 
         Ok((
             ast::MessageBody {
-                fields,
-                enums,
-                messages,
-                extends,
+                items,
                 options,
                 reserved,
                 extensions,

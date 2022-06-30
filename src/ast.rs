@@ -146,13 +146,18 @@ pub(crate) enum FieldLabel {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct MessageBody {
-    pub fields: Vec<MessageField>,
-    pub enums: Vec<Enum>,
-    pub messages: Vec<Message>,
-    pub extends: Vec<Extend>,
+    pub items: Vec<MessageItem>,
     pub extensions: Vec<Extensions>,
     pub options: Vec<Option>,
     pub reserved: Vec<Reserved>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum MessageItem {
+    Field(MessageField),
+    Enum(Enum),
+    Message(Message),
+    Extend(Extend),
 }
 
 #[derive(Clone, Debug, PartialEq)]

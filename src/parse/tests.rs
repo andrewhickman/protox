@@ -757,21 +757,19 @@ pub fn parse_extension() {
                     span: 32..33,
                 },
                 body: ast::MessageBody {
-                    fields: vec![
-                        ast::MessageField::Field(ast::Field {
-                            label: Some(ast::FieldLabel::Optional),
-                            name: ast::Ident::new("name", 52..56),
-                            ty: ast::Ty::String,
-                            number: ast::Int {
-                                negative: false,
-                                value: 2,
-                                span: 59..60
-                            },
-                            options: vec![],
-                            comments: ast::Comments::default(),
-                            span: 36..61,
-                        })
-                    ],
+                    items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
+                        label: Some(ast::FieldLabel::Optional),
+                        name: ast::Ident::new("name", 52..56),
+                        ty: ast::Ty::String,
+                        number: ast::Int {
+                            negative: false,
+                            value: 2,
+                            span: 59..60
+                        },
+                        options: vec![],
+                        comments: ast::Comments::default(),
+                        span: 36..61,
+                    }))],
                     ..Default::default()
                 },
                 options: vec![],
@@ -940,21 +938,19 @@ pub fn parse_group() {
             span: 19..20,
         },
         body: ast::MessageBody {
-            fields: vec![
-                ast::MessageField::Field(ast::Field {
-                    label: Some(ast::FieldLabel::Optional),
-                    name: ast::Ident::new("foo", 39..42),
-                    ty: ast::Ty::Sint32,
-                    number: ast::Int {
-                        negative: false,
-                        value: 2,
-                        span: 45..46
-                    },
-                    options: vec![],
-                    comments: ast::Comments::default(),
-                    span: 23..47,
-                })
-            ],
+            items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
+                label: Some(ast::FieldLabel::Optional),
+                name: ast::Ident::new("foo", 39..42),
+                ty: ast::Ty::Sint32,
+                number: ast::Int {
+                    negative: false,
+                    value: 2,
+                    span: 45..46
+                },
+                options: vec![],
+                comments: ast::Comments::default(),
+                span: 23..47,
+            }))],
             ..Default::default()
         },
         options: vec![],
@@ -1154,29 +1150,31 @@ pub fn parse_message() {
     }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            messages: vec![ast::Message {
-                name: ast::Ident::new("Bar", 21..24),
-                body: ast::MessageBody::default(),
-                comments: ast::Comments::default(),
-                span: 13..27,
-            }],
-            enums: vec![ast::Enum {
-                name: ast::Ident::new("Quz", 32..35),
-                values: vec![],
-                options: vec![],
-                reserved: vec![],
-                comments: ast::Comments::default(),
-                span: 27..38,
-            }],
-            extends: vec![ast::Extend {
-                extendee: ast::TypeName {
-                    leading_dot: None,
-                    name: ast::FullIdent::from(ast::Ident::new("Bar", 45..48)),
-                },
-                fields: vec![],
-                comments: ast::Comments::default(),
-                span: 38..51,
-            }],
+            items: vec![
+                ast::MessageItem::Message(ast::Message {
+                    name: ast::Ident::new("Bar", 21..24),
+                    body: ast::MessageBody::default(),
+                    comments: ast::Comments::default(),
+                    span: 13..27,
+                }),
+                ast::MessageItem::Enum(ast::Enum {
+                    name: ast::Ident::new("Quz", 32..35),
+                    values: vec![],
+                    options: vec![],
+                    reserved: vec![],
+                    comments: ast::Comments::default(),
+                    span: 27..38,
+                }),
+                ast::MessageItem::Extend(ast::Extend {
+                    extendee: ast::TypeName {
+                        leading_dot: None,
+                        name: ast::FullIdent::from(ast::Ident::new("Bar", 45..48)),
+                    },
+                    fields: vec![],
+                    comments: ast::Comments::default(),
+                    span: 38..51,
+                }),
+            ],
             ..Default::default()
         },
         comments: ast::Comments::default(),
@@ -1196,8 +1194,8 @@ pub fn parse_message() {
     }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            fields: vec![
-                ast::MessageField::Field(ast::Field {
+            items: vec![
+                ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
                     label: None,
                     name: ast::Ident::new("a", 30..31),
                     ty: ast::Ty::Fixed32,
@@ -1209,8 +1207,8 @@ pub fn parse_message() {
                     options: vec![],
                     comments: ast::Comments::default(),
                     span: 22..36,
-                }),
-                ast::MessageField::Map(ast::Map {
+                })),
+                ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                     label: Some(ast::FieldLabel::Optional),
                     key_ty: ast::KeyTy::Int32,
                     ty: ast::Ty::Bool,
@@ -1223,8 +1221,8 @@ pub fn parse_message() {
                     options: vec![],
                     comments: ast::Comments::default(),
                     span: 54..77,
-                }),
-                ast::MessageField::Group(ast::Group {
+                })),
+                ast::MessageItem::Field(ast::MessageField::Group(ast::Group {
                     label: Some(ast::FieldLabel::Optional),
                     name: ast::Ident::new("C", 102..103),
                     number: ast::Int {
@@ -1233,28 +1231,26 @@ pub fn parse_message() {
                         span: 106..107,
                     },
                     body: ast::MessageBody {
-                        fields: vec![
-                            ast::MessageField::Field(ast::Field {
-                                label: Some(ast::FieldLabel::Required),
-                                name: ast::Ident::new("d", 137..138),
-                                ty: ast::Ty::Float,
-                                number: ast::Int {
-                                    negative: false,
-                                    value: 1,
-                                    span: 141..142,
-                                },
-                                options: vec![],
-                                comments: ast::Comments::default(),
-                                span: 122..143,
-                            })
-                        ],
+                        items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
+                            label: Some(ast::FieldLabel::Required),
+                            name: ast::Ident::new("d", 137..138),
+                            ty: ast::Ty::Float,
+                            number: ast::Int {
+                                negative: false,
+                                value: 1,
+                                span: 141..142,
+                            },
+                            options: vec![],
+                            comments: ast::Comments::default(),
+                            span: 122..143,
+                        }))],
                         ..Default::default()
                     },
                     options: vec![],
                     comments: ast::Comments::default(),
                     span: 87..153,
-                }),
-                ast::MessageField::Oneof(ast::Oneof {
+                })),
+                ast::MessageItem::Field(ast::MessageField::Oneof(ast::Oneof {
                     name: ast::Ident::new("x", 169..170),
                     options: vec![],
                     fields: vec![ast::MessageField::Field(ast::Field {
@@ -1272,7 +1268,7 @@ pub fn parse_message() {
                     })],
                     comments: ast::Comments::default(),
                     span: 163..208,
-                }),
+                })),
             ],
             ..Default::default()
         },
@@ -1282,7 +1278,7 @@ pub fn parse_message() {
     case!(parse_message("message Foo { repeated Bar a = 1; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            fields: vec![ast::MessageField::Field(ast::Field {
+            items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
                 label: Some(ast::FieldLabel::Repeated),
                 ty: ast::Ty::Named(ast::TypeName {
                     leading_dot: None,
@@ -1297,7 +1293,7 @@ pub fn parse_message() {
                 options: vec![],
                 comments: ast::Comments::default(),
                 span: 14..33,
-            })],
+            }))],
             ..ast::MessageBody::default()
         },
         comments: Default::default(),
@@ -1306,7 +1302,7 @@ pub fn parse_message() {
     case!(parse_message("message Foo { repeated Bar service = 2; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            fields: vec![ast::MessageField::Field(ast::Field {
+            items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
                 label: Some(ast::FieldLabel::Repeated),
                 ty: ast::Ty::Named(ast::TypeName {
                     leading_dot: None,
@@ -1321,7 +1317,7 @@ pub fn parse_message() {
                 options: vec![],
                 comments: ast::Comments::default(),
                 span: 14..39,
-            })],
+            }))],
             ..ast::MessageBody::default()
         },
         comments: Default::default(),
@@ -1380,7 +1376,7 @@ pub fn parse_message() {
     case!(parse_message("message Foo { repeated map<sint32, fixed64> m = 1; }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            fields: vec![ast::MessageField::Map(ast::Map {
+            items: vec![ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                 label: Some(ast::FieldLabel::Repeated),
                 key_ty: ast::KeyTy::Sint32,
                 ty: ast::Ty::Fixed64,
@@ -1393,7 +1389,7 @@ pub fn parse_message() {
                 options: vec![],
                 comments: ast::Comments::default(),
                 span: 23..50,
-            })],
+            }))],
             ..ast::MessageBody::default()
         },
         comments: Default::default(),
@@ -1402,7 +1398,7 @@ pub fn parse_message() {
     case!(parse_message("message Foo { group Baz = 1 {} }") => ast::Message {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
-            fields: vec![ast::MessageField::Group(ast::Group {
+            items: vec![ast::MessageItem::Field(ast::MessageField::Group(ast::Group {
                 label: None,
                 name: ast::Ident::new("Baz", 20..23),
                 number: ast::Int {
@@ -1414,7 +1410,7 @@ pub fn parse_message() {
                 options: vec![],
                 comments: ast::Comments::default(),
                 span: 14..30,
-            })],
+            }))],
             ..ast::MessageBody::default()
         },
         comments: Default::default(),
@@ -1651,7 +1647,7 @@ pub fn parse_file() {
         items: vec![ast::FileItem::Message(ast::Message {
             name: ast::Ident::new("Foo", 45..48),
             body: ast::MessageBody {
-                fields: vec![ast::MessageField::Field(ast::Field {
+                items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
                     label: None,
                     name: ast::Ident::new("bar", 142..145),
                     ty: ast::Ty::Int32,
@@ -1667,7 +1663,7 @@ pub fn parse_file() {
                         trailing_comment: Some(" trailing2\n".to_owned()),
                     },
                     span: 136..150,
-                })],
+                }))],
                 ..Default::default()
             },
             comments: ast::Comments {

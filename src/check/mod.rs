@@ -93,6 +93,7 @@ struct Context {
     stack: Vec<Definition>,
 }
 
+#[derive(Debug)]
 enum Definition {
     Message { full_name: String },
     Enum { full_name: String },
@@ -214,36 +215,24 @@ impl ast::Message {
 
 impl ast::MessageBody {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
-        // TODO ordering of nested messages is wrong
-        let mut generated_nested_messages = Vec::new();
-        let mut oneof_decl = Vec::new();
         let mut field = Vec::new();
-
-        self.fields.iter().for_each(|e| {
-            e.to_field_descriptors(
-                ctx,
-                &mut generated_nested_messages,
-                &mut field,
-                &mut oneof_decl,
-            )
-        });
+        let mut nested_type = Vec::new();
+        let mut enum_type = Vec::new();
+        let mut oneof_decl = Vec::new();
         let mut extension = Vec::new();
-        self.extends.iter().for_each(|e| {
-            e.to_field_descriptors(ctx, &mut generated_nested_messages, &mut extension)
-        });
 
-        let mut nested_type: Vec<_> = self
-            .messages
-            .iter()
-            .map(|m| m.to_message_descriptor(ctx))
-            .collect();
-        nested_type.extend(generated_nested_messages);
-
-        let enum_type = self
-            .enums
-            .iter()
-            .map(|e| e.to_enum_descriptor(ctx))
-            .collect();
+        for item in &self.items {
+            match item {
+                ast::MessageItem::Field(f) => {
+                    f.to_field_descriptors(ctx, &mut nested_type, &mut field, &mut oneof_decl)
+                }
+                ast::MessageItem::Enum(e) => enum_type.push(e.to_enum_descriptor(ctx)),
+                ast::MessageItem::Message(m) => nested_type.push(m.to_message_descriptor(ctx)),
+                ast::MessageItem::Extend(e) => {
+                    e.to_field_descriptors(ctx, &mut nested_type, &mut extension)
+                }
+            }
+        }
 
         let mut extension_range = Vec::new();
         self.extensions
@@ -573,23 +562,11 @@ impl ast::Group {
         ctx: &mut Context,
         messages: &mut Vec<DescriptorProto>,
     ) -> FieldDescriptorProto {
-        ctx.enter(Definition::Group {
-            full_name: make_name(ctx.scope_name(), &self.name.value),
-        });
-
         let field_name = Some(self.name.value.to_ascii_lowercase());
         let message_name = Some(self.name.value.clone());
 
+        let json_name = Some(to_camel_case(&self.name.value));
         let number = self.number.to_field_number(ctx);
-
-        let generated_message = DescriptorProto {
-            name: message_name,
-            ..self.body.to_message_descriptor(ctx)
-        };
-
-        let r#type = Some(field_descriptor_proto::Type::Group as i32);
-        let type_name = Some(make_name(ctx.scope_name(), generated_message.name()));
-        messages.push(generated_message);
 
         let (default_value, options) = if self.options.is_empty() {
             (None, None)
@@ -613,9 +590,21 @@ impl ast::Group {
             });
         }
 
-        let json_name = Some(to_camel_case(&self.name.value));
+        ctx.enter(Definition::Group {
+            full_name: make_name(ctx.scope_name(), &self.name.value),
+        });
 
+        let generated_message = DescriptorProto {
+            name: message_name,
+            ..self.body.to_message_descriptor(ctx)
+        };
         ctx.exit();
+
+        let r#type = Some(field_descriptor_proto::Type::Group as i32);
+        // TODO resolve
+        let type_name = Some(generated_message.name().to_owned());
+        messages.push(generated_message);
+
         FieldDescriptorProto {
             name: field_name,
             number,
@@ -920,6 +909,7 @@ impl Context {
         } else if self.in_oneof() && label.is_some() {
             self.errors.push(CheckError::OneofFieldWithLabel { span });
         } else if self.syntax == ast::Syntax::Proto2 && label.is_none() && !self.in_oneof() {
+            dbg!(&self.stack);
             self.errors
                 .push(CheckError::Proto2FieldMissingLabel { span });
         } else if self.syntax == ast::Syntax::Proto3 && label == Some(ast::FieldLabel::Required) {

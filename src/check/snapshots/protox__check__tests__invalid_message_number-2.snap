@@ -1,0 +1,20 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"message Foo { optional int32 i = 536870911; }\")"
+---
+{
+  "messageType": [
+    {
+      "name": "Foo",
+      "field": [
+        {
+          "name": "i",
+          "number": 536870911,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_INT32",
+          "jsonName": "i"
+        }
+      ]
+    }
+  ]
+}

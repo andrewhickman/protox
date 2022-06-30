@@ -1,3 +1,5 @@
+use insta::assert_json_snapshot;
+use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::FileDescriptorProto;
 
 use super::*;
@@ -8,56 +10,35 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
     parse(source).unwrap().to_file_descriptor(None, None, None)
 }
 
+#[track_caller]
+fn check_ok(source: &str) -> DynamicMessage {
+    parse(source).unwrap().to_file_descriptor(None, None, None)
+        .unwrap()
+        .transcode_to_dynamic()
+}
+
+#[track_caller]
+fn check_err(source: &str) -> Vec<CheckError> {
+    parse(source).unwrap().to_file_descriptor(None, None, None)
+        .unwrap_err()
+}
+
 #[test]
 fn invalid_message_number() {
     assert_eq!(
-        check("message Foo { optional int32 i = -5; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 33..35 }])
+        check_err("message Foo { optional int32 i = -5; }"),
+        vec![CheckError::InvalidMessageNumber { span: 33..35 }]
     );
     assert_eq!(
-        check("message Foo { optional int32 i = 0; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 33..34 }])
+        check_err("message Foo { optional int32 i = 0; }"),
+        vec![CheckError::InvalidMessageNumber { span: 33..34 }]
     );
     assert_eq!(
-        check("message Foo { optional int32 i = 536870912; }"),
-        Err(vec![CheckError::InvalidMessageNumber { span: 33..42 }])
+        check_err("message Foo { optional int32 i = 536870912; }"),
+        vec![CheckError::InvalidMessageNumber { span: 33..42 }]
     );
-    assert_eq!(
-        check("message Foo { optional int32 i = 1; }"),
-        Ok(FileDescriptorProto {
-            message_type: vec![DescriptorProto {
-                name: Some("Foo".to_owned()),
-                field: vec![FieldDescriptorProto {
-                    name: Some("i".to_owned()),
-                    number: Some(1),
-                    label: Some(field_descriptor_proto::Label::Optional as _),
-                    r#type: Some(field_descriptor_proto::Type::Int32 as _),
-                    json_name: Some("i".to_owned()),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-            ..Default::default()
-        })
-    );
-    assert_eq!(
-        check("message Foo { optional int32 i = 536870911; }"),
-        Ok(FileDescriptorProto {
-            message_type: vec![DescriptorProto {
-                name: Some("Foo".to_owned()),
-                field: vec![FieldDescriptorProto {
-                    name: Some("i".to_owned()),
-                    number: Some(536870911),
-                    label: Some(field_descriptor_proto::Label::Optional as _),
-                    r#type: Some(field_descriptor_proto::Type::Int32 as _),
-                    json_name: Some("i".to_owned()),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            }],
-            ..Default::default()
-        })
-    );
+    assert_json_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
+    assert_json_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
 }
 
 #[test]
@@ -74,37 +55,21 @@ fn generate_group_message() {
 
 #[test]
 fn generated_message_ordering() {
-    assert_eq!(
-        check(
-            "
-            extend Bar { optional group Baz = 1 {} }
+    assert_json_snapshot!(
+        check_ok(
+            "extend Bar { optional group Baz = 1 {} }
 
             message Bar {
                 extensions 1;
 
-                map<int32, string> x = 3;
+                map<int32, string> x = 5;
 
                 oneof foo {
-                    group Quz = 5 {}
+                    group Quz = 3 {}
                 }
 
                 message Nest {}
-            }"
-        ),
-        Ok(FileDescriptorProto {
-            name: todo!(),
-            package: todo!(),
-            dependency: todo!(),
-            public_dependency: todo!(),
-            weak_dependency: todo!(),
-            message_type: todo!(),
-            enum_type: todo!(),
-            service: todo!(),
-            extension: todo!(),
-            options: todo!(),
-            source_code_info: todo!(),
-            syntax: todo!()
-        })
+            }")
     );
 }
 
