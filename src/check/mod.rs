@@ -7,13 +7,13 @@ use prost_types::{
     enum_descriptor_proto::EnumReservedRange,
     field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumOptions,
     EnumValueDescriptorProto, ExtensionRangeOptions, FieldDescriptorProto, FieldOptions,
-    FileDescriptorProto, FileOptions, MessageOptions, OneofDescriptorProto, OneofOptions,
-    ServiceDescriptorProto, SourceCodeInfo,
+    FileDescriptorProto, FileOptions, MessageOptions, MethodDescriptorProto, MethodOptions,
+    OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, ServiceOptions, SourceCodeInfo,
 };
 use thiserror::Error;
 
 use crate::{
-    ast,
+    ast::{self, Visitor},
     case::{to_camel_case, to_pascal_case},
     files::FileMap,
     index_to_i32,
@@ -50,6 +50,31 @@ pub(crate) enum CheckError {
         name: String,
         first_file: String,
         second_file: String,
+    },
+    #[error("the type name '{name}' was not found")]
+    TypeNameNotFound {
+        name: String,
+        #[label("used here")]
+        span: Span,
+    },
+    #[error("message field type '{name}' is not a message or enum")]
+    InvalidMessageFieldTypeName {
+        name: String,
+        #[label("used here")]
+        span: Span,
+    },
+    #[error("extendee type '{name}' is not a message")]
+    InvalidExtendeeTypeName {
+        name: String,
+        #[label("used here")]
+        span: Span,
+    },
+    #[error("method {kind} type '{name}' is not a message")]
+    InvalidMethodTypeName {
+        name: String,
+        kind: &'static str,
+        #[label("used here")]
+        span: Span,
     },
     #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
     InvalidMessageNumber {
@@ -119,36 +144,24 @@ struct Context<'a> {
     file_map: Option<&'a FileMap>,
 }
 
+#[derive(Debug, Copy, Clone)]
+enum DefinitionKind {
+    Package,
+    Message,
+    Enum,
+    Group,
+    Other,
+}
+
 #[derive(Debug, Clone)]
 enum Definition {
-    Package {
-        full_name: String,
-        name_span: Span,
-    },
-    Message {
-        full_name: String,
-        name_span: Span,
-    },
-    Enum {
-        full_name: String,
-        name_span: Span,
-    },
-    Service {
-        full_name: String,
-        name_span: Span,
-    },
-    Oneof {
-        full_name: String,
-        index: i32,
-        name_span: Span,
-    },
-    Extend {
-        extendee: String,
-    },
-    Group {
-        full_name: String,
-        name_span: Span,
-    },
+    Package { full_name: String },
+    Message { full_name: String },
+    Enum { full_name: String },
+    Service { full_name: String },
+    Oneof { full_name: String, index: i32 },
+    Extend { extendee: String },
+    Group { full_name: String },
 }
 
 impl ast::File {
@@ -166,7 +179,13 @@ impl ast::File {
             file_map,
         };
 
-        self.add_names(&mut ctx);
+        if let Some(package) = &self.package {
+            ctx.stack.push(Definition::Package {
+                full_name: package.name.to_string(),
+            });
+        }
+
+        self.name_pass(&mut ctx);
         if !ctx.errors.is_empty() {
             // We can't produce any more accurate errors if we can't resolve names reliably.
             return Err(ctx.errors);
@@ -248,36 +267,8 @@ impl ast::File {
         }
     }
 
-    fn add_names(&self, ctx: &mut Context) {
-        if let Some(package) = &self.package {
-            ctx.add_name(
-                package.name.to_string(),
-                Definition::Package {
-                    full_name: package.name.to_string(),
-                    name_span: package.name.span(),
-                },
-            );
-        }
-
-        if let Some(file_map) = &ctx.file_map {
-            for import in &self.imports {
-                let file = &file_map[import.value.value.as_str()];
-                if let Err(err) = ctx.names.merge(&file.name_map, file.name.clone(), import.kind == Some(ast::ImportKind::Public)) {
-                    ctx.errors.push(err);
-                }
-            }
-        }
-
-        for item in &self.items {
-            match item {
-                ast::FileItem::Message(m) => m.add_names(&mut ctx),
-                ast::FileItem::Enum(e) => e.add_names(&mut ctx),
-                ast::FileItem::Extend(e) => {
-                    e.add_names(&mut ctx)
-                }
-                ast::FileItem::Service(s) => s.add_names(&mut ctx),
-            }
-        }
+    fn name_pass(&self, ctx: &mut Context) {
+        NamePass { ctx }.visit_file(self);
     }
 
     fn get_source_code_info(&self, _lines: &LineResolver) -> SourceCodeInfo {
@@ -289,7 +280,6 @@ impl ast::Message {
     fn to_message_descriptor(&self, ctx: &mut Context) -> DescriptorProto {
         ctx.enter(Definition::Message {
             full_name: ctx.full_name(&self.name.value),
-            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -297,17 +287,6 @@ impl ast::Message {
 
         ctx.exit();
         DescriptorProto { name, ..body }
-    }
-
-    fn add_names(&self, ctx: &mut Context) {
-        ctx.enter(Definition::Message {
-            full_name: ctx.full_name(&self.name.value),
-            name_span: self.name.span.clone(),
-        });
-
-        self.body.add_names(ctx);
-
-        ctx.exit();
     }
 }
 
@@ -368,18 +347,6 @@ impl ast::MessageBody {
             reserved_range,
             reserved_name,
         }
-    }
-
-    fn add_names(&self, ctx: &mut Context) {
-        // for item in &self.items {
-        //     match item {
-        //         ast::MessageItem::Field(f) => f.add_names(ctx),
-        //         ast::MessageItem::Enum(e) => e.add_names(ctx),
-        //         ast::MessageItem::Message(m) => m.add_names(ctx),
-        //         ast::MessageItem::Extend(e) => e.add_names(ctx),
-        //     }
-        // }
-        todo!()
     }
 }
 
@@ -575,7 +542,25 @@ impl ast::Ty {
             ast::Ty::Bool => (Some(field_descriptor_proto::Type::Bool), None),
             ast::Ty::String => (Some(field_descriptor_proto::Type::String), None),
             ast::Ty::Bytes => (Some(field_descriptor_proto::Type::Bytes), None),
-            ast::Ty::Named(_) => todo!(), // lookup either message or group or enum (or none if no include context),
+            ast::Ty::Named(type_name) => match ctx.resolve_type_name(type_name) {
+                (name, None) => (None, Some(name)),
+                (name, Some(DefinitionKind::Message)) => {
+                    (Some(field_descriptor_proto::Type::Message as _), Some(name))
+                }
+                (name, Some(DefinitionKind::Enum)) => {
+                    (Some(field_descriptor_proto::Type::Enum as _), Some(name))
+                }
+                (name, Some(DefinitionKind::Group)) => {
+                    (Some(field_descriptor_proto::Type::Group as _), Some(name))
+                }
+                (name, Some(_)) => {
+                    ctx.errors.push(CheckError::InvalidMessageFieldTypeName {
+                        name: type_name.to_string(),
+                        span: type_name.span(),
+                    });
+                    (None, Some(name))
+                }
+            },
         }
     }
 }
@@ -702,7 +687,6 @@ impl ast::Group {
 
         ctx.enter(Definition::Group {
             full_name: ctx.full_name(&self.name.value),
-            name_span: self.name.span.clone(),
         });
 
         let generated_message = DescriptorProto {
@@ -739,7 +723,16 @@ impl ast::Extend {
         messages: &mut Vec<DescriptorProto>,
         fields: &mut Vec<FieldDescriptorProto>,
     ) {
-        let extendee = ctx.resolve_type_name(&self.extendee);
+        let (extendee, kind) = ctx.resolve_type_name(&self.extendee);
+        if !matches!(
+            kind,
+            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+        ) {
+            ctx.errors.push(CheckError::InvalidExtendeeTypeName {
+                name: self.extendee.to_string(),
+                span: self.extendee.span(),
+            });
+        }
         ctx.enter(Definition::Extend { extendee });
 
         for field in &self.fields {
@@ -762,7 +755,6 @@ impl ast::Oneof {
         ctx.enter(Definition::Oneof {
             full_name: ctx.full_name(&self.name.value),
             index: index_to_i32(index),
-            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -781,22 +773,6 @@ impl ast::Oneof {
 
         ctx.exit();
         OneofDescriptorProto { name, options }
-    }
-}
-
-impl ast::Reserved {
-    fn ranges(&self) -> impl Iterator<Item = &'_ ast::ReservedRange> + '_ {
-        match &self.kind {
-            ast::ReservedKind::Ranges(ranges) => ranges.iter(),
-            _ => [].iter(),
-        }
-    }
-
-    fn names(&self) -> impl Iterator<Item = &ast::Ident> + '_ {
-        match &self.kind {
-            ast::ReservedKind::Names(names) => names.iter(),
-            _ => [].iter(),
-        }
     }
 }
 
@@ -860,7 +836,6 @@ impl ast::Enum {
     fn to_enum_descriptor(&self, ctx: &mut Context) -> EnumDescriptorProto {
         ctx.enter(Definition::Enum {
             full_name: ctx.full_name(&self.name.value),
-            name_span: self.name.span.clone(),
         });
 
         let name = s(&self.name.value);
@@ -924,45 +899,123 @@ impl ast::EnumValue {
 
 impl ast::Service {
     fn to_service_descriptor(&self, ctx: &mut Context) -> ServiceDescriptorProto {
-        todo!()
+        let name = s(&self.name);
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::Option::to_service_options(&self.options))
+        };
+
+        ctx.enter(Definition::Service {
+            full_name: ctx.full_name(&self.name.value),
+        });
+
+        let method = self
+            .methods
+            .iter()
+            .map(|m| m.to_method_descriptor(ctx))
+            .collect();
+
+        ctx.exit();
+        ServiceDescriptorProto {
+            name,
+            method,
+            options,
+        }
+    }
+}
+
+impl ast::Method {
+    fn to_method_descriptor(&self, ctx: &mut Context) -> MethodDescriptorProto {
+        let name = s(&self.name);
+
+        let (input_type, kind) = ctx.resolve_type_name(&self.input_ty);
+        if !matches!(
+            kind,
+            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+        ) {
+            ctx.errors.push(CheckError::InvalidMethodTypeName {
+                name: self.input_ty.to_string(),
+                kind: "input",
+                span: self.input_ty.span(),
+            })
+        }
+
+        let (output_type, kind) = ctx.resolve_type_name(&self.output_ty);
+        if !matches!(
+            kind,
+            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+        ) {
+            ctx.errors.push(CheckError::InvalidMethodTypeName {
+                name: self.output_ty.to_string(),
+                kind: "output",
+                span: self.output_ty.span(),
+            })
+        }
+
+        let options = if self.options.is_empty() {
+            None
+        } else {
+            Some(ast::Option::to_method_options(&self.options))
+        };
+
+        let client_streaming = Some(self.is_client_streaming);
+        let server_streaming = Some(self.is_server_streaming);
+
+        MethodDescriptorProto {
+            name,
+            input_type: Some(input_type),
+            output_type: Some(output_type),
+            options,
+            client_streaming,
+            server_streaming,
+        }
     }
 }
 
 impl ast::Option {
-    fn to_file_options(this: &[Self]) -> FileOptions {
+    fn to_file_options(_this: &[Self]) -> FileOptions {
         todo!()
     }
 
-    fn to_message_options(this: &[Self]) -> MessageOptions {
+    fn to_message_options(_this: &[Self]) -> MessageOptions {
         todo!()
     }
 
-    fn to_oneof_options(this: &[Self]) -> OneofOptions {
+    fn to_oneof_options(_this: &[Self]) -> OneofOptions {
         todo!()
     }
 
-    fn to_enum_options(this: &[Self]) -> EnumOptions {
+    fn to_enum_options(_this: &[Self]) -> EnumOptions {
+        todo!()
+    }
+
+    fn to_service_options(_this: &[Self]) -> ServiceOptions {
+        todo!()
+    }
+
+    fn to_method_options(_this: &[Self]) -> MethodOptions {
         todo!()
     }
 }
 
 impl ast::OptionBody {
-    fn to_field_options(this: &[Self]) -> (Option<String>, FieldOptions) {
+    fn to_field_options(_this: &[Self]) -> (Option<String>, FieldOptions) {
         todo!()
     }
 
-    fn to_extension_range_options(this: &[Self]) -> ExtensionRangeOptions {
+    fn to_extension_range_options(_this: &[Self]) -> ExtensionRangeOptions {
         todo!()
     }
 
-    fn to_enum_value_options(options: &[Self], ctx: &mut Context) -> prost_types::EnumValueOptions {
+    fn to_enum_value_options(_this: &[Self], _ctx: &mut Context) -> prost_types::EnumValueOptions {
         todo!()
     }
 }
 
 impl<'a> Context<'a> {
-    fn add_name(&mut self, name: impl ToString, def: Definition) {
-        if let Err(err) = self.names.add(name.to_string(), def, None, true) {
+    fn add_name(&mut self, name: &str, kind: DefinitionKind, span: Span) {
+        if let Err(err) = self.names.add(self.full_name(name), kind, span, None, true) {
             self.errors.push(err);
         }
     }
@@ -975,10 +1028,47 @@ impl<'a> Context<'a> {
         self.stack.pop().expect("unbalanced stack");
     }
 
-    fn resolve_type_name(&self, name: &ast::TypeName) -> String {
-        // TODO resolve
-        // return name unchanged if no imports?
-        name.to_string()
+    fn resolve_type_name(&mut self, type_name: &ast::TypeName) -> (String, Option<DefinitionKind>) {
+        let name = type_name.to_string();
+        if self.file_map.is_none() {
+            (name, None)
+        } else if type_name.leading_dot.is_some() {
+            if let Some(def) = self.names.get(&name) {
+                (name, Some(def))
+            } else {
+                self.errors.push(CheckError::TypeNameNotFound {
+                    name: name.clone(),
+                    span: type_name.span(),
+                });
+                (name, None)
+            }
+        } else {
+            for scope in self.stack.iter().rev() {
+                let full_name = match scope {
+                    Definition::Message { full_name, .. }
+                    | Definition::Group { full_name, .. }
+                    | Definition::Oneof { full_name, .. }
+                    | Definition::Enum { full_name, .. }
+                    | Definition::Service { full_name, .. }
+                    | Definition::Package { full_name } => format!("{}.{}", full_name, name),
+                    Definition::Extend { .. } => continue,
+                };
+
+                if let Some(def) = self.names.get(&full_name) {
+                    return (full_name, Some(def));
+                }
+            }
+
+            if let Some(def) = self.names.get(&name) {
+                return (name, Some(def));
+            }
+
+            self.errors.push(CheckError::TypeNameNotFound {
+                name: name.clone(),
+                span: type_name.span(),
+            });
+            (name, None)
+        }
     }
 
     fn scope_name(&self) -> &str {
@@ -989,7 +1079,7 @@ impl<'a> Context<'a> {
                 | Definition::Oneof { full_name, .. }
                 | Definition::Enum { full_name, .. }
                 | Definition::Service { full_name, .. }
-                | Definition::Package { full_name, .. } => return full_name.as_str(),
+                | Definition::Package { full_name } => return full_name.as_str(),
                 Definition::Extend { .. } => continue,
             }
         }
@@ -1040,5 +1130,146 @@ impl<'a> Context<'a> {
         } else if self.syntax == ast::Syntax::Proto3 && label == Some(ast::FieldLabel::Required) {
             self.errors.push(CheckError::Proto3RequiredField { span });
         }
+    }
+}
+
+struct NamePass<'a, 'b> {
+    ctx: &'a mut Context<'b>,
+}
+
+impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
+    fn visit_file(&mut self, file: &ast::File) {
+        if let Some(package) = &file.package {
+            self.ctx.add_name(
+                &package.name.to_string(),
+                DefinitionKind::Package,
+                package.name.span(),
+            );
+        }
+
+        if let Some(file_map) = &self.ctx.file_map {
+            for import in &file.imports {
+                let file = &file_map[import.value.value.as_str()];
+                if let Err(err) = self.ctx.names.merge(
+                    &file.name_map,
+                    file.name.clone(),
+                    import.kind == Some(ast::ImportKind::Public),
+                ) {
+                    self.ctx.errors.push(err);
+                }
+            }
+        }
+
+        file.visit(self)
+    }
+
+    fn visit_enum(&mut self, enu: &ast::Enum) {
+        self.ctx
+            .add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
+        self.ctx.enter(Definition::Enum {
+            full_name: self.ctx.full_name(&enu.name.value),
+        });
+        enu.visit(self);
+        self.ctx.exit();
+    }
+
+    fn visit_enum_value(&mut self, value: &ast::EnumValue) {
+        self.ctx.add_name(
+            &value.name.value,
+            DefinitionKind::Other,
+            value.name.span.clone(),
+        );
+    }
+
+    fn visit_message(&mut self, message: &ast::Message) {
+        self.ctx.add_name(
+            &message.name.value,
+            DefinitionKind::Message,
+            message.name.span.clone(),
+        );
+
+        self.ctx.enter(Definition::Message {
+            full_name: self.ctx.full_name(&message.name.value),
+        });
+
+        message.body.visit(self);
+
+        self.ctx.exit();
+    }
+
+    fn visit_field(&mut self, field: &ast::Field) {
+        self.ctx.add_name(
+            &field.name.value,
+            DefinitionKind::Other,
+            field.name.span.clone(),
+        );
+    }
+
+    fn visit_map(&mut self, map: &ast::Map) {
+        self.ctx.add_name(
+            &map.name.value,
+            DefinitionKind::Other,
+            map.name.span.clone(),
+        );
+        self.ctx.add_name(
+            &(to_pascal_case(&map.name.value) + "Entry"),
+            DefinitionKind::Message,
+            map.name.span.clone(),
+        );
+    }
+
+    fn visit_group(&mut self, group: &ast::Group) {
+        self.ctx.add_name(
+            &group.name.value.to_lowercase(),
+            DefinitionKind::Other,
+            group.name.span.clone(),
+        );
+        self.ctx.add_name(
+            &group.name.value,
+            DefinitionKind::Group,
+            group.name.span.clone(),
+        );
+
+        self.ctx.enter(Definition::Group {
+            full_name: self.ctx.full_name(&group.name.value),
+        });
+        group.body.visit(self);
+        self.ctx.exit();
+    }
+
+    fn visit_oneof(&mut self, oneof: &ast::Oneof) {
+        self.ctx.add_name(
+            &oneof.name.value,
+            DefinitionKind::Other,
+            oneof.name.span.clone(),
+        );
+
+        self.ctx.enter(Definition::Group {
+            full_name: self.ctx.full_name(&oneof.name.value),
+        });
+        oneof.visit(self);
+        self.ctx.exit();
+    }
+
+    fn visit_service(&mut self, service: &ast::Service) {
+        self.ctx.add_name(
+            &service.name.value,
+            DefinitionKind::Other,
+            service.name.span.clone(),
+        );
+
+        self.ctx.enter(Definition::Service {
+            full_name: self.ctx.full_name(&service.name.value),
+        });
+        service.visit(self);
+        self.ctx.exit();
+    }
+
+    fn visit_method(&mut self, method: &ast::Method) {
+        self.ctx.add_name(
+            &method.name.value,
+            DefinitionKind::Other,
+            method.name.span.clone(),
+        );
     }
 }

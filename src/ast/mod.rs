@@ -2,6 +2,12 @@ use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 
+mod visit;
+
+use crate::join_span;
+
+pub(crate) use self::visit::Visitor;
+
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub syntax: Syntax,
@@ -336,6 +342,16 @@ impl Ident {
 impl FullIdent {
     pub fn span(&self) -> Span {
         self.parts.first().unwrap().span.start..self.parts.last().unwrap().span.end
+    }
+}
+
+impl TypeName {
+    pub fn span(&self) -> Span {
+        if let Some(leading_dot) = &self.leading_dot {
+            join_span(leading_dot.clone(), self.name.span())
+        } else {
+            self.name.span()
+        }
     }
 }
 

@@ -2,7 +2,7 @@ use std::collections::{hash_map, HashMap};
 
 use logos::Span;
 
-use super::{CheckError, Definition};
+use super::{CheckError, DefinitionKind};
 
 /// A simple map of all definitions in a proto file for checking downstream files.
 #[derive(Debug)]
@@ -12,7 +12,8 @@ pub(crate) struct NameMap {
 
 #[derive(Debug, Clone)]
 struct Entry {
-    def: Definition,
+    kind: DefinitionKind,
+    span: Span,
     public: bool,
     file: Option<String>,
 }
@@ -27,22 +28,23 @@ impl NameMap {
     pub(super) fn add(
         &mut self,
         name: String,
-        def: Definition,
+        kind: DefinitionKind,
+        span: Span,
         file: Option<&str>,
         public: bool,
     ) -> Result<(), CheckError> {
-        assert!(!matches!(def, Definition::Extend { .. }));
         match self.map.entry(name) {
             hash_map::Entry::Vacant(entry) => {
                 entry.insert(Entry {
                     file: file.map(ToOwned::to_owned),
-                    def,
-                    public: true,
+                    kind,
+                    span,
+                    public,
                 });
                 Ok(())
             }
-            hash_map::Entry::Occupied(entry) => match (&def, &entry.get().def) {
-                (Definition::Package { .. }, Definition::Package { .. }) => Ok(()),
+            hash_map::Entry::Occupied(entry) => match (kind, entry.get().kind) {
+                (DefinitionKind::Package, DefinitionKind::Package) => Ok(()),
                 _ => Err({
                     let name = entry.key().clone();
                     if let Some(first_file) = &entry.get().file {
@@ -56,14 +58,14 @@ impl NameMap {
                             CheckError::DuplicateNameInFileAndImport {
                                 name,
                                 first_file: first_file.clone(),
-                                second: def.name_span(),
+                                second: span,
                             }
                         }
                     } else {
                         CheckError::DuplicateNameInFile {
                             name,
-                            first: entry.get().def.name_span(),
-                            second: def.name_span(),
+                            first: entry.get().span.clone(),
+                            second: span,
                         }
                     }
                 }),
@@ -79,27 +81,19 @@ impl NameMap {
     ) -> Result<(), CheckError> {
         for (name, entry) in &other.map {
             if entry.public {
-                self.add(name.clone(), entry.def.clone(), Some(&file), public)?;
+                self.add(
+                    name.clone(),
+                    entry.kind,
+                    entry.span.clone(),
+                    Some(&file),
+                    public,
+                )?;
             }
         }
         Ok(())
     }
 
-    pub(super) fn get(&self, name: &str) -> Option<&Definition> {
-        self.map.get(name).map(|e| &e.def)
-    }
-}
-
-impl Definition {
-    fn name_span(&self) -> Span {
-        match self {
-            Definition::Package { name_span, .. }
-            | Definition::Message { name_span, .. }
-            | Definition::Enum { name_span, .. }
-            | Definition::Service { name_span, .. }
-            | Definition::Oneof { name_span, .. }
-            | Definition::Group { name_span, .. } => name_span.clone(),
-            Definition::Extend { .. } => unimplemented!("extend has no name"),
-        }
+    pub(super) fn get(&self, name: &str) -> Option<DefinitionKind> {
+        self.map.get(name).map(|e| e.kind)
     }
 }
