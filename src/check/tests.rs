@@ -123,13 +123,47 @@ fn name_conflict_package() {
             second: 28..31,
         }]
     );
-    assert_json_snapshot!(
-        check_with_imports(vec![
-            ("dep.proto", "package foo;"),
-            ("root.proto", r#"import "dep.proto"; package foo;"#),
-        ])
-        .unwrap()
-        .transcode_to_dynamic()
+    assert_json_snapshot!(check_with_imports(vec![
+        ("dep.proto", "package foo;"),
+        ("root.proto", r#"import "dep.proto"; package foo;"#),
+    ])
+    .unwrap()
+    .transcode_to_dynamic());
+}
+
+#[test]
+fn name_conflict_field_camel_case() {
+    assert_eq!(
+        check_err(
+            "syntax = 'proto3';
+
+            message Foo {\
+                optional int32 foo_bar = 1;
+                optional int32 foobar = 2;
+            }"
+        ),
+        vec![DuplicateCamelCaseFieldName {
+            first_name: "foo_bar".to_owned(),
+            first: 60..67,
+            second_name: "foobar".to_owned(),
+            second: 104..110,
+        }]
+    );
+    assert_eq!(
+        check_err(
+            "syntax = 'proto3';
+
+            message Foo {\
+                optional int32 foo = 1;
+                optional int32 FOO = 2;
+            }"
+        ),
+        vec![DuplicateCamelCaseFieldName {
+            first_name: "foo".to_owned(),
+            first: 60..63,
+            second_name: "FOO".to_owned(),
+            second: 100..103,
+        }]
     );
 }
 
@@ -137,15 +171,27 @@ fn name_conflict_package() {
 fn name_conflict() {
     assert_eq!(
         check_err("message Foo {} message Foo {}"),
-        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 23..26 }]
+        vec![DuplicateNameInFile {
+            name: "Foo".to_owned(),
+            first: 8..11,
+            second: 23..26
+        }]
     );
     assert_eq!(
         check_err("message Foo {} enum Foo {}"),
-        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 20..23 }]
+        vec![DuplicateNameInFile {
+            name: "Foo".to_owned(),
+            first: 8..11,
+            second: 20..23
+        }]
     );
     assert_eq!(
         check_err("message Foo {} service Foo {}"),
-        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 23..26 }]
+        vec![DuplicateNameInFile {
+            name: "Foo".to_owned(),
+            first: 8..11,
+            second: 23..26
+        }]
     );
 }
 
@@ -169,10 +215,12 @@ fn invalid_message_number() {
 
 #[test]
 fn generate_map_entry_message() {
-    assert_json_snapshot!(check_ok("\
+    assert_json_snapshot!(check_ok(
+        "\
         message Foo {
             map<int32, string> bar = 1;
-        }"));
+        }"
+    ));
 }
 
 #[test]

@@ -1,4 +1,7 @@
-use std::convert::TryFrom;
+use std::{
+    collections::{hash_map, HashMap},
+    convert::TryFrom,
+};
 
 use logos::Span;
 use miette::Diagnostic;
@@ -14,7 +17,7 @@ use thiserror::Error;
 
 use crate::{
     ast::{self, Visitor},
-    case::{to_camel_case, to_pascal_case},
+    case::{to_camel_case, to_lower_without_underscores, to_pascal_case},
     compile::ParsedFileMap,
     index_to_i32,
     lines::LineResolver,
@@ -50,6 +53,15 @@ pub(crate) enum CheckError {
         name: String,
         first_file: String,
         second_file: String,
+    },
+    #[error("camel-case name of field '{first_name}' conflicts with field '{second_name}'")]
+    DuplicateCamelCaseFieldName {
+        first_name: String,
+        #[label("field defined here...")]
+        first: Span,
+        second_name: String,
+        #[label("...and here")]
+        second: Span,
     },
     #[error("the type name '{name}' was not found")]
     TypeNameNotFound {
@@ -149,8 +161,12 @@ enum DefinitionKind {
     Package,
     Message,
     Enum,
+    EnumValue,
     Group,
-    Other,
+    Oneof,
+    Field,
+    Service,
+    Method,
 }
 
 #[derive(Debug, Clone)]
@@ -268,7 +284,11 @@ impl ast::File {
     }
 
     fn name_pass(&self, ctx: &mut Context) {
-        NamePass { ctx }.visit_file(self);
+        NamePass {
+            ctx,
+            camel_case_field_names: HashMap::new(),
+        }
+        .visit_file(self);
     }
 
     fn get_source_code_info(&self, _lines: &LineResolver) -> SourceCodeInfo {
@@ -1135,6 +1155,7 @@ impl<'a> Context<'a> {
 
 struct NamePass<'a, 'b> {
     ctx: &'a mut Context<'b>,
+    camel_case_field_names: HashMap<String, (String, Span)>,
 }
 
 impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
@@ -1186,7 +1207,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_enum_value(&mut self, value: &ast::EnumValue) {
         self.ctx.add_name(
             &value.name.value,
-            DefinitionKind::Other,
+            DefinitionKind::EnumValue,
             value.name.span.clone(),
         );
     }
@@ -1201,26 +1222,20 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
         self.ctx.enter(Definition::Message {
             full_name: self.ctx.full_name(&message.name.value),
         });
+        debug_assert!(self.camel_case_field_names.is_empty());
 
         message.body.visit(self);
 
+        self.camel_case_field_names.clear();
         self.ctx.exit();
     }
 
     fn visit_field(&mut self, field: &ast::Field) {
-        self.ctx.add_name(
-            &field.name.value,
-            DefinitionKind::Other,
-            field.name.span.clone(),
-        );
+        self.add_field_name(&field.name.value, field.name.span.clone());
     }
 
     fn visit_map(&mut self, map: &ast::Map) {
-        self.ctx.add_name(
-            &map.name.value,
-            DefinitionKind::Other,
-            map.name.span.clone(),
-        );
+        self.add_field_name(&map.name.value, map.name.span.clone());
         self.ctx.add_name(
             &(to_pascal_case(&map.name.value) + "Entry"),
             DefinitionKind::Message,
@@ -1229,11 +1244,6 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     }
 
     fn visit_group(&mut self, group: &ast::Group) {
-        self.ctx.add_name(
-            &group.name.value.to_lowercase(),
-            DefinitionKind::Other,
-            group.name.span.clone(),
-        );
         self.ctx.add_name(
             &group.name.value,
             DefinitionKind::Group,
@@ -1250,7 +1260,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_oneof(&mut self, oneof: &ast::Oneof) {
         self.ctx.add_name(
             &oneof.name.value,
-            DefinitionKind::Other,
+            DefinitionKind::Oneof,
             oneof.name.span.clone(),
         );
 
@@ -1264,7 +1274,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_service(&mut self, service: &ast::Service) {
         self.ctx.add_name(
             &service.name.value,
-            DefinitionKind::Other,
+            DefinitionKind::Service,
             service.name.span.clone(),
         );
 
@@ -1278,8 +1288,34 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_method(&mut self, method: &ast::Method) {
         self.ctx.add_name(
             &method.name.value,
-            DefinitionKind::Other,
+            DefinitionKind::Method,
             method.name.span.clone(),
         );
+    }
+}
+
+impl<'a, 'b> NamePass<'a, 'b> {
+    fn add_field_name(&mut self, name: &str, span: Span) {
+        self.ctx.add_name(name, DefinitionKind::Field, span.clone());
+        if self.ctx.syntax == ast::Syntax::Proto3 {
+            match self
+                .camel_case_field_names
+                .entry(to_lower_without_underscores(name))
+            {
+                hash_map::Entry::Occupied(entry) => {
+                    self.ctx
+                        .errors
+                        .push(CheckError::DuplicateCamelCaseFieldName {
+                            first_name: entry.get().0.clone(),
+                            first: entry.get().1.clone(),
+                            second_name: name.to_owned(),
+                            second: span,
+                        })
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    entry.insert((name.to_owned(), span));
+                }
+            }
+        }
     }
 }
