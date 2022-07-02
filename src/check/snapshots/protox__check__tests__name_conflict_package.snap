@@ -1,0 +1,19 @@
+---
+source: src/check/tests.rs
+expression: "check_with_imports(vec![(\"dep.proto\", \"package foo;\"),\n                (\"root.proto\",\n                r#\"import \"dep.proto\"; package foo;\"#),]).unwrap().transcode_to_dynamic()"
+---
+{
+  "file": [
+    {
+      "name": "dep.proto",
+      "package": "foo"
+    },
+    {
+      "name": "root.proto",
+      "package": "foo",
+      "dependency": [
+        "dep.proto"
+      ]
+    }
+  ]
+}

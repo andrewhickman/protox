@@ -1,0 +1,45 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"\\\n        message Foo {\n            map<int32, string> bar = 1;\n        }\")"
+---
+{
+  "messageType": [
+    {
+      "name": "Foo",
+      "field": [
+        {
+          "name": "bar",
+          "number": 1,
+          "label": "LABEL_REPEATED",
+          "type": "TYPE_MESSAGE",
+          "typeName": ".Foo.barEntry",
+          "jsonName": "bar"
+        }
+      ],
+      "nestedType": [
+        {
+          "name": "barEntry",
+          "field": [
+            {
+              "name": "key",
+              "number": 1,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_INT32",
+              "jsonName": "key"
+            },
+            {
+              "name": "value",
+              "number": 2,
+              "label": "LABEL_OPTIONAL",
+              "type": "TYPE_STRING",
+              "jsonName": "value"
+            }
+          ],
+          "options": {
+            "mapEntry": true
+          }
+        }
+      ]
+    }
+  ]
+}

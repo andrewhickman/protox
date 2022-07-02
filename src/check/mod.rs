@@ -144,7 +144,7 @@ struct Context<'a> {
     file_map: Option<&'a ParsedFileMap>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum DefinitionKind {
     Package,
     Message,
@@ -179,16 +179,16 @@ impl ast::File {
             file_map,
         };
 
-        if let Some(package) = &self.package {
-            ctx.stack.push(Definition::Package {
-                full_name: package.name.to_string(),
-            });
-        }
-
         self.name_pass(&mut ctx);
         if !ctx.errors.is_empty() {
             // We can't produce any more accurate errors if we can't resolve names reliably.
             return Err(ctx.errors);
+        }
+
+        if let Some(package) = &self.package {
+            ctx.enter(Definition::Package {
+                full_name: package.name.to_string(),
+            });
         }
 
         let name = name.map(ToOwned::to_owned);
@@ -576,7 +576,7 @@ impl ast::Map {
 
         let generated_message = self.generate_message_descriptor(ctx);
         let r#type = Some(field_descriptor_proto::Type::Message as i32);
-        let type_name = Some(ctx.full_name(generated_message.name()));
+        let type_name = Some(format!(".{}", ctx.full_name(generated_message.name())));
         messages.push(generated_message);
 
         let (default_value, options) = if self.options.is_empty() {
@@ -604,7 +604,7 @@ impl ast::Map {
         FieldDescriptorProto {
             name,
             number,
-            label: None,
+            label: Some(field_descriptor_proto::Label::Repeated as _),
             r#type,
             type_name,
             extendee: ctx.parent_extendee(),
@@ -635,7 +635,7 @@ impl ast::Map {
             label: Some(field_descriptor_proto::Label::Optional as i32),
             r#type: ty.map(|t| t as i32),
             type_name,
-            json_name: s("key"),
+            json_name: s("value"),
             ..Default::default()
         };
 
@@ -1050,17 +1050,17 @@ impl<'a> Context<'a> {
                     | Definition::Oneof { full_name, .. }
                     | Definition::Enum { full_name, .. }
                     | Definition::Service { full_name, .. }
-                    | Definition::Package { full_name } => format!("{}.{}", full_name, name),
+                    | Definition::Package { full_name } => format!(".{}.{}", full_name, name),
                     Definition::Extend { .. } => continue,
                 };
 
-                if let Some(def) = self.names.get(&full_name) {
+                if let Some(def) = self.names.get(&full_name[1..]) {
                     return (full_name, Some(def));
                 }
             }
 
             if let Some(def) = self.names.get(&name) {
-                return (name, Some(def));
+                return (format!(".{}", name), Some(def));
             }
 
             self.errors.push(CheckError::TypeNameNotFound {
@@ -1139,14 +1139,6 @@ struct NamePass<'a, 'b> {
 
 impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_file(&mut self, file: &ast::File) {
-        if let Some(package) = &file.package {
-            self.ctx.add_name(
-                &package.name.to_string(),
-                DefinitionKind::Package,
-                package.name.span(),
-            );
-        }
-
         if let Some(file_map) = &self.ctx.file_map {
             for import in &file.imports {
                 let file = &file_map[import.value.value.as_str()];
@@ -1160,7 +1152,25 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
             }
         }
 
-        file.visit(self)
+        if let Some(package) = &file.package {
+            self.ctx.add_name(
+                &package.name.to_string(),
+                DefinitionKind::Package,
+                package.name.span(),
+            );
+        }
+
+        if let Some(package) = &file.package {
+            self.ctx.enter(Definition::Package {
+                full_name: package.name.to_string(),
+            });
+        }
+
+        file.visit(self);
+
+        if file.package.is_some() {
+            self.ctx.exit();
+        }
     }
 
     fn visit_enum(&mut self, enu: &ast::Enum) {

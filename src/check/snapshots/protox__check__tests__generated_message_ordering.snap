@@ -13,8 +13,9 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
         {
           "name": "x",
           "number": 5,
+          "label": "LABEL_REPEATED",
           "type": "TYPE_MESSAGE",
-          "typeName": "Bar.xEntry",
+          "typeName": ".Bar.xEntry",
           "jsonName": "x"
         },
         {
@@ -42,7 +43,7 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
               "number": 2,
               "label": "LABEL_OPTIONAL",
               "type": "TYPE_STRING",
-              "jsonName": "key"
+              "jsonName": "value"
             }
           ],
           "options": {

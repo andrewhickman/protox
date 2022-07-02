@@ -40,6 +40,7 @@ fn check_with_imports(files: Vec<(&str, &str)>) -> Result<FileDescriptorSet, Vec
     };
 
     let mut compiler = Compiler::with_import_resolver(resolver);
+    compiler.include_imports(true);
     match compiler.add_file(&root) {
         Ok(_) => Ok(compiler.file_descriptor_set()),
         Err(err) => match err.kind() {
@@ -81,6 +82,74 @@ fn name_conflict_in_imported_files() {
 }
 
 #[test]
+fn name_conflict_with_import() {
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "message Foo {}"),
+            ("root.proto", r#"import "dep.proto"; message Foo {}"#),
+        ])
+        .unwrap_err(),
+        vec![DuplicateNameInFileAndImport {
+            name: "Foo".to_owned(),
+            first_file: "dep.proto".to_owned(),
+            second: 28..31,
+        }]
+    );
+}
+
+#[test]
+fn name_conflict_package() {
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo;"),
+            ("root.proto", r#"import "dep.proto"; message foo {}"#),
+        ])
+        .unwrap_err(),
+        vec![DuplicateNameInFileAndImport {
+            name: "foo".to_owned(),
+            first_file: "dep.proto".to_owned(),
+            second: 28..31,
+        }]
+    );
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "message foo {}"),
+            ("root.proto", r#"import "dep.proto"; package foo;"#),
+        ])
+        .unwrap_err(),
+        vec![DuplicateNameInFileAndImport {
+            name: "foo".to_owned(),
+            first_file: "dep.proto".to_owned(),
+            second: 28..31,
+        }]
+    );
+    assert_json_snapshot!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo;"),
+            ("root.proto", r#"import "dep.proto"; package foo;"#),
+        ])
+        .unwrap()
+        .transcode_to_dynamic()
+    );
+}
+
+#[test]
+fn name_conflict() {
+    assert_eq!(
+        check_err("message Foo {} message Foo {}"),
+        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 23..26 }]
+    );
+    assert_eq!(
+        check_err("message Foo {} enum Foo {}"),
+        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 20..23 }]
+    );
+    assert_eq!(
+        check_err("message Foo {} service Foo {}"),
+        vec![DuplicateNameInFile { name: "Foo".to_owned(), first: 8..11, second: 23..26 }]
+    );
+}
+
+#[test]
 fn invalid_message_number() {
     assert_eq!(
         check_err("message Foo { optional int32 i = -5; }"),
@@ -100,6 +169,14 @@ fn invalid_message_number() {
 
 #[test]
 fn generate_map_entry_message() {
+    assert_json_snapshot!(check_ok("\
+        message Foo {
+            map<int32, string> bar = 1;
+        }"));
+}
+
+#[test]
+fn generate_map_entry_message_name_conflict() {
 
     // conflict with other type name
 }
@@ -143,6 +220,8 @@ fn invalid_service_type() {
 #[test]
 fn name_resolution() {
     // local vs global scope
+    // leading dot
+    // package vs no package
 }
 
 #[test]
