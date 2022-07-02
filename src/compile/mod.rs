@@ -46,11 +46,11 @@ impl Compiler {
     /// Create a new [`Compiler`] with default options and the given non-empty set of include paths.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
         let resolver = FileImportResolver::new(includes)?;
-        Ok(Compiler::with_resolver(resolver))
+        Ok(Compiler::with_import_resolver(resolver))
     }
 
     /// Create a new [`Compiler`] with a custom [`ImportResolver`] for looking up imported files.
-    pub fn with_resolver<R>(resolver: R) -> Self
+    pub fn with_import_resolver<R>(resolver: R) -> Self
     where
         R: ImportResolver + 'static,
     {
@@ -147,7 +147,7 @@ impl Compiler {
     /// Convert all added files into an instance of [`FileDescriptorSet`].
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
-    pub fn build_file_descriptor_set(&mut self) -> FileDescriptorSet {
+    pub fn file_descriptor_set(&self) -> FileDescriptorSet {
         let file = if self.include_imports {
             self.file_map
                 .files

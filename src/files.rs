@@ -20,7 +20,7 @@ pub trait ImportResolver {
     fn open(&self, name: &str) -> Result<File, Error>;
 }
 
-/// An opened protobuf source file.
+/// An opened protobuf source file, returned by [`ImportResolver::open`].
 #[derive(Debug, Clone)]
 pub struct File {
     /// If this is a physical file on the filesystem, the path to the file.

@@ -1,9 +1,25 @@
+use std::collections::HashMap;
+
 use insta::assert_json_snapshot;
 use prost_reflect::{DynamicMessage, ReflectMessage};
-use prost_types::FileDescriptorProto;
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
+use super::CheckError::*;
 use super::*;
-use crate::parse::parse;
+use crate::{error::ErrorKind, files::File, parse::parse, Compiler, Error, ImportResolver};
+
+struct TestImportResolver {
+    files: HashMap<String, String>,
+}
+
+impl ImportResolver for TestImportResolver {
+    fn open(&self, name: &str) -> Result<File, Error> {
+        Ok(File {
+            path: None,
+            content: self.files[name].clone(),
+        })
+    }
+}
 
 #[track_caller]
 fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
@@ -11,6 +27,30 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
         .unwrap()
         .to_file_descriptor(None, None, None)
         .map(|(file, _)| file)
+}
+
+#[track_caller]
+fn check_with_imports(files: Vec<(&str, &str)>) -> Result<FileDescriptorSet, Vec<CheckError>> {
+    let root = files.last().unwrap().0.to_owned();
+    let resolver = TestImportResolver {
+        files: files
+            .into_iter()
+            .map(|(n, s)| (n.to_owned(), s.to_owned()))
+            .collect(),
+    };
+
+    let mut compiler = Compiler::with_import_resolver(resolver);
+    match compiler.add_file(&root) {
+        Ok(_) => Ok(compiler.file_descriptor_set()),
+        Err(err) => match err.kind() {
+            ErrorKind::CheckErrors { err, errors, .. } => {
+                let mut errors = errors.clone();
+                errors.insert(0, err.clone());
+                Err(errors)
+            }
+            err => panic!("unexpected error: {}", err),
+        },
+    }
 }
 
 #[track_caller]
@@ -24,21 +64,35 @@ fn check_err(source: &str) -> Vec<CheckError> {
 }
 
 #[test]
-fn name_conflict_in_imported_files() {}
+fn name_conflict_in_imported_files() {
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep1.proto", "message Foo {}"),
+            ("dep2.proto", "message Foo {}"),
+            ("root.proto", r#"import "dep1.proto"; import "dep2.proto";"#),
+        ])
+        .unwrap_err(),
+        vec![DuplicateNameInImports {
+            name: "Foo".to_owned(),
+            first_file: "dep1.proto".to_owned(),
+            second_file: "dep2.proto".to_owned()
+        }]
+    );
+}
 
 #[test]
 fn invalid_message_number() {
     assert_eq!(
         check_err("message Foo { optional int32 i = -5; }"),
-        vec![CheckError::InvalidMessageNumber { span: 33..35 }]
+        vec![InvalidMessageNumber { span: 33..35 }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 0; }"),
-        vec![CheckError::InvalidMessageNumber { span: 33..34 }]
+        vec![InvalidMessageNumber { span: 33..34 }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 536870912; }"),
-        vec![CheckError::InvalidMessageNumber { span: 33..42 }]
+        vec![InvalidMessageNumber { span: 33..42 }]
     );
     assert_json_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
     assert_json_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));

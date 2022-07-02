@@ -20,7 +20,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
-pub use self::files::{FileImportResolver, ImportResolver};
+pub use self::files::{File, FileImportResolver, ImportResolver};
 
 /// Convenience function for compiling a set of protobuf files.
 ///
@@ -36,7 +36,7 @@ pub use self::files::{FileImportResolver, ImportResolver};
 /// for file in files {
 ///     compiler.add_file(file)?;
 /// }
-/// compiler.build_file_descriptor_set();
+/// compiler.file_descriptor_set();
 /// # Ok(())
 /// # }
 /// ```
@@ -50,7 +50,7 @@ pub fn compile(
         compiler.add_file(file)?;
     }
 
-    Ok(compiler.build_file_descriptor_set())
+    Ok(compiler.file_descriptor_set())
 }
 
 /// Parse a single protobuf source file into a [`FileDescriptorProto`].

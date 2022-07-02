@@ -27,7 +27,7 @@ mod names;
 #[cfg(test)]
 mod tests;
 
-#[derive(Error, Debug, Diagnostic, PartialEq)]
+#[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {
     #[error("name '{name}' is defined twice")]
     DuplicateNameInFile {
