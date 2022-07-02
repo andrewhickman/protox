@@ -12,13 +12,13 @@ expression: "check_ok(\"\\\n        message Foo {\n            map<int32, string
           "number": 1,
           "label": "LABEL_REPEATED",
           "type": "TYPE_MESSAGE",
-          "typeName": ".Foo.barEntry",
+          "typeName": ".Foo.BarEntry",
           "jsonName": "bar"
         }
       ],
       "nestedType": [
         {
-          "name": "barEntry",
+          "name": "BarEntry",
           "field": [
             {
               "name": "key",

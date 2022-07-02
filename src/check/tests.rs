@@ -246,19 +246,20 @@ fn generate_group_message() {
 #[test]
 fn generated_message_ordering() {
     assert_json_snapshot!(check_ok(
-        "extend Bar { optional group Baz = 1 {} }
+        "
+        extend Bar { optional group Baz = 1 {} }
 
-            message Bar {
-                extensions 1;
+        message Bar {
+            extensions 1;
 
-                map<int32, string> x = 5;
+            map<int32, string> x = 5;
 
-                oneof foo {
-                    group Quz = 3 {}
-                }
+            oneof foo {
+                group Quz = 3 {}
+            }
 
-                message Nest {}
-            }"
+            message Nest {}
+        }"
     ));
 }
 

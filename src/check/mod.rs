@@ -1099,8 +1099,7 @@ impl<'a> Context<'a> {
                 | Definition::Oneof { full_name, .. }
                 | Definition::Service { full_name, .. }
                 | Definition::Package { full_name } => return full_name.as_str(),
-                Definition::Enum { .. }
-                | Definition::Extend { .. } => continue,
+                Definition::Enum { .. } | Definition::Extend { .. } => continue,
             }
         }
 

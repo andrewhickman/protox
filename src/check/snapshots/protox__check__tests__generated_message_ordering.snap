@@ -15,7 +15,7 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
           "number": 5,
           "label": "LABEL_REPEATED",
           "type": "TYPE_MESSAGE",
-          "typeName": ".Bar.xEntry",
+          "typeName": ".Bar.XEntry",
           "jsonName": "x"
         },
         {
@@ -24,12 +24,12 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
           "type": "TYPE_GROUP",
           "typeName": "Quz",
           "oneofIndex": 0,
-          "jsonName": "Quz"
+          "jsonName": "quz"
         }
       ],
       "nestedType": [
         {
-          "name": "xEntry",
+          "name": "XEntry",
           "field": [
             {
               "name": "key",
@@ -77,7 +77,7 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
       "number": 1,
       "type": "TYPE_GROUP",
       "typeName": "Baz",
-      "jsonName": "Baz"
+      "jsonName": "baz"
     }
   ]
 }
