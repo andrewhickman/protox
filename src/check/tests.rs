@@ -193,6 +193,14 @@ fn name_conflict() {
             second: 23..26
         }]
     );
+    assert_eq!(
+        check_err("message Foo {} enum Bar { Foo = 1; }"),
+        vec![DuplicateNameInFile {
+            name: "Foo".to_owned(),
+            first: 8..11,
+            second: 26..29
+        }]
+    );
 }
 
 #[test]
@@ -374,3 +382,9 @@ fn enum_reserved_range_overlap_with_value() {}
 
 #[test]
 fn enum_duplicate_number() {}
+
+#[test]
+fn proto2_enum_in_proto3_message() {}
+
+#[test]
+fn proto3_enum_default() {}

@@ -1097,10 +1097,10 @@ impl<'a> Context<'a> {
                 Definition::Message { full_name, .. }
                 | Definition::Group { full_name, .. }
                 | Definition::Oneof { full_name, .. }
-                | Definition::Enum { full_name, .. }
                 | Definition::Service { full_name, .. }
                 | Definition::Package { full_name } => return full_name.as_str(),
-                Definition::Extend { .. } => continue,
+                Definition::Enum { .. }
+                | Definition::Extend { .. } => continue,
             }
         }
 
