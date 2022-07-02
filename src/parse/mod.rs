@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Write},
-    iter::once,
+    iter::once, path::Path,
 };
 
 use logos::{Lexer, Logos, Span};
@@ -1419,5 +1419,5 @@ fn is_valid_import(s: &str) -> bool {
         }
     }
 
-    true
+    !Path::new(s).is_absolute()
 }

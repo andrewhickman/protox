@@ -6,8 +6,9 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 use crate::{
     ast,
     check::NameMap,
+    error::{Error, ErrorKind},
     files::{File, FileMap, ImportResult},
-    parse, Error, ErrorKind,
+    parse,
 };
 
 #[cfg(test)]

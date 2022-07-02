@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    ffi::OsStr,
     fs,
     io::{self, Read},
     ops::{Index, IndexMut},
@@ -184,7 +185,7 @@ fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
             (_, Some(path::Component::CurDir)) => {
                 prefix = prefix_next;
             }
-            (Some(ref x), Some(ref y)) if x == y => {
+            (Some(ref x), Some(ref y)) if path_component_eq(x.as_os_str(), y.as_os_str()) => {
                 path = path_next;
                 prefix = prefix_next;
             }
@@ -194,4 +195,14 @@ fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
             (None, Some(_)) => return None,
         }
     }
+}
+
+#[cfg(windows)]
+fn path_component_eq(l: &OsStr, r: &OsStr) -> bool {
+    l.eq_ignore_ascii_case(r)
+}
+
+#[cfg(not(windows))]
+fn path_component_eq(l: &OsStr, r: &OsStr) -> bool {
+    l == r
 }
