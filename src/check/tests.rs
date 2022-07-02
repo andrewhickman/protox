@@ -6,7 +6,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use super::CheckError::*;
 use super::*;
-use crate::{error::ErrorKind, files::File, parse::parse, Compiler, Error, ImportResolver};
+use crate::{error::ErrorKind, files::File, Compiler, Error, ImportResolver};
 
 struct TestImportResolver {
     files: HashMap<String, String>,
@@ -23,10 +23,11 @@ impl ImportResolver for TestImportResolver {
 
 #[track_caller]
 fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    parse(source)
-        .unwrap()
-        .to_file_descriptor(None, None, None)
-        .map(|(file, _)| file)
+    Ok(check_with_imports(vec![("root.proto", source)])?
+        .file
+        .into_iter()
+        .last()
+        .unwrap())
 }
 
 #[track_caller]
@@ -233,14 +234,52 @@ fn generate_map_entry_message() {
 
 #[test]
 fn generate_map_entry_message_name_conflict() {
+    assert_eq!(
+        check_err(
+            "message Foo {\
+                map<uint32, bytes> baz = 1;
 
-    // conflict with other type name
+                enum BazEntry {
+                    ZERO = 0;
+                }
+            }"
+        ),
+        vec![DuplicateNameInFile {
+            name: "Foo.BazEntry".to_owned(),
+            first: 32..35,
+            second: 63..71,
+        }]
+    );
 }
 
 #[test]
 fn generate_group_message() {
+    assert_json_snapshot!(check_ok(
+        "\
+        message Foo {
+            optional group Bar = 1 {};
+        }"
+    ));
+}
 
-    // conflict with other type name
+#[test]
+fn generate_group_message_name_conflict() {
+    assert_eq!(
+        check_err(
+            "message Foo {\
+                optional group Baz = 1 {}
+
+                enum Baz {
+                    ZERO = 0;
+                }
+            }"
+        ),
+        vec![DuplicateNameInFile {
+            name: "Foo.Baz".to_owned(),
+            first: 28..31,
+            second: 61..64,
+        }],
+    );
 }
 
 #[test]

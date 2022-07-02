@@ -3,6 +3,7 @@ source: src/check/tests.rs
 expression: "check_ok(\"\\\n        message Foo {\n            map<int32, string> bar = 1;\n        }\")"
 ---
 {
+  "name": "root.proto",
   "messageType": [
     {
       "name": "Foo",

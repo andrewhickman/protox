@@ -3,6 +3,7 @@ source: src/check/tests.rs
 expression: "check_ok(\"message Foo { optional int32 i = 1; }\")"
 ---
 {
+  "name": "root.proto",
   "messageType": [
     {
       "name": "Foo",

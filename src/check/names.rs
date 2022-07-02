@@ -94,6 +94,7 @@ impl NameMap {
     }
 
     pub(super) fn get(&self, name: &str) -> Option<DefinitionKind> {
+        let name = name.strip_prefix('.').unwrap_or(name);
         self.map.get(name).map(|e| e.kind)
     }
 }

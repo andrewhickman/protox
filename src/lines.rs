@@ -50,8 +50,6 @@ impl LineResolver {
 fn resolve_line_number() {
     let resolver = LineResolver::new("hello\nworld\nfoo");
 
-    dbg!(&resolver.lines);
-
     assert_eq!(resolver.resolve(0), (0, 0));
     assert_eq!(resolver.resolve(4), (0, 4));
     assert_eq!(resolver.resolve(5), (0, 5));

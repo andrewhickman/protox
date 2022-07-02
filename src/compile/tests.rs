@@ -814,7 +814,7 @@ fn import_file_absolute_path() {
 
     std::fs::write(
         dir.join("root.proto"),
-        dbg!(format!(
+        format!(
             "import '{}';",
             dir.join("include")
                 .join("dep.proto")
@@ -822,7 +822,7 @@ fn import_file_absolute_path() {
                 .to_string()
                 .replace('\\', "/")
                 .escape_default()
-        )),
+        ),
     )
     .unwrap();
 

@@ -1,0 +1,27 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"\\\n        message Foo {\n            optional group Bar = 1 {};\n        }\")"
+---
+{
+  "name": "root.proto",
+  "messageType": [
+    {
+      "name": "Foo",
+      "field": [
+        {
+          "name": "bar",
+          "number": 1,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_GROUP",
+          "typeName": ".Foo.Bar",
+          "jsonName": "bar"
+        }
+      ],
+      "nestedType": [
+        {
+          "name": "Bar"
+        }
+      ]
+    }
+  ]
+}

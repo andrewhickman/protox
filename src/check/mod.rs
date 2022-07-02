@@ -173,11 +173,11 @@ enum DefinitionKind {
 enum Definition {
     Package { full_name: String },
     Message { full_name: String },
-    Enum { full_name: String },
+    Enum,
     Service { full_name: String },
-    Oneof { full_name: String, index: i32 },
+    Oneof { index: i32 },
     Extend { extendee: String },
-    Group { full_name: String },
+    Group,
 }
 
 impl ast::File {
@@ -596,7 +596,11 @@ impl ast::Map {
 
         let generated_message = self.generate_message_descriptor(ctx);
         let r#type = Some(field_descriptor_proto::Type::Message as i32);
-        let type_name = Some(format!(".{}", ctx.full_name(generated_message.name())));
+        let (type_name, def) = ctx.resolve_relative_type_name(
+            generated_message.name().to_owned(),
+            self.name.span.clone(),
+        );
+        debug_assert_eq!(def, Some(DefinitionKind::Message));
         messages.push(generated_message);
 
         let (default_value, options) = if self.options.is_empty() {
@@ -626,7 +630,7 @@ impl ast::Map {
             number,
             label: Some(field_descriptor_proto::Label::Repeated as _),
             r#type,
-            type_name,
+            type_name: Some(type_name),
             extendee: ctx.parent_extendee(),
             default_value: None,
             oneof_index: ctx.parent_oneof(),
@@ -682,6 +686,11 @@ impl ast::Group {
 
         let json_name = Some(to_camel_case(&self.name.value));
         let number = self.number.to_field_number(ctx);
+        let label = Some(
+            self.label
+                .unwrap_or(ast::FieldLabel::Optional)
+                .to_field_label() as i32,
+        );
 
         let (default_value, options) = if self.options.is_empty() {
             (None, None)
@@ -705,9 +714,7 @@ impl ast::Group {
             });
         }
 
-        ctx.enter(Definition::Group {
-            full_name: ctx.full_name(&self.name.value),
-        });
+        ctx.enter(Definition::Group);
 
         let generated_message = DescriptorProto {
             name: message_name,
@@ -716,16 +723,19 @@ impl ast::Group {
         ctx.exit();
 
         let r#type = Some(field_descriptor_proto::Type::Group as i32);
-        // TODO resolve
-        let type_name = Some(generated_message.name().to_owned());
+        let (type_name, def) = ctx.resolve_relative_type_name(
+            generated_message.name().to_owned(),
+            self.name.span.clone(),
+        );
+        debug_assert_eq!(def, Some(DefinitionKind::Group));
         messages.push(generated_message);
 
         FieldDescriptorProto {
             name: field_name,
             number,
-            label: None,
+            label,
             r#type,
-            type_name,
+            type_name: Some(type_name),
             extendee: ctx.parent_extendee(),
             default_value: None,
             oneof_index: ctx.parent_oneof(),
@@ -773,7 +783,6 @@ impl ast::Oneof {
         index: usize,
     ) -> OneofDescriptorProto {
         ctx.enter(Definition::Oneof {
-            full_name: ctx.full_name(&self.name.value),
             index: index_to_i32(index),
         });
 
@@ -854,9 +863,7 @@ impl ast::ReservedRange {
 
 impl ast::Enum {
     fn to_enum_descriptor(&self, ctx: &mut Context) -> EnumDescriptorProto {
-        ctx.enter(Definition::Enum {
-            full_name: ctx.full_name(&self.name.value),
-        });
+        ctx.enter(Definition::Enum);
 
         let name = s(&self.name.value);
 
@@ -1063,43 +1070,46 @@ impl<'a> Context<'a> {
                 (name, None)
             }
         } else {
-            for scope in self.stack.iter().rev() {
-                let full_name = match scope {
-                    Definition::Message { full_name, .. }
-                    | Definition::Group { full_name, .. }
-                    | Definition::Oneof { full_name, .. }
-                    | Definition::Enum { full_name, .. }
-                    | Definition::Service { full_name, .. }
-                    | Definition::Package { full_name } => format!(".{}.{}", full_name, name),
-                    Definition::Extend { .. } => continue,
-                };
-
-                if let Some(def) = self.names.get(&full_name[1..]) {
-                    return (full_name, Some(def));
-                }
-            }
-
-            if let Some(def) = self.names.get(&name) {
-                return (format!(".{}", name), Some(def));
-            }
-
-            self.errors.push(CheckError::TypeNameNotFound {
-                name: name.clone(),
-                span: type_name.span(),
-            });
-            (name, None)
+            self.resolve_relative_type_name(name, type_name.span())
         }
+    }
+
+    fn resolve_relative_type_name(
+        &mut self,
+        name: String,
+        span: Span,
+    ) -> (String, Option<DefinitionKind>) {
+        for scope in self.stack.iter().rev() {
+            let full_name = match scope {
+                Definition::Message { full_name, .. }
+                | Definition::Service { full_name, .. }
+                | Definition::Package { full_name } => format!(".{}.{}", full_name, name),
+                _ => continue,
+            };
+
+            if let Some(def) = self.names.get(&full_name) {
+                return (full_name, Some(def));
+            }
+        }
+
+        if let Some(def) = self.names.get(&name) {
+            return (format!(".{}", name), Some(def));
+        }
+
+        self.errors.push(CheckError::TypeNameNotFound {
+            name: name.to_owned(),
+            span,
+        });
+        (name, None)
     }
 
     fn scope_name(&self) -> &str {
         for def in self.stack.iter().rev() {
             match def {
                 Definition::Message { full_name, .. }
-                | Definition::Group { full_name, .. }
-                | Definition::Oneof { full_name, .. }
                 | Definition::Service { full_name, .. }
                 | Definition::Package { full_name } => return full_name.as_str(),
-                Definition::Enum { .. } | Definition::Extend { .. } => continue,
+                _ => continue,
             }
         }
 
@@ -1143,7 +1153,6 @@ impl<'a> Context<'a> {
         } else if self.in_oneof() && label.is_some() {
             self.errors.push(CheckError::OneofFieldWithLabel { span });
         } else if self.syntax == ast::Syntax::Proto2 && label.is_none() && !self.in_oneof() {
-            dbg!(&self.stack);
             self.errors
                 .push(CheckError::Proto2FieldMissingLabel { span });
         } else if self.syntax == ast::Syntax::Proto3 && label == Some(ast::FieldLabel::Required) {
@@ -1196,9 +1205,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
     fn visit_enum(&mut self, enu: &ast::Enum) {
         self.ctx
             .add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
-        self.ctx.enter(Definition::Enum {
-            full_name: self.ctx.full_name(&enu.name.value),
-        });
+        self.ctx.enter(Definition::Enum);
         enu.visit(self);
         self.ctx.exit();
     }
@@ -1249,9 +1256,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
             group.name.span.clone(),
         );
 
-        self.ctx.enter(Definition::Group {
-            full_name: self.ctx.full_name(&group.name.value),
-        });
+        self.ctx.enter(Definition::Group);
         group.body.visit(self);
         self.ctx.exit();
     }
@@ -1263,9 +1268,7 @@ impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
             oneof.name.span.clone(),
         );
 
-        self.ctx.enter(Definition::Group {
-            full_name: self.ctx.full_name(&oneof.name.value),
-        });
+        self.ctx.enter(Definition::Group);
         oneof.visit(self);
         self.ctx.exit();
     }

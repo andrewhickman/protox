@@ -1,8 +1,9 @@
 ---
 source: src/check/tests.rs
-expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            message Bar {\n                extensions 1;\n\n                map<int32, string> x = 5;\n\n                oneof foo {\n                    group Quz = 3 {}\n                }\n\n                message Nest {}\n            }\")"
+expression: "check_ok(\"\n        extend Bar { optional group Baz = 1 {} }\n\n        message Bar {\n            extensions 1;\n\n            map<int32, string> x = 5;\n\n            oneof foo {\n                group Quz = 3 {}\n            }\n\n            message Nest {}\n        }\")"
 ---
 {
+  "name": "root.proto",
   "messageType": [
     {
       "name": "Baz"
@@ -21,8 +22,9 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
         {
           "name": "quz",
           "number": 3,
+          "label": "LABEL_OPTIONAL",
           "type": "TYPE_GROUP",
-          "typeName": "Quz",
+          "typeName": ".Bar.Quz",
           "oneofIndex": 0,
           "jsonName": "quz"
         }
@@ -73,10 +75,11 @@ expression: "check_ok(\"extend Bar { optional group Baz = 1 {} }\n\n            
   "extension": [
     {
       "name": "baz",
-      "extendee": "Bar",
+      "extendee": ".Bar",
       "number": 1,
+      "label": "LABEL_OPTIONAL",
       "type": "TYPE_GROUP",
-      "typeName": "Baz",
+      "typeName": ".Baz",
       "jsonName": "baz"
     }
   ]
