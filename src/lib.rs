@@ -12,16 +12,15 @@ mod files;
 mod lines;
 mod parse;
 
-use std::{
-    convert::TryInto,
-    path::Path,
-};
+use std::sync::Arc;
+use std::{convert::TryInto, path::Path};
 
 use logos::Span;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
+pub use self::files::{FileImportResolver, ImportResolver};
 
 /// Convenience function for compiling a set of protobuf files.
 ///
@@ -60,10 +59,10 @@ pub fn compile(
 /// imported files.
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
     let ast =
-        parse::parse(source).map_err(|errors| Error::parse_errors(errors, source.to_owned()))?;
+        parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;
     match ast.to_file_descriptor(None, Some(source), None) {
         Ok((file_descriptor, _)) => Ok(file_descriptor),
-        Err(errors) => Err(Error::check_errors(errors, source.to_owned())),
+        Err(errors) => Err(Error::check_errors(errors, Arc::from(source))),
     }
 }
 

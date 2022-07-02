@@ -1,42 +1,65 @@
-use std::{fmt::Write, path::Path, sync::Arc};
+use std::{
+    collections::HashMap,
+    fmt::{self, Write},
+    ops::{Index, IndexMut},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
-use miette::NamedSource;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
     check::NameMap,
-    error::{Error, ErrorKind},
-    files::{File, FileMap, ImportResult},
-    parse,
+    error::{DynSourceCode, Error, ErrorKind},
+    files::ends_with,
+    parse, FileImportResolver, ImportResolver, MAX_FILE_LEN,
 };
 
 #[cfg(test)]
 mod tests;
 
 /// Options for compiling protobuf files.
-#[derive(Debug)]
 pub struct Compiler {
-    file_map: FileMap,
+    resolver: Box<dyn ImportResolver>,
+    file_map: ParsedFileMap,
     include_imports: bool,
     include_source_info: bool,
 }
 
+#[derive(Debug)]
+pub(crate) struct ParsedFile {
+    pub descriptor: FileDescriptorProto,
+    pub name_map: NameMap,
+    pub path: Option<PathBuf>,
+    pub name: String,
+    pub is_root: bool,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct ParsedFileMap {
+    files: Vec<ParsedFile>,
+    file_names: HashMap<String, usize>,
+}
+
 impl Compiler {
-    /// Create a new compiler with default options and the given non-empty set of include paths.
+    /// Create a new [`Compiler`] with default options and the given non-empty set of include paths.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
-        let includes: Vec<_> = includes
-            .into_iter()
-            .map(|path| path.as_ref().to_owned())
-            .collect();
-        if includes.is_empty() {
-            return Err(Error::new(ErrorKind::NoIncludePaths));
-        }
-        Ok(Compiler {
-            file_map: FileMap::new(includes),
+        let resolver = FileImportResolver::new(includes)?;
+        Ok(Compiler::with_resolver(resolver))
+    }
+
+    /// Create a new [`Compiler`] with a custom [`ImportResolver`] for looking up imported files.
+    pub fn with_resolver<R>(resolver: R) -> Self
+    where
+        R: ImportResolver + 'static,
+    {
+        Compiler {
+            resolver: Box::new(resolver),
+            file_map: Default::default(),
             include_imports: false,
             include_source_info: false,
-        })
+        }
     }
 
     /// Set whether the output `FileDescriptorSet` should have source info such as source locations and comments included.
@@ -59,64 +82,43 @@ impl Compiler {
     /// `import` statements.
     pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<&mut Self, Error> {
         let relative_path = relative_path.as_ref();
-        let (resolved_include, name) = self
-            .file_map
-            .resolve_import_name(relative_path)
-            .ok_or_else(|| {
-                Error::new(ErrorKind::FileNotIncluded {
-                    path: relative_path.to_owned(),
-                })
-            })?;
-
-        let (source, include, path) = match self.file_map.resolve_import(&name) {
-            ImportResult::Found {
-                include,
-                path,
-                source,
-            } => {
-                if resolved_include.is_some() && resolved_include != Some(&include) {
-                    return Err(Error::new(ErrorKind::FileShadowed {
-                        path: relative_path.to_owned(),
-                        shadow: path,
-                    }));
-                } else {
-                    (source, include, path)
-                }
-            }
-            ImportResult::AlreadyImported { include, path } => {
-                if resolved_include.is_some() && resolved_include != Some(&include) {
-                    return Err(Error::new(ErrorKind::FileShadowed {
-                        path: relative_path.to_owned(),
-                        shadow: path,
-                    }));
-                } else {
-                    self.file_map[name.as_str()].is_root = true;
-                    return Ok(self);
-                }
-            }
-            ImportResult::NotFound => {
-                return Err(Error::new(ErrorKind::FileNotIncluded {
+        let name = match self.resolver.resolve_path(relative_path) {
+            Some(name) => name,
+            None => {
+                return Err(Error::from_kind(ErrorKind::FileNotIncluded {
                     path: relative_path.to_owned(),
                 }))
             }
-            ImportResult::OpenError { include, path, err } => {
-                if resolved_include.is_some() && resolved_include != Some(&include) {
-                    return Err(Error::new(ErrorKind::FileShadowed {
-                        path: relative_path.to_owned(),
-                        shadow: path,
-                    }));
-                } else {
-                    return Err(Error::new(ErrorKind::OpenFile { path, err }));
-                }
-            }
         };
 
+        if let Some(parsed_file) = self.file_map.get_mut(&name) {
+            check_shadow(&parsed_file.path, relative_path)?;
+            parsed_file.is_root = true;
+            return Ok(self);
+        }
+
+        let file = self.resolver.open(&name).map_err(|err| match err.kind() {
+            ErrorKind::ImportNotFound { .. } => Error::from_kind(ErrorKind::FileNotIncluded {
+                path: relative_path.to_owned(),
+            }),
+            _ => err,
+        })?;
+        check_shadow(&file.path, relative_path)?;
+
+        if file.content.len() > (MAX_FILE_LEN as usize) {
+            return Err(Error::from_kind(ErrorKind::FileTooLarge {
+                src: DynSourceCode::default(),
+                span: None,
+            }));
+        }
+
+        let source: Arc<str> = file.content.into();
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    NamedSource::new(path.display().to_string(), source.clone()),
+                    DynSourceCode::from((file.path, source.clone())),
                 ));
             }
         };
@@ -126,18 +128,17 @@ impl Compiler {
             self.add_import(
                 import,
                 &mut import_stack,
-                NamedSource::new(path.display().to_string(), source.clone()),
+                DynSourceCode::from((file.path.clone(), source.clone())),
             )?;
         }
 
-        let (descriptor, name_map) = self.check_file(&name, &ast, source, &path)?;
+        let (descriptor, name_map) = self.check_file(&name, &ast, source, &file.path)?;
 
-        self.file_map.add(File {
+        self.file_map.add(ParsedFile {
             descriptor,
             name_map,
             name,
-            include,
-            path,
+            path: file.path,
             is_root: true,
         });
         Ok(self)
@@ -148,9 +149,14 @@ impl Compiler {
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
     pub fn build_file_descriptor_set(&mut self) -> FileDescriptorSet {
         let file = if self.include_imports {
-            self.file_map.iter().map(|f| f.descriptor.clone()).collect()
+            self.file_map
+                .files
+                .iter()
+                .map(|f| f.descriptor.clone())
+                .collect()
         } else {
             self.file_map
+                .files
                 .iter()
                 .filter(|f| f.is_root)
                 .map(|f| f.descriptor.clone())
@@ -164,7 +170,7 @@ impl Compiler {
         &mut self,
         import: &ast::Import,
         import_stack: &mut Vec<String>,
-        src: NamedSource,
+        import_src: DynSourceCode,
     ) -> Result<(), Error> {
         if import_stack.contains(&import.value.value) {
             let mut cycle = String::new();
@@ -173,41 +179,31 @@ impl Compiler {
             }
             write!(&mut cycle, "{}", import.value.value).unwrap();
 
-            return Err(Error::new(ErrorKind::CircularImport { cycle }));
+            return Err(Error::from_kind(ErrorKind::CircularImport { cycle }));
         }
 
-        let (source, include, path) = match self.file_map.resolve_import(&import.value.value) {
-            ImportResult::Found {
-                include,
-                path,
-                source,
-            } => (source, include, path),
-            ImportResult::AlreadyImported { .. } => {
-                return Ok(());
-            }
-            ImportResult::NotFound => {
-                return Err(Error::new(ErrorKind::ImportNotFound {
-                    name: import.value.value.clone(),
-                    span: import.span.clone(),
-                    src,
-                }))
-            }
-            ImportResult::OpenError { path, err, .. } => {
-                return Err(Error::new(ErrorKind::OpenImport {
-                    path,
-                    err,
-                    src,
-                    span: import.span.clone(),
+        if self.file_map.file_names.contains_key(&import.value.value) {
+            return Ok(());
+        }
+
+        let file = match self.resolver.open(&import.value.value) {
+            Ok(file) if file.content.len() > (MAX_FILE_LEN as usize) => {
+                return Err(Error::from_kind(ErrorKind::FileTooLarge {
+                    src: import_src,
+                    span: Some(import.value.span.clone().into()),
                 }));
             }
+            Ok(file) => file,
+            Err(err) => return Err(err.add_import_context(import_src, import.span.clone())),
         };
 
+        let source: Arc<str> = file.content.into();
         let ast = match parse::parse(&source) {
             Ok(ast) => ast,
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    NamedSource::new(path.display().to_string(), source.clone()),
+                    DynSourceCode::from((file.path, source)),
                 ));
             }
         };
@@ -217,19 +213,19 @@ impl Compiler {
             self.add_import(
                 import,
                 import_stack,
-                NamedSource::new(path.display().to_string(), source.clone()),
+                DynSourceCode::from((file.path.clone(), source.clone())),
             )?;
         }
         import_stack.pop();
 
-        let (descriptor, name_map) = self.check_file(&import.value.value, &ast, source, &path)?;
+        let (descriptor, name_map) =
+            self.check_file(&import.value.value, &ast, source, &file.path)?;
 
-        self.file_map.add(File {
+        self.file_map.add(ParsedFile {
             descriptor,
             name_map,
             name: import.value.value.clone(),
-            include,
-            path,
+            path: file.path,
             is_root: false,
         });
         Ok(())
@@ -240,7 +236,7 @@ impl Compiler {
         name: &str,
         ast: &ast::File,
         source: Arc<str>,
-        path: &Path,
+        path: &Option<PathBuf>,
     ) -> Result<(FileDescriptorProto, NameMap), Error> {
         let source_info = if self.include_source_info {
             Some(source.as_ref())
@@ -249,8 +245,66 @@ impl Compiler {
         };
 
         ast.to_file_descriptor(Some(name), source_info, Some(&self.file_map))
-            .map_err(|errors| {
-                Error::check_errors(errors, NamedSource::new(path.display().to_string(), source))
-            })
+            .map_err(|errors| Error::check_errors(errors, (path.clone(), source)))
+    }
+}
+
+impl fmt::Debug for Compiler {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Compiler")
+            .field("file_map", &self.file_map)
+            .field("include_imports", &self.include_imports)
+            .field("include_source_info", &self.include_source_info)
+            .finish_non_exhaustive()
+    }
+}
+
+fn check_shadow(actual_path: &Option<PathBuf>, expected_path: &Path) -> Result<(), Error> {
+    // actual_path is assumed to be an include path concatenated with `expected_path`
+    if let Some(actual_path) = actual_path {
+        if !ends_with(actual_path, expected_path) {
+            return Err(Error::from_kind(ErrorKind::FileShadowed {
+                path: expected_path.to_owned(),
+                shadow: actual_path.to_owned(),
+            }));
+        }
+    }
+
+    Ok(())
+}
+
+impl ParsedFileMap {
+    fn add(&mut self, file: ParsedFile) {
+        self.file_names.insert(file.name.clone(), self.files.len());
+        self.files.push(file);
+    }
+
+    fn get_mut(&mut self, name: &str) -> Option<&mut ParsedFile> {
+        match self.file_names.get(name).copied() {
+            Some(i) => Some(&mut self.files[i]),
+            None => None,
+        }
+    }
+}
+
+impl Index<usize> for ParsedFileMap {
+    type Output = ParsedFile;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.files[index]
+    }
+}
+
+impl<'a> Index<&'a str> for ParsedFileMap {
+    type Output = ParsedFile;
+
+    fn index(&self, index: &'a str) -> &Self::Output {
+        &self.files[self.file_names[index]]
+    }
+}
+
+impl<'a> IndexMut<&'a str> for ParsedFileMap {
+    fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
+        &mut self.files[self.file_names[index]]
     }
 }

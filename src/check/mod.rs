@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::{
     ast::{self, Visitor},
     case::{to_camel_case, to_pascal_case},
-    files::FileMap,
+    compile::ParsedFileMap,
     index_to_i32,
     lines::LineResolver,
     s, MAX_MESSAGE_FIELD_NUMBER,
@@ -141,7 +141,7 @@ struct Context<'a> {
     errors: Vec<CheckError>,
     stack: Vec<Definition>,
     names: NameMap,
-    file_map: Option<&'a FileMap>,
+    file_map: Option<&'a ParsedFileMap>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -169,7 +169,7 @@ impl ast::File {
         &self,
         name: Option<&str>,
         source_code: Option<&str>,
-        file_map: Option<&FileMap>,
+        file_map: Option<&ParsedFileMap>,
     ) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
         let mut ctx = Context {
             syntax: self.syntax,

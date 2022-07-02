@@ -1,6 +1,7 @@
 use std::{
     fmt::{self, Write},
-    iter::once, path::Path,
+    iter::once,
+    path::Path,
 };
 
 use logos::{Lexer, Logos, Span};
