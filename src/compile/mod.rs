@@ -10,7 +10,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
-    check::NameMap,
+    check::{NameMap, check, check_with_names},
     error::{DynSourceCode, Error, ErrorKind},
     files::ends_with,
     parse, FileImportResolver, ImportResolver, MAX_FILE_LEN,
@@ -243,7 +243,7 @@ impl Compiler {
             None
         };
 
-        ast.to_file_descriptor(Some(name), source_info, Some(&self.file_map))
+        check_with_names(ast, Some(name), source_info, &self.file_map)
             .map_err(|errors| Error::check_errors(errors, (path.clone(), source)))
     }
 }
