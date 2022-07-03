@@ -35,10 +35,10 @@ pub(crate) enum CheckError {
     #[error("name '{name}' is defined twice")]
     DuplicateNameInFile {
         name: String,
-        #[label("first defined here...")]
+        #[label("first defined here…")]
         first: Span,
         #[label]
-        #[label("... and defined again here")]
+        #[label("…and again here")]
         second: Span,
     },
     #[error("name '{name}' is already defined in imported file '{first_file}'")]
@@ -57,10 +57,10 @@ pub(crate) enum CheckError {
     #[error("camel-case name of field '{first_name}' conflicts with field '{second_name}'")]
     DuplicateCamelCaseFieldName {
         first_name: String,
-        #[label("field defined here...")]
+        #[label("field defined here…")]
         first: Span,
         second_name: String,
-        #[label("...and here")]
+        #[label("…conflicts with field here")]
         second: Span,
     },
     #[error("the type name '{name}' was not found")]

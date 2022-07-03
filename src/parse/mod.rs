@@ -79,9 +79,9 @@ pub(crate) enum ParseError {
     },
     #[error("multiple package names specified")]
     DuplicatePackage {
-        #[label("defined here...")]
+        #[label("defined here…")]
         first: Span,
-        #[label("...and again here")]
+        #[label("…and again here")]
         second: Span,
     },
     #[error("expected {expected}, but found '{found}'")]
