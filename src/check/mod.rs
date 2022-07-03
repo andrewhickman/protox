@@ -1002,7 +1002,8 @@ impl ast::Method {
 
 impl ast::Option {
     fn to_file_options(_this: &[Self]) -> FileOptions {
-        todo!()
+        // todo!()
+        Default::default()
     }
 
     fn to_message_options(_this: &[Self]) -> MessageOptions {
@@ -1028,7 +1029,8 @@ impl ast::Option {
 
 impl ast::OptionBody {
     fn to_field_options(_this: &[Self]) -> (Option<String>, FieldOptions) {
-        todo!()
+        // todo!()
+        Default::default()
     }
 
     fn to_extension_range_options(_this: &[Self]) -> ExtensionRangeOptions {

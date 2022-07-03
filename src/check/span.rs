@@ -1,58 +1,73 @@
+use logos::Span;
 use prost_types::source_code_info::Location;
 
-use crate::{ast, lines::LineResolver};
+use crate::{ast, lines::LineResolver, index_to_i32};
 
 pub(super) struct SourceInfoPass {
-    pub location: Vec<i32>,
+    pub path: Vec<i32>,
     pub source_code_info: Vec<Location>,
     pub lines: LineResolver,
 }
 
 impl ast::Visitor for SourceInfoPass {
     fn visit_file(&mut self, file: &ast::File) {
-        // name = 1;
-        // package = 2;
-        // dependency = 3;
-        // public_dependency = 10;
-        // weak_dependency = 11;
-        // message_type = 4;
-        // enum_type = 5;
-        // service = 6;
-        // extension = 7;
-        // options = 8;
-        // source_code_info = 9;
-        // syntax = 12;
+        const NAME: i32 = 1;
+        const PACKAGE: i32 = 2;
+        const DEPENDENCY: i32 = 3;
+        const PUBLIC_DEPENDENCY: i32 = 10;
+        const WEAK_DEPENDENCY: i32 = 11;
+        const MESSAGE_TYPE: i32 = 4;
+        const ENUM_TYPE: i32 = 5;
+        const SERVICE: i32 = 6;
+        const EXTENSION: i32 = 7;
+        const OPTIONS: i32 = 8;
+        const SOURCE_CODE_INFO: i32 = 9;
+        const SYNTAX: i32 = 12;
+
+        self.add_location(file.span.clone());
+
+        if let Some(package) = &file.package {
+            self.with_path_item(PACKAGE, |this| {
+                this.add_location_with_comments(package.span.clone(), package.comments.clone())
+            });
+        }
+
+        self.with_path_items(DEPENDENCY, &file.imports, |this, import| {
+            this.add_location_with_comments(import.span.clone(), import.comments.clone());
+        });
+
+        // TODO add public /weak imports
 
         file.visit(self)
     }
 
     fn visit_enum(&mut self, enu: &ast::Enum) {
-        // name = 1;
-        // value = 2;
-        // options = 3;
-        // reserved_range = 4;
-        // reserved_name = 5;
+        const NAME: i32 = 1;
+        const VALUE: i32 = 2;
+        const OPTIONS: i32 = 3;
+        const RESERVED_RANGE: i32 = 4;
+        const RESERVED_NAME: i32 = 5;
 
         enu.visit(self)
     }
 
     fn visit_enum_value(&mut self, _: &ast::EnumValue) {
-        // name = 1;
-        // number = 2;
-        // options = 3;
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 2;
+        const OPTIONS: i32 = 3;
     }
 
     fn visit_message(&mut self, message: &ast::Message) {
-        // name = 1;
-        // field = 2;
-        // extension = 6;
-        // nested_type = 3;
-        // enum_type = 4;
-        // extension_range = 5;
-        // options = 7;
-        // oneof_decl = 8;
-        // reserved_range = 9;
-        // reserved_name = 10;
+        const NAME: i32 = 1;
+        const FIELD: i32 = 2;
+        const EXTENSION: i32 = 6;
+        const NESTED_TYPE: i32 = 3;
+        const ENUM_TYPE: i32 = 4;
+        const EXTENSION_RANGE: i32 = 5;
+        const OPTIONS: i32 = 7;
+        const ONEOF_DECL: i32 = 8;
+        const RESERVED_RANGE: i32 = 9;
+        const RESERVED_NAME: i32 = 10;
 
         message.body.visit(self)
     }
@@ -62,17 +77,17 @@ impl ast::Visitor for SourceInfoPass {
     }
 
     fn visit_field(&mut self, _: &ast::Field) {
-        // name = 1;
-        // number = 3;
-        // label = 4;
-        // type = 5;
-        // type_name = 6;
-        // extendee = 2;
-        // default_value = 7;
-        // oneof_index = 9;
-        // json_name = 10;
-        // options = 8;
-        // proto3_optional = 17;
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 3;
+        const LABEL: i32 = 4;
+        const TYPE: i32 = 5;
+        const TYPE_NAME: i32 = 6;
+        const EXTENDEE: i32 = 2;
+        const DEFAULT_VALUE: i32 = 7;
+        const ONEOF_INDEX: i32 = 9;
+        const JSON_NAME: i32 = 10;
+        const OPTIONS: i32 = 8;
+        const PROTO3_OPTIONAL: i32 = 17;
     }
 
     fn visit_map(&mut self, _: &ast::Map) {}
@@ -82,8 +97,8 @@ impl ast::Visitor for SourceInfoPass {
     }
 
     fn visit_oneof(&mut self, oneof: &ast::Oneof) {
-        // name = 1;
-        // options = 2;
+        const NAME: i32 = 1;
+        const OPTIONS: i32 = 2;
         oneof.visit(self)
     }
 
@@ -92,18 +107,56 @@ impl ast::Visitor for SourceInfoPass {
     }
 
     fn visit_service(&mut self, service: &ast::Service) {
-        // name = 1;
-        // method = 2;
-        // options = 3;
+        const NAME: i32 = 1;
+        const METHOD: i32 = 2;
+        const OPTIONS: i32 = 3;
         service.visit(self)
     }
 
     fn visit_method(&mut self, _: &ast::Method) {
-        // name = 1;
-        // input_type = 2;
-        // output_type = 3;
-        // options = 4;
-        // client_streaming = 5;
-        // server_streaming = 6
+        const NAME: i32 = 1;
+        const INPUT_TYPE: i32 = 2;
+        const OUTPUT_TYPE: i32 = 3;
+        const OPTIONS: i32 = 4;
+        const CLIENT_STREAMING: i32 = 5;
+        const SERVER_STREAMING: i32 = 6;
+    }
+}
+
+impl SourceInfoPass {
+    fn add_location(&mut self, span: Span) {
+        let span = self.lines.resolve_span(span);
+        self.source_code_info.push(Location {
+            path: self.path.clone(),
+            span,
+            ..Default::default()
+        });
+    }
+
+    fn add_location_with_comments(&mut self, span: Span, comments: ast::Comments) {
+        let span = self.lines.resolve_span(span);
+        self.source_code_info.push(Location {
+            path: self.path.clone(),
+            span,
+            leading_comments: comments.leading_comment,
+            trailing_comments: comments.trailing_comment,
+            leading_detached_comments: comments.leading_detached_comments,
+        });
+    }
+
+    fn with_path_item(&mut self, path_item: i32, f: impl FnOnce(&mut Self)) {
+        self.path.push(path_item);
+        f(self);
+        self.path.pop();
+    }
+
+    fn with_path_items<T>(&mut self, path_item: i32, iter: impl IntoIterator<Item = T>, mut f: impl FnMut(&mut Self, &T)) {
+        self.path.push(path_item);
+        for (index, item) in iter.into_iter().enumerate() {
+            self.path.push(index_to_i32(index));
+            f(self, &item);
+            self.path.pop();
+        }
+        self.path.pop();
     }
 }

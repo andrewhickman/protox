@@ -11,16 +11,17 @@ pub struct Args {
     files: Vec<PathBuf>,
     #[clap(
         short = 'I',
-        long = "proto-path",
-        alias = "proto_path",
+        long = "include",
+        visible_alias = "proto_path",
         value_name = "PATH",
         default_value = ".",
         value_parser
     )]
     includes: Vec<PathBuf>,
     #[clap(
-        long = "descriptor-set-out",
-        alias = "descriptor_set_out",
+        short = 'o',
+        long = "output",
+        visible_alias = "descriptor_set_out",
         value_name = "PATH",
         value_parser
     )]
@@ -30,6 +31,7 @@ pub struct Args {
 pub fn main() -> Result<()> {
     let args = Args::parse();
     let files = compile(args.files, args.includes)?;
+    // TODO include_source_info flag, include_imports
     if let Some(output) = args.output {
         fs::write(output, files.encode_to_vec()).map_err(|err| miette::miette!(err))?;
     }
