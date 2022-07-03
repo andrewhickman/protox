@@ -25,6 +25,7 @@ use crate::{
 pub(crate) use self::names::NameMap;
 
 mod names;
+mod span;
 #[cfg(test)]
 mod tests;
 

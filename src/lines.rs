@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use logos::Span;
 
 use crate::index_to_i32;
