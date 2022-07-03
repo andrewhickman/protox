@@ -53,10 +53,46 @@ pub fn compile(
     Ok(compiler.file_descriptor_set())
 }
 
-/// Parse a single protobuf source file into a [`FileDescriptorProto`].
+/// Parses a single protobuf source file into a [`FileDescriptorProto`].
 ///
 /// This function only looks at the syntax of the file, without resolving type names or reading
 /// imported files.
+///
+/// # Examples
+///
+/// ```
+/// # use protox::parse;
+/// # use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto};
+/// # use prost_types::field_descriptor_proto::Label;
+/// #
+/// let source = r#"
+///     syntax = "proto3";
+///     import "dep.proto";
+///
+///     message Foo {
+///         Bar bar = 1;
+///     }
+/// "#;
+/// let file_descriptor = parse(source).unwrap();
+/// assert_eq!(file_descriptor, FileDescriptorProto {
+///     syntax: Some("proto3".to_owned()),
+///     dependency: vec!["dep.proto".to_owned()],
+///     message_type: vec![DescriptorProto {
+///         name: Some("Foo".to_owned()),
+///         field: vec![FieldDescriptorProto {
+///             label: Some(Label::Optional as _),
+///             name: Some("bar".to_owned()),
+///             number: Some(1),
+///             type_name: Some("Bar".to_owned()),
+///             json_name: Some("bar".to_owned()),
+///             ..Default::default()
+///         }],
+///         ..Default::default()
+///     }],
+///     source_code_info: Some(Default::default()),
+///     ..Default::default()
+/// })
+/// ```
 pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
     let ast =
         parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;

@@ -76,8 +76,6 @@ impl ImportResolver for FileImportResolver {
             if let Some(relative_path) = strip_prefix(path, include) {
                 if let Some(name) = to_import_name(relative_path) {
                     return Some(name);
-                } else {
-                    continue;
                 }
             }
         }

@@ -292,7 +292,8 @@ impl ast::File {
     }
 
     fn get_source_code_info(&self, _lines: &LineResolver) -> SourceCodeInfo {
-        todo!()
+        // todo!()
+        SourceCodeInfo::default()
     }
 }
 
