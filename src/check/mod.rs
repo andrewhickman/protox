@@ -1,9 +1,9 @@
 use logos::Span;
 use miette::Diagnostic;
-use prost_types::{SourceCodeInfo, FileDescriptorProto, source_code_info};
+use prost_types::{source_code_info, FileDescriptorProto, SourceCodeInfo};
 use thiserror::Error;
 
-use crate::{MAX_MESSAGE_FIELD_NUMBER, ast, compile::ParsedFileMap};
+use crate::{ast, compile::ParsedFileMap, MAX_MESSAGE_FIELD_NUMBER};
 
 mod ir;
 mod names;
@@ -13,27 +13,41 @@ mod tests;
 
 pub(crate) use self::names::NameMap;
 
-pub(crate) fn check(ast: &ast::File, name: Option<&str>, source: Option<&str>) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    let ir = ir::File::new(ast);
+pub(crate) fn check(
+    ast: &ast::File,
+    name: Option<&str>,
+    source: Option<&str>,
+) -> Result<FileDescriptorProto, Vec<CheckError>> {
+    let ir = ir::File::build(ast);
     let source_code_info = source.map(|src| ir.get_source_code_info(src));
     let file_descriptor = ir.check(None)?;
 
     Ok(FileDescriptorProto {
+        name: name.map(ToOwned::to_owned),
         source_code_info,
         ..file_descriptor
     })
 }
 
-pub(crate) fn check_with_names(ast: &ast::File, name: Option<&str>, source: Option<&str>, file_map: &ParsedFileMap) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
-    let ir = ir::File::new(ast);
+pub(crate) fn check_with_names(
+    ast: &ast::File,
+    name: Option<&str>,
+    source: Option<&str>,
+    file_map: &ParsedFileMap,
+) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
+    let ir = ir::File::build(ast);
     let name_map = ir.get_names(file_map)?;
     let source_code_info = source.map(|src| ir.get_source_code_info(src));
     let file_descriptor = ir.check(Some(&name_map))?;
 
-    Ok((FileDescriptorProto {
-        source_code_info,
-        ..file_descriptor
-    }, name_map))
+    Ok((
+        FileDescriptorProto {
+            name: name.map(ToOwned::to_owned),
+            source_code_info,
+            ..file_descriptor
+        },
+        name_map,
+    ))
 }
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
@@ -155,14 +169,6 @@ pub(crate) enum CheckError {
 }
 
 impl<'a> ir::File<'a> {
-    fn new(ast: &'a ast::File) -> Self {
-        todo!()
-    }
-
-    fn get_names(&self, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
-        todo!()
-    }
-
     fn get_source_code_info(&self, source: &str) -> SourceCodeInfo {
         todo!()
     }

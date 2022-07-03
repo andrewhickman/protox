@@ -1,8 +1,17 @@
-use std::collections::{hash_map, HashMap};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::{hash_map, HashMap},
+};
 
 use logos::Span;
 
-use super::CheckError;
+use crate::{
+    ast,
+    case::to_pascal_case,
+    compile::{ParsedFile, ParsedFileMap},
+};
+
+use super::{ir, CheckError};
 
 /// A simple map of all definitions in a proto file for checking downstream files.
 #[derive(Debug)]
@@ -32,13 +41,13 @@ pub(crate) enum DefinitionKind {
 }
 
 impl NameMap {
-    pub fn new() -> Self {
+    fn new() -> Self {
         NameMap {
             map: HashMap::new(),
         }
     }
 
-    pub(super) fn add(
+    fn add(
         &mut self,
         name: String,
         kind: DefinitionKind,
@@ -86,12 +95,7 @@ impl NameMap {
         }
     }
 
-    pub(super) fn merge(
-        &mut self,
-        other: &Self,
-        file: String,
-        public: bool,
-    ) -> Result<(), CheckError> {
+    fn merge(&mut self, other: &Self, file: String, public: bool) -> Result<(), CheckError> {
         for (name, entry) in &other.map {
             if entry.public {
                 self.add(
@@ -112,33 +116,155 @@ impl NameMap {
     }
 }
 
-// pub(super) struct NamePass<'a, 'b> {
-//     pub ctx: &'a mut Context<'b>,
-//     pub camel_case_field_names: HashMap<String, (String, Span)>,
-// }
+impl<'a> ir::File<'a> {
+    pub fn get_names(&self, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
+        let mut ctx = NamePass {
+            name_map: NameMap::new(),
+            errors: Vec::new(),
+            scope: Vec::new(),
+        };
 
-// impl<'a, 'b> ast::Visitor for NamePass<'a, 'b> {
-//     fn visit_file(&mut self, file: &ast::File) {
-//         if let Some(file_map) = &self.ctx.file_map {
-//             for import in &file.imports {
-//                 let file = &file_map[import.value.value.as_str()];
-//                 if let Err(err) = self.ctx.names.merge(
-//                     &file.name_map,
-//                     file.name.clone(),
-//                     import.kind == Some(ast::ImportKind::Public),
-//                 ) {
-//                     self.ctx.errors.push(err);
-//                 }
-//             }
-//         }
+        ctx.add_file(self, file_map);
+        debug_assert!(ctx.scope.is_empty());
 
-//         if let Some(package) = &file.package {
-//             self.ctx.add_name(
-//                 &package.name.to_string(),
-//                 DefinitionKind::Package,
-//                 package.name.span(),
-//             );
-//         }
+        if ctx.errors.is_empty() {
+            Ok(ctx.name_map)
+        } else {
+            Err(ctx.errors)
+        }
+    }
+}
+
+struct NamePass {
+    name_map: NameMap,
+    scope: Vec<String>,
+    errors: Vec<CheckError>,
+}
+
+impl NamePass {
+    fn add_name<'a>(&mut self, name: impl Into<Cow<'a, str>>, kind: DefinitionKind, span: Span) {
+        if let Err(err) = self
+            .name_map
+            .add(self.full_name(name), kind, span, None, true)
+        {
+            self.errors.push(err);
+        }
+    }
+
+    fn merge_names(&mut self, file: &ParsedFile, public: bool) {
+        if let Err(err) = self
+            .name_map
+            .merge(&file.name_map, file.name.clone(), public)
+        {
+            self.errors.push(err);
+        }
+    }
+
+    fn full_name<'a>(&self, name: impl Into<Cow<'a, str>>) -> String {
+        let name = name.into();
+        match self.scope.first() {
+            Some(namespace) => format!("{}.{}", namespace, name.as_ref()),
+            None => name.into_owned(),
+        }
+    }
+
+    fn scope_name(&self) -> &str {
+        match self.scope.first() {
+            Some(name) => name.as_str(),
+            None => "",
+        }
+    }
+
+    fn enter<'a>(&mut self, name: impl Into<Cow<'a, str>>) {
+        self.scope.push(self.full_name(name))
+    }
+
+    fn exit(&mut self) {
+        self.scope.pop().unwrap();
+    }
+
+    fn add_file(&mut self, file: &ir::File, file_map: &ParsedFileMap) {
+        for import in &file.ast.imports {
+            let file = &file_map[import.value.value.as_str()];
+            self.merge_names(file, import.kind == Some(ast::ImportKind::Public));
+        }
+
+        if let Some(package) = &file.ast.package {
+            let name = package.name.to_string();
+            self.add_name(&name, DefinitionKind::Package, package.name.span());
+            self.enter(&name);
+        }
+
+        for message in &file.messages {
+            self.add_message(message);
+        }
+
+        for item in &file.ast.items {
+            match item {
+                ast::FileItem::Message(_) => continue,
+                ast::FileItem::Enum(_) => todo!(),
+                ast::FileItem::Extend(_) => todo!(),
+                ast::FileItem::Service(_) => todo!(),
+            }
+        }
+
+        if file.ast.package.is_some() {
+            self.exit();
+        }
+    }
+
+    fn add_message(&mut self, message: &ir::Message) {
+        let (name, span) = match message.ast {
+            ir::MessageSource::Message(message) => (
+                Cow::Borrowed(message.name.value.as_str()),
+                message.name.span.clone(),
+            ),
+            ir::MessageSource::Group(group) => (
+                Cow::Borrowed(group.name.value.as_str()),
+                group.name.span.clone(),
+            ),
+            ir::MessageSource::Map(map) => (Cow::Owned(map.message_name()), map.name.span.clone()),
+        };
+
+        self.add_name(name.as_ref(), DefinitionKind::Message, span);
+        self.enter(name);
+
+        for field in &message.fields {
+            let (name, span) = match field.ast {
+                ir::FieldSource::Field(field) => (
+                    Cow::Borrowed(field.name.value.as_str()),
+                    field.name.span.clone(),
+                ),
+                ir::FieldSource::Group(group) => {
+                    (Cow::Owned(group.field_name()), group.name.span.clone())
+                }
+                ir::FieldSource::Map(map) => (
+                    Cow::Borrowed(map.name.value.as_str()),
+                    map.name.span.clone(),
+                ),
+            };
+
+            self.add_name(name, DefinitionKind::Field, span);
+        }
+
+        for oneof in &message.oneofs {
+            let (name, span) = match oneof.ast {
+                ir::OneofSource::Oneof(oneof) => (Cow::Borrowed(oneof.name.value.as_str()), oneof.name.span.clone()),
+                ir::OneofSource::Field(field) => (Cow::Owned(field.synthetic_oneof_name()), field.name.span.clone()),
+            };
+
+            self.add_name(name, DefinitionKind::Oneof, span);
+        }
+
+        for nested_message in &message.messages {
+            self.add_message(nested_message);
+        }
+
+        for item in &message.ast.
+
+        self.exit();
+    }
+}
 
 //         if let Some(package) = &file.package {
 //             self.ctx.enter(Definition::Package {

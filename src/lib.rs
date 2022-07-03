@@ -100,7 +100,7 @@ pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
     let ast =
         parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;
     check::check(&ast, None, Some(source))
-        .map_err(|errors|Error::check_errors(errors, Arc::from(source)))
+        .map_err(|errors| Error::check_errors(errors, Arc::from(source)))
 }
 
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;

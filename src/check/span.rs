@@ -1,7 +1,7 @@
 use logos::Span;
 use prost_types::source_code_info::Location;
 
-use crate::{ast, lines::LineResolver, index_to_i32};
+use crate::{ast, index_to_i32, lines::LineResolver};
 
 pub(super) struct SourceInfoPass {
     pub path: Vec<i32>,
@@ -150,7 +150,12 @@ impl SourceInfoPass {
         self.path.pop();
     }
 
-    fn with_path_items<T>(&mut self, path_item: i32, iter: impl IntoIterator<Item = T>, mut f: impl FnMut(&mut Self, &T)) {
+    fn with_path_items<T>(
+        &mut self,
+        path_item: i32,
+        iter: impl IntoIterator<Item = T>,
+        mut f: impl FnMut(&mut Self, &T),
+    ) {
         self.path.push(path_item);
         for (index, item) in iter.into_iter().enumerate() {
             self.path.push(index_to_i32(index));

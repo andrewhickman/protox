@@ -1,10 +1,10 @@
-use std::{fmt, ops::Range, vec};
+use std::{fmt::{self, format}, ops::Range, vec};
 
 use logos::Span;
 
 mod visit;
 
-use crate::join_span;
+use crate::{case::to_pascal_case, join_span};
 
 pub(crate) use self::visit::Visitor;
 
@@ -401,5 +401,23 @@ impl fmt::Display for TypeName {
             write!(f, ".")?;
         }
         write!(f, "{}", self.name)
+    }
+}
+
+impl Map {
+    pub fn message_name(&self) -> std::string::String {
+        to_pascal_case(&self.name.value) + "Entry"
+    }
+}
+
+impl Group {
+    pub fn field_name(&self) -> std::string::String {
+        self.name.value.to_ascii_lowercase()
+    }
+}
+
+impl Field {
+    pub fn synthetic_oneof_name(&self) -> std::string::String {
+        format!("_{}", &self.name.value)
     }
 }

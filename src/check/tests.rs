@@ -309,6 +309,11 @@ fn generate_synthetic_oneof() {
 }
 
 #[test]
+fn generate_synthetic_oneof_ordering() {
+    // ordered after other oneofs
+}
+
+#[test]
 fn invalid_service_type() {
     // use enum/service/oneof etc
 }
