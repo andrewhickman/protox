@@ -26,7 +26,6 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     compiler.add_file(file).unwrap();
 
     assert_eq!(compiler.file_map.files.len(), 1);
-    // TODO name
     assert_eq!(compiler.file_map[name].name, name);
     assert_eq!(
         compiler.file_map[name].descriptor,
@@ -727,6 +726,17 @@ fn import_files() {
 
     assert_eq!(compiler.file_map[2].name.as_str(), "root.proto");
     assert_eq!(compiler.file_map[2].path, Some(dir.join("root.proto")));
+
+    let file_descriptor_set = compiler.file_descriptor_set();
+    assert_eq!(file_descriptor_set.file.len(), 1);
+    assert_eq!(file_descriptor_set.file[0].name(), "root.proto");
+
+    compiler.include_imports(true);
+    let file_descriptor_set = compiler.file_descriptor_set();
+    assert_eq!(file_descriptor_set.file.len(), 3);
+    assert_eq!(file_descriptor_set.file[0].name(), "dep2.proto");
+    assert_eq!(file_descriptor_set.file[1].name(), "dep.proto");
+    assert_eq!(file_descriptor_set.file[2].name(), "root.proto");
 }
 
 #[test]

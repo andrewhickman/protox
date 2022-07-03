@@ -71,7 +71,6 @@ impl Compiler {
     /// Set whether the output `FileDescriptorSet` should include dependency files.
     pub fn include_imports(&mut self, yes: bool) -> &mut Self {
         self.include_imports = yes;
-        // TODO: implement it
         self
     }
 
