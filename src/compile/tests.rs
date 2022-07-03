@@ -740,6 +740,28 @@ fn import_files() {
 }
 
 #[test]
+fn import_files_include_imports_path_already_imported() {
+    let dir = TempDir::new().unwrap();
+
+    std::fs::write(dir.join("root1.proto"), "import 'root2.proto';").unwrap();
+    std::fs::write(dir.join("root2.proto"), EMPTY).unwrap();
+
+    let mut compiler = Compiler::new(&[dir.to_path_buf()]).unwrap();
+    compiler.add_file("root1.proto").unwrap();
+
+    let file_descriptor_set = compiler.file_descriptor_set();
+    assert_eq!(file_descriptor_set.file.len(), 1);
+    assert_eq!(file_descriptor_set.file[0].name(), "root1.proto");
+
+    compiler.add_file("root2.proto").unwrap();
+
+    let file_descriptor_set = compiler.file_descriptor_set();
+    assert_eq!(file_descriptor_set.file.len(), 2);
+    assert_eq!(file_descriptor_set.file[0].name(), "root2.proto");
+    assert_eq!(file_descriptor_set.file[1].name(), "root1.proto");
+}
+
+#[test]
 fn import_cycle() {
     let dir = TempDir::new().unwrap();
 
