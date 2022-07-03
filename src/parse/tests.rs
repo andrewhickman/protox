@@ -550,6 +550,7 @@ pub fn parse_package() {
 pub fn parse_import() {
     case!(parse_import("import 'foo';") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo".to_owned(),
             span: 7..12,
@@ -559,6 +560,7 @@ pub fn parse_import() {
     });
     case!(parse_import("/*leading*/\nimport 'foo';/*trailing*/\n") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo".to_owned(),
             span: 19..24,
@@ -572,6 +574,7 @@ pub fn parse_import() {
     });
     case!(parse_import("import weak \"foo\";") => ast::Import {
         kind: Some(ast::ImportKind::Weak),
+        kind_span: Some(7..11),
         value: ast::String {
             value: "foo".to_owned(),
             span: 12..17,
@@ -581,6 +584,7 @@ pub fn parse_import() {
     });
     case!(parse_import("import public 'f\\x6fo';") => ast::Import {
         kind: Some(ast::ImportKind::Public),
+        kind_span: Some(7..13),
         value: ast::String {
             value: "foo".to_owned(),
             span: 14..22,
@@ -605,6 +609,7 @@ pub fn parse_import() {
     }]));
     case!(parse_import("import 'foo\\\\bar';") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo\\bar".to_owned(),
             span: 7..17,
@@ -616,6 +621,7 @@ pub fn parse_import() {
     }]));
     case!(parse_import("import 'foo//bar';") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo//bar".to_owned(),
             span: 7..17,
@@ -627,6 +633,7 @@ pub fn parse_import() {
     }]));
     case!(parse_import("import 'foo/./bar';") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo/./bar".to_owned(),
             span: 7..18,
@@ -638,6 +645,7 @@ pub fn parse_import() {
     }]));
     case!(parse_import("import 'foo/../bar';") => ast::Import {
         kind: None,
+        kind_span: None,
         value: ast::String {
             value: "foo/../bar".to_owned(),
             span: 7..19,
@@ -1592,6 +1600,7 @@ pub fn parse_file() {
         syntax: ast::Syntax::Proto3,
         imports: vec![ast::Import {
             kind: None,
+            kind_span: None,
             value: ast::String {
                 value: "foo.proto".to_owned(),
                 span: 44..55,

@@ -93,6 +93,7 @@ pub(crate) enum Constant {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Import {
     pub kind: std::option::Option<ImportKind>,
+    pub kind_span: std::option::Option<Span>,
     pub value: String,
     pub comments: Comments,
     pub span: Span,
