@@ -1545,6 +1545,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 9..28,
         }),
+        span: 9..28,
         ..Default::default()
     });
     case!(parse_file("
@@ -1559,6 +1560,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 9..28,
         }),
+        span: 9..57,
         ..Default::default()
     }, Err(vec![ParseError::DuplicatePackage {
         first: 9..28,
@@ -1579,6 +1581,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 37..65,
         }],
+        span: 9..65,
         ..Default::default()
     });
     case!(parse_file("
@@ -1596,6 +1599,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 37..56,
         }],
+        span: 9..56,
         ..Default::default()
     });
     case!(parse_file("
@@ -1619,6 +1623,7 @@ pub fn parse_file() {
             comments: ast::Comments::default(),
             span: 63..77,
         })],
+        span: 9..77,
         ..Default::default()
     }, Err(vec![
         ParseError::UnexpectedToken {
@@ -1675,6 +1680,10 @@ pub fn parse_file() {
             },
             span: 37..185,
         })],
+        span: 9..185,
         ..Default::default()
     });
+    case!(parse_file("syntax = 'proto3'") => Err(vec![ParseError::UnexpectedEof {
+        expected: "';'".to_owned(),
+    }]));
 }

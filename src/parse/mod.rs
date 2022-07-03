@@ -110,8 +110,14 @@ struct Parser<'a> {
     syntax: ast::Syntax,
 }
 
+#[derive(Debug, Clone)]
+enum ExpectedToken {
+    Token(Token<'static>),
+    Ident,
+}
+
 enum Statement {
-    Empty,
+    Empty(Span),
     Package(ast::Package),
     Import(ast::Import),
     Option(ast::Option),
@@ -132,16 +138,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
+        let mut file_span = self.peek().map(|(_, span)| span).unwrap_or_default();
+
         if self.bump_if_eq(Token::Syntax) {
             self.expect_eq(Token::Equals)?;
             self.syntax = match self.peek() {
                 Some((Token::StringLiteral(syntax), span)) => match &*syntax {
                     "proto2" => {
                         self.bump();
+                        let end = self.expect_eq(Token::Semicolon)?;
+                        file_span = join_span(file_span, end);
                         ast::Syntax::Proto2
                     }
                     "proto3" => {
                         self.bump();
+                        let end = self.expect_eq(Token::Semicolon)?;
+                        file_span = join_span(file_span, end);
                         ast::Syntax::Proto3
                     }
                     _ => {
@@ -160,27 +172,28 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.parse_statement() {
-                Ok(Some(Statement::Empty)) => continue,
-                Ok(Some(Statement::Package(new_package))) => {
-                    if let Some(existing_package) = &package {
-                        self.add_error(ParseError::DuplicatePackage {
-                            first: existing_package.span.clone(),
-                            second: new_package.span,
-                        })
-                    } else {
-                        package = Some(new_package);
+                Ok(Some(statement)) => {
+                    file_span = join_span(file_span, statement.span());
+                    match statement {
+                        Statement::Empty(_) => continue,
+                        Statement::Package(new_package) => {
+                            if let Some(existing_package) = &package {
+                                self.add_error(ParseError::DuplicatePackage {
+                                    first: existing_package.span.clone(),
+                                    second: new_package.span,
+                                })
+                            } else {
+                                package = Some(new_package);
+                            }
+                        }
+                        Statement::Import(import) => imports.push(import),
+                        Statement::Option(option) => options.push(option),
+                        Statement::Message(message) => items.push(ast::FileItem::Message(message)),
+                        Statement::Enum(enm) => items.push(ast::FileItem::Enum(enm)),
+                        Statement::Service(service) => items.push(ast::FileItem::Service(service)),
+                        Statement::Extend(extend) => items.push(ast::FileItem::Extend(extend)),
                     }
                 }
-                Ok(Some(Statement::Import(import))) => imports.push(import),
-                Ok(Some(Statement::Option(option))) => options.push(option),
-                Ok(Some(Statement::Message(message))) => {
-                    items.push(ast::FileItem::Message(message))
-                }
-                Ok(Some(Statement::Enum(enm))) => items.push(ast::FileItem::Enum(enm)),
-                Ok(Some(Statement::Service(service))) => {
-                    items.push(ast::FileItem::Service(service))
-                }
-                Ok(Some(Statement::Extend(extend))) => items.push(ast::FileItem::Extend(extend)),
                 Ok(None) => break,
                 Err(()) => self.skip_until(&[
                     Token::Enum,
@@ -200,14 +213,15 @@ impl<'a> Parser<'a> {
             imports,
             options,
             items,
+            span: file_span,
         })
     }
 
     fn parse_statement(&mut self) -> Result<Option<Statement>, ()> {
         match self.peek() {
-            Some((Token::Semicolon, _)) => {
+            Some((Token::Semicolon, span)) => {
                 self.bump();
-                Ok(Some(Statement::Empty))
+                Ok(Some(Statement::Empty(span)))
             }
             Some((Token::Import, _)) => Ok(Some(Statement::Import(self.parse_import()?))),
             Some((Token::Package, _)) => Ok(Some(Statement::Package(self.parse_package()?))),
@@ -1320,12 +1334,6 @@ impl<'a> Parser<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
-enum ExpectedToken {
-    Token(Token<'static>),
-    Ident,
-}
-
 impl ExpectedToken {
     const COMMA: Self = ExpectedToken::Token(Token::Comma);
     const SEMICOLON: Self = ExpectedToken::Token(Token::Semicolon);
@@ -1348,6 +1356,21 @@ impl fmt::Display for ExpectedToken {
         match self {
             ExpectedToken::Token(e) => write!(f, "'{}'", e),
             ExpectedToken::Ident => write!(f, "an identifier"),
+        }
+    }
+}
+
+impl Statement {
+    fn span(&self) -> Span {
+        match self {
+            Statement::Empty(span) => span.clone(),
+            Statement::Package(package) => package.span.clone(),
+            Statement::Import(import) => import.span.clone(),
+            Statement::Option(option) => option.span.clone(),
+            Statement::Message(message) => message.span.clone(),
+            Statement::Enum(enu) => enu.span.clone(),
+            Statement::Service(service) => service.span.clone(),
+            Statement::Extend(extend) => extend.span.clone(),
         }
     }
 }

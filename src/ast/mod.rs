@@ -10,6 +10,7 @@ pub(crate) use self::visit::Visitor;
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {
+    pub span: Span,
     pub syntax: Syntax,
     pub package: std::option::Option<Package>,
     pub imports: Vec<Import>,

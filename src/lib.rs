@@ -46,6 +46,9 @@ pub fn compile(
 ) -> Result<FileDescriptorSet, Error> {
     let mut compiler = compile::Compiler::new(includes)?;
 
+    compiler.include_source_info(true);
+    compiler.include_imports(true);
+
     for file in files {
         compiler.add_file(file)?;
     }
