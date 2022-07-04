@@ -202,9 +202,9 @@ impl NamePass {
         for item in &file.ast.items {
             match item {
                 ast::FileItem::Message(_) => continue,
-                ast::FileItem::Enum(_) => todo!(),
-                ast::FileItem::Extend(_) => todo!(),
-                ast::FileItem::Service(_) => todo!(),
+                ast::FileItem::Enum(enu) => self.add_enum(enu),
+                ast::FileItem::Extend(extend) => self.add_extend(extend),
+                ast::FileItem::Service(service) => self.add_service(service),
             }
         }
 
@@ -214,16 +214,18 @@ impl NamePass {
     }
 
     fn add_message(&mut self, message: &ir::Message) {
-        let (name, span) = match message.ast {
+        let (body, name, span) = match message.ast {
             ir::MessageSource::Message(message) => (
+                Some(&message.body),
                 Cow::Borrowed(message.name.value.as_str()),
                 message.name.span.clone(),
             ),
             ir::MessageSource::Group(group) => (
+                Some(&group.body),
                 Cow::Borrowed(group.name.value.as_str()),
                 group.name.span.clone(),
             ),
-            ir::MessageSource::Map(map) => (Cow::Owned(map.message_name()), map.name.span.clone()),
+            ir::MessageSource::Map(map) => (None, Cow::Owned(map.message_name()), map.name.span.clone()),
         };
 
         self.add_name(name.as_ref(), DefinitionKind::Message, span);
@@ -241,6 +243,14 @@ impl NamePass {
                 ir::FieldSource::Map(map) => (
                     Cow::Borrowed(map.name.value.as_str()),
                     map.name.span.clone(),
+                ),
+                ir::FieldSource::MapKey(map) => (
+                    Cow::Borrowed("key"),
+                    map.span.clone(),
+                ),
+                ir::FieldSource::MapValue(map) => (
+                    Cow::Borrowed("value"),
+                    map.span.clone(),
                 ),
             };
 
@@ -260,138 +270,61 @@ impl NamePass {
             self.add_message(nested_message);
         }
 
-        for item in &message.ast.
+        if let Some(body) = body {
+            for item in &body.items {
+                match item {
+                    ast::MessageItem::Enum(enu) => {
+                        self.add_enum(enu);
+                    },
+                    ast::MessageItem::Extend(extend) => {
+                        self.add_extend(extend);
+                    },
+                    ast::MessageItem::Field(_) | ast::MessageItem::Message(_) => continue,
+                }
+            }
+        }
 
         self.exit();
     }
+
+    fn add_extend(&mut self, extend: &ast::Extend) {
+        for field in &extend.fields {
+            self.add_message_field(field);
+        }
+    }
+
+    fn add_message_field(&mut self, field: &ast::MessageField) {
+        match field {
+            ast::MessageField::Field(field) => {
+                self.add_name(&field.name.value, DefinitionKind::Field, field.name.span.clone());
+            },
+            ast::MessageField::Group(group) => {
+                self.add_name(&group.name.value, DefinitionKind::Field, group.name.span.clone());
+            },
+            ast::MessageField::Map(map) => {
+                self.add_name(&map.name.value, DefinitionKind::Field, map.name.span.clone());
+            },
+            ast::MessageField::Oneof(_) => (),
+        }
+    }
+
+    fn add_enum(&mut self, enu: &ast::Enum) {
+        self.add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
+
+        self.enter(&enu.name.value);
+        for value in &enu.values {
+            self.add_name(&value.name.value, DefinitionKind::EnumValue, value.name.span.clone())
+        }
+        self.exit();
+    }
+
+    fn add_service(&mut self, service: &ast::Service) {
+        self.add_name(&service.name.value, DefinitionKind::Service, service.name.span.clone());
+
+        self.enter(&service.name.value);
+        for method in &service.methods {
+            self.add_name(&method.name.value, DefinitionKind::Method, method.name.span.clone());
+        }
+        self.exit();
+    }
 }
-
-//         if let Some(package) = &file.package {
-//             self.ctx.enter(Definition::Package {
-//                 full_name: package.name.to_string(),
-//             });
-//         }
-
-//         file.visit(self);
-
-//         if file.package.is_some() {
-//             self.ctx.exit();
-//         }
-//     }
-
-//     fn visit_enum(&mut self, enu: &ast::Enum) {
-//         self.ctx
-//             .add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
-//         self.ctx.enter(Definition::Enum);
-//         enu.visit(self);
-//         self.ctx.exit();
-//     }
-
-//     fn visit_enum_value(&mut self, value: &ast::EnumValue) {
-//         self.ctx.add_name(
-//             &value.name.value,
-//             DefinitionKind::EnumValue,
-//             value.name.span.clone(),
-//         );
-//     }
-
-//     fn visit_message(&mut self, message: &ast::Message) {
-//         self.ctx.add_name(
-//             &message.name.value,
-//             DefinitionKind::Message,
-//             message.name.span.clone(),
-//         );
-
-//         self.ctx.enter(Definition::Message {
-//             full_name: self.ctx.full_name(&message.name.value),
-//         });
-//         debug_assert!(self.camel_case_field_names.is_empty());
-
-//         message.body.visit(self);
-
-//         self.camel_case_field_names.clear();
-//         self.ctx.exit();
-//     }
-
-//     fn visit_field(&mut self, field: &ast::Field) {
-//         self.add_field_name(&field.name.value, field.name.span.clone());
-//     }
-
-//     fn visit_map(&mut self, map: &ast::Map) {
-//         self.add_field_name(&map.name.value, map.name.span.clone());
-//         self.ctx.add_name(
-//             &(to_pascal_case(&map.name.value) + "Entry"),
-//             DefinitionKind::Message,
-//             map.name.span.clone(),
-//         );
-//     }
-
-//     fn visit_group(&mut self, group: &ast::Group) {
-//         self.ctx.add_name(
-//             &group.name.value,
-//             DefinitionKind::Group,
-//             group.name.span.clone(),
-//         );
-
-//         self.ctx.enter(Definition::Group);
-//         group.body.visit(self);
-//         self.ctx.exit();
-//     }
-
-//     fn visit_oneof(&mut self, oneof: &ast::Oneof) {
-//         self.ctx.add_name(
-//             &oneof.name.value,
-//             DefinitionKind::Oneof,
-//             oneof.name.span.clone(),
-//         );
-
-//         self.ctx.enter(Definition::Group);
-//         oneof.visit(self);
-//         self.ctx.exit();
-//     }
-
-//     fn visit_service(&mut self, service: &ast::Service) {
-//         self.ctx.add_name(
-//             &service.name.value,
-//             DefinitionKind::Service,
-//             service.name.span.clone(),
-//         );
-
-//         self.ctx.enter(Definition::Service {
-//             full_name: self.ctx.full_name(&service.name.value),
-//         });
-//         service.visit(self);
-//         self.ctx.exit();
-//     }
-
-//     fn visit_method(&mut self, method: &ast::Method) {
-//         self.ctx.add_name(
-//             &method.name.value,
-//             DefinitionKind::Method,
-//             method.name.span.clone(),
-//         );
-//     }
-// }
-
-// impl<'a, 'b> NamePass<'a, 'b> {
-//     fn add_field_name(&mut self, name: &str, span: Span) {
-//         self.ctx.add_name(name, DefinitionKind::Field, span.clone());
-//         if self.ctx.syntax == ast::Syntax::Proto3 {
-//             match self.camel_case_field_names.entry(to_lower_camel_case(name)) {
-//                 hash_map::Entry::Occupied(entry) => {
-//                     self.ctx
-//                         .errors
-//                         .push(CheckError::DuplicateCamelCaseFieldName {
-//                             first_name: entry.get().0.clone(),
-//                             first: entry.get().1.clone(),
-//                             second_name: name.to_owned(),
-//                             second: span,
-//                         })
-//                 }
-//                 hash_map::Entry::Vacant(entry) => {
-//                     entry.insert((name.to_owned(), span));
-//                 }
-//             }
-//         }
-//     }
-// }

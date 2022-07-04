@@ -1,4 +1,4 @@
-use std::{fmt::{self, format}, ops::Range, vec};
+use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 

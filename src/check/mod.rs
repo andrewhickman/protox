@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use crate::{ast, compile::ParsedFileMap, MAX_MESSAGE_FIELD_NUMBER};
 
+mod check;
 mod ir;
 mod names;
 mod span;

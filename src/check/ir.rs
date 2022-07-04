@@ -30,6 +30,8 @@ pub(crate) enum FieldSource<'a> {
     Field(&'a ast::Field),
     Group(&'a ast::Group),
     Map(&'a ast::Map),
+    MapKey(&'a ast::Map),
+    MapValue(&'a ast::Map),
 }
 
 pub(crate) struct Oneof<'a> {
@@ -88,7 +90,7 @@ fn build_message_body(
         }
     }
 
-    oneofs.sort_by(|l, r| match (l.ast, r.ast) {
+    oneofs.sort_by(|l, r| match (&l.ast, &r.ast) {
         (OneofSource::Oneof(_), OneofSource::Field(_)) => Ordering::Less,
         (OneofSource::Field(_), OneofSource::Oneof(_)) => Ordering::Greater,
         (OneofSource::Oneof(_), OneofSource::Oneof(_))
@@ -147,7 +149,16 @@ fn build_message_field<'a>(
             });
             messages.push(Message {
                 ast: MessageSource::Map(map),
-                fields: Vec::new(),
+                fields: vec![
+                    Field {
+                        ast: FieldSource::MapKey(map),
+                        oneof_index: None,
+                    },
+                    Field {
+                        ast: FieldSource::MapValue(map),
+                        oneof_index: None,
+                    }
+                ],
                 messages: Vec::new(),
                 oneofs: Vec::new(),
             });
