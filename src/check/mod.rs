@@ -173,8 +173,4 @@ impl<'a> ir::File<'a> {
     fn get_source_code_info(&self, source: &str) -> SourceCodeInfo {
         todo!()
     }
-
-    fn check(&self, names: Option<&NameMap>) -> Result<FileDescriptorProto, Vec<CheckError>> {
-        todo!()
-    }
 }

@@ -180,7 +180,7 @@ impl NamePass {
     }
 
     fn exit(&mut self) {
-        self.scope.pop().unwrap();
+        self.scope.pop().expect("unbalanced scope stack");
     }
 
     fn add_file(&mut self, file: &ir::File, file_map: &ParsedFileMap) {
@@ -225,7 +225,9 @@ impl NamePass {
                 Cow::Borrowed(group.name.value.as_str()),
                 group.name.span.clone(),
             ),
-            ir::MessageSource::Map(map) => (None, Cow::Owned(map.message_name()), map.name.span.clone()),
+            ir::MessageSource::Map(map) => {
+                (None, Cow::Owned(map.message_name()), map.name.span.clone())
+            }
         };
 
         self.add_name(name.as_ref(), DefinitionKind::Message, span);
@@ -244,14 +246,8 @@ impl NamePass {
                     Cow::Borrowed(map.name.value.as_str()),
                     map.name.span.clone(),
                 ),
-                ir::FieldSource::MapKey(map) => (
-                    Cow::Borrowed("key"),
-                    map.span.clone(),
-                ),
-                ir::FieldSource::MapValue(map) => (
-                    Cow::Borrowed("value"),
-                    map.span.clone(),
-                ),
+                ir::FieldSource::MapKey(map) => (Cow::Borrowed("key"), map.span.clone()),
+                ir::FieldSource::MapValue(map) => (Cow::Borrowed("value"), map.span.clone()),
             };
 
             self.add_name(name, DefinitionKind::Field, span);
@@ -259,8 +255,14 @@ impl NamePass {
 
         for oneof in &message.oneofs {
             let (name, span) = match oneof.ast {
-                ir::OneofSource::Oneof(oneof) => (Cow::Borrowed(oneof.name.value.as_str()), oneof.name.span.clone()),
-                ir::OneofSource::Field(field) => (Cow::Owned(field.synthetic_oneof_name()), field.name.span.clone()),
+                ir::OneofSource::Oneof(oneof) => (
+                    Cow::Borrowed(oneof.name.value.as_str()),
+                    oneof.name.span.clone(),
+                ),
+                ir::OneofSource::Field(field) => (
+                    Cow::Owned(field.synthetic_oneof_name()),
+                    field.name.span.clone(),
+                ),
             };
 
             self.add_name(name, DefinitionKind::Oneof, span);
@@ -275,10 +277,10 @@ impl NamePass {
                 match item {
                     ast::MessageItem::Enum(enu) => {
                         self.add_enum(enu);
-                    },
+                    }
                     ast::MessageItem::Extend(extend) => {
                         self.add_extend(extend);
-                    },
+                    }
                     ast::MessageItem::Field(_) | ast::MessageItem::Message(_) => continue,
                 }
             }
@@ -296,14 +298,26 @@ impl NamePass {
     fn add_message_field(&mut self, field: &ast::MessageField) {
         match field {
             ast::MessageField::Field(field) => {
-                self.add_name(&field.name.value, DefinitionKind::Field, field.name.span.clone());
-            },
+                self.add_name(
+                    &field.name.value,
+                    DefinitionKind::Field,
+                    field.name.span.clone(),
+                );
+            }
             ast::MessageField::Group(group) => {
-                self.add_name(&group.name.value, DefinitionKind::Field, group.name.span.clone());
-            },
+                self.add_name(
+                    &group.name.value,
+                    DefinitionKind::Field,
+                    group.name.span.clone(),
+                );
+            }
             ast::MessageField::Map(map) => {
-                self.add_name(&map.name.value, DefinitionKind::Field, map.name.span.clone());
-            },
+                self.add_name(
+                    &map.name.value,
+                    DefinitionKind::Field,
+                    map.name.span.clone(),
+                );
+            }
             ast::MessageField::Oneof(_) => (),
         }
     }
@@ -313,17 +327,29 @@ impl NamePass {
 
         self.enter(&enu.name.value);
         for value in &enu.values {
-            self.add_name(&value.name.value, DefinitionKind::EnumValue, value.name.span.clone())
+            self.add_name(
+                &value.name.value,
+                DefinitionKind::EnumValue,
+                value.name.span.clone(),
+            )
         }
         self.exit();
     }
 
     fn add_service(&mut self, service: &ast::Service) {
-        self.add_name(&service.name.value, DefinitionKind::Service, service.name.span.clone());
+        self.add_name(
+            &service.name.value,
+            DefinitionKind::Service,
+            service.name.span.clone(),
+        );
 
         self.enter(&service.name.value);
         for method in &service.methods {
-            self.add_name(&method.name.value, DefinitionKind::Method, method.name.span.clone());
+            self.add_name(
+                &method.name.value,
+                DefinitionKind::Method,
+                method.name.span.clone(),
+            );
         }
         self.exit();
     }

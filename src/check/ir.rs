@@ -157,7 +157,7 @@ fn build_message_field<'a>(
                     Field {
                         ast: FieldSource::MapValue(map),
                         oneof_index: None,
-                    }
+                    },
                 ],
                 messages: Vec::new(),
                 oneofs: Vec::new(),
