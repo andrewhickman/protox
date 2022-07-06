@@ -10,7 +10,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
-    check::{check, check_with_names, NameMap},
+    check::{check_with_names, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
     files::ends_with,
     parse, FileImportResolver, ImportResolver, MAX_FILE_LEN,

@@ -2,11 +2,7 @@ use std::{fmt, ops::Range, vec};
 
 use logos::Span;
 
-mod visit;
-
 use crate::{case::to_pascal_case, join_span};
-
-pub(crate) use self::visit::Visitor;
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {

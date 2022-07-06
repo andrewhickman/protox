@@ -389,8 +389,8 @@ impl<'a> Context<'a> {
         todo!()
     }
 
-    fn check_map_key(&mut self, field: &ast::Map) -> FieldDescriptorProto {
-        let ty = self.check_map_key_type(&field.key_ty);
+    fn check_map_key(&mut self, map: &ast::Map) -> FieldDescriptorProto {
+        let ty = self.check_map_key_type(&map.key_ty, map.span.clone());
 
         FieldDescriptorProto {
             name: s("key"),
@@ -402,8 +402,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_map_value(&mut self, field: &ast::Map) -> FieldDescriptorProto {
-        let (ty, type_name) = self.check_field_type(&field.key_ty);
+    fn check_map_value(&mut self, map: &ast::Map) -> FieldDescriptorProto {
+        let (ty, type_name) = self.check_field_type(&map.key_ty);
 
         FieldDescriptorProto {
             name: s("value"),
@@ -416,7 +416,11 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_map_key_type(&mut self, ty: &ast::Ty) -> Option<field_descriptor_proto::Type> {
+    fn check_map_key_type(
+        &mut self,
+        ty: &ast::Ty,
+        span: Span,
+    ) -> Option<field_descriptor_proto::Type> {
         match ty {
             ast::Ty::Double => Some(field_descriptor_proto::Type::Double),
             ast::Ty::Float => Some(field_descriptor_proto::Type::Float),
@@ -434,7 +438,7 @@ impl<'a> Context<'a> {
             ast::Ty::String => Some(field_descriptor_proto::Type::String),
             _ => {
                 self.errors
-                    .push(CheckError::InvalidMapFieldKeyType { span: todo!() });
+                    .push(CheckError::InvalidMapFieldKeyType { span });
                 None
             }
         }

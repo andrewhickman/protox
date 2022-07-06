@@ -30,9 +30,9 @@ struct Entry {
 pub(crate) enum DefinitionKind {
     Package,
     Message,
+    Group,
     Enum,
     EnumValue,
-    Group,
     Oneof,
     Field,
     Service,
@@ -164,13 +164,6 @@ impl NamePass {
         match self.scope.first() {
             Some(namespace) => format!("{}.{}", namespace, name.as_ref()),
             None => name.into_owned(),
-        }
-    }
-
-    fn scope_name(&self) -> &str {
-        match self.scope.first() {
-            Some(name) => name.as_str(),
-            None => "",
         }
     }
 

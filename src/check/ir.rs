@@ -84,7 +84,7 @@ impl<'a> MessageSource<'a> {
         match self {
             MessageSource::Message(message) => Some(&message.body),
             MessageSource::Group(group) => Some(&group.body),
-            MessageSource::Map(map) => None,
+            MessageSource::Map(_) => None,
         }
     }
 }
