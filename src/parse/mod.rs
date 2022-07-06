@@ -368,15 +368,15 @@ impl<'a> Parser<'a> {
         let (label, start) = match self.peek() {
             Some((Token::Optional, span)) => {
                 self.bump();
-                (Some(FieldLabel::Optional), span)
+                (Some((FieldLabel::Optional, span.clone())), span)
             }
             Some((Token::Required, span)) => {
                 self.bump();
-                (Some(FieldLabel::Required), span)
+                (Some((FieldLabel::Required, span.clone())), span)
             }
             Some((Token::Repeated, span)) => {
                 self.bump();
-                (Some(FieldLabel::Repeated), span)
+                (Some((FieldLabel::Repeated, span.clone())), span)
             }
             Some((tok, span)) if is_field_start_token(&tok) => (None, span),
             _ => self.unexpected_token("a message field")?,
@@ -462,9 +462,10 @@ impl<'a> Parser<'a> {
     fn parse_map_inner(
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
-        label: Option<FieldLabel>,
+        label: Option<(FieldLabel, Span)>,
     ) -> Result<ast::Map, ()> {
-        let start = self.expect_eq(Token::Map)?;
+        let map_span = self.expect_eq(Token::Map)?;
+        let start = label.clone().map(|(_, label_span)| label_span).unwrap_or(map_span);
 
         self.expect_eq(Token::LeftAngleBracket)?;
         let key_ty = self.parse_key_type()?;

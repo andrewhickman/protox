@@ -700,7 +700,7 @@ pub fn parse_extension() {
         },
         fields: vec![
             ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Optional),
+                label: Some((ast::FieldLabel::Optional, 17..25)),
                 ty: ast::Ty::Int32,
                 name: ast::Ident::new("bar", 32..35),
                 number: ast::Int {
@@ -723,7 +723,7 @@ pub fn parse_extension() {
         },
         fields: vec![
             ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Optional),
+                label: Some((ast::FieldLabel::Optional, 14..22)),
                 ty: ast::Ty::Int32,
                 name: ast::Ident::new("bar", 29..32),
                 number: ast::Int {
@@ -736,7 +736,7 @@ pub fn parse_extension() {
                 span: 14..39,
             }),
             ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Repeated),
+                label: Some((ast::FieldLabel::Repeated, 40..48)),
                 ty: ast::Ty::String,
                 name: ast::Ident::new("quz", 56..59),
                 number: ast::Int {
@@ -759,7 +759,7 @@ pub fn parse_extension() {
         },
         fields: vec![
             ast::MessageField::Group(ast::Group {
-                label: Some(ast::FieldLabel::Repeated),
+                label: Some((ast::FieldLabel::Repeated, 13..21)),
                 name: ast::Ident::new("A", 28..29),
                 number: ast::Int {
                     negative: false,
@@ -768,7 +768,7 @@ pub fn parse_extension() {
                 },
                 body: ast::MessageBody {
                     items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
-                        label: Some(ast::FieldLabel::Optional),
+                        label: Some((ast::FieldLabel::Optional, 36..44)),
                         name: ast::Ident::new("name", 52..56),
                         ty: ast::Ty::String,
                         number: ast::Int {
@@ -877,7 +877,7 @@ pub fn parse_reserved() {
 #[test]
 pub fn parse_group() {
     case!(parse_field("//leading\noptional group A = 1 {\n/*trailing*/ }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 10..18)),
         name: ast::Ident::new("A", 25..26),
         number: ast::Int {
             negative: false,
@@ -894,7 +894,7 @@ pub fn parse_group() {
         span: 10..47,
     }));
     case!(parse_field("optional group A = 1 { }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 0..8)),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
             negative: false,
@@ -907,7 +907,7 @@ pub fn parse_group() {
         span: 0..24,
     }));
     case!(parse_field("optional group A = 1 { ; ; }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 0..8)),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
             negative: false,
@@ -920,7 +920,7 @@ pub fn parse_group() {
         span: 0..28,
     }));
     case!(parse_field("optional group A = 1 [deprecated = true] { }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 0..8)),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
             negative: false,
@@ -940,7 +940,7 @@ pub fn parse_group() {
         span: 0..44,
     }));
     case!(parse_field("optional group A = 1 { optional sint32 foo = 2; }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 0..8)),
         name: ast::Ident::new("A", 15..16),
         number: ast::Int {
             negative: false,
@@ -949,7 +949,7 @@ pub fn parse_group() {
         },
         body: ast::MessageBody {
             items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Optional),
+                label: Some((ast::FieldLabel::Optional, 23..31)),
                 name: ast::Ident::new("foo", 39..42),
                 ty: ast::Ty::Sint32,
                 number: ast::Int {
@@ -968,7 +968,7 @@ pub fn parse_group() {
         span: 0..49,
     }));
     case!(parse_field("optional group a = 1 { }") => ast::MessageField::Group(ast::Group {
-        label: Some(ast::FieldLabel::Optional),
+        label: Some((ast::FieldLabel::Optional, 0..8)),
         name: ast::Ident::new("a", 15..16),
         number: ast::Int {
             negative: false,
@@ -1219,7 +1219,7 @@ pub fn parse_message() {
                     span: 22..36,
                 })),
                 ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
-                    label: Some(ast::FieldLabel::Optional),
+                    label: Some((ast::FieldLabel::Optional, 45..53)),
                     key_ty: ast::KeyTy::Int32,
                     ty: ast::Ty::Bool,
                     name: ast::Ident::new("b", 71..72),
@@ -1230,10 +1230,10 @@ pub fn parse_message() {
                     },
                     options: vec![],
                     comments: ast::Comments::default(),
-                    span: 54..77,
+                    span: 45..77,
                 })),
                 ast::MessageItem::Field(ast::MessageField::Group(ast::Group {
-                    label: Some(ast::FieldLabel::Optional),
+                    label: Some((ast::FieldLabel::Optional, 87..95)),
                     name: ast::Ident::new("C", 102..103),
                     number: ast::Int {
                         negative: false,
@@ -1242,7 +1242,7 @@ pub fn parse_message() {
                     },
                     body: ast::MessageBody {
                         items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
-                            label: Some(ast::FieldLabel::Required),
+                            label: Some((ast::FieldLabel::Required, 122..130)),
                             name: ast::Ident::new("d", 137..138),
                             ty: ast::Ty::Float,
                             number: ast::Int {
@@ -1289,7 +1289,7 @@ pub fn parse_message() {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
             items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Repeated),
+                label: Some((ast::FieldLabel::Repeated, 14..22)),
                 ty: ast::Ty::Named(ast::TypeName {
                     leading_dot: None,
                     name: ast::FullIdent::from(ast::Ident::new("Bar", 23..26)),
@@ -1313,7 +1313,7 @@ pub fn parse_message() {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
             items: vec![ast::MessageItem::Field(ast::MessageField::Field(ast::Field {
-                label: Some(ast::FieldLabel::Repeated),
+                label: Some((ast::FieldLabel::Repeated, 14..22)),
                 ty: ast::Ty::Named(ast::TypeName {
                     leading_dot: None,
                     name: ast::FullIdent::from(ast::Ident::new("Bar", 23..26)),
@@ -1387,7 +1387,7 @@ pub fn parse_message() {
         name: ast::Ident::new("Foo", 8..11),
         body: ast::MessageBody {
             items: vec![ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
-                label: Some(ast::FieldLabel::Repeated),
+                label: Some((ast::FieldLabel::Repeated, 14..22)),
                 key_ty: ast::KeyTy::Sint32,
                 ty: ast::Ty::Fixed64,
                 name: ast::Ident::new("m", 44..45),
@@ -1398,7 +1398,7 @@ pub fn parse_message() {
                 },
                 options: vec![],
                 comments: ast::Comments::default(),
-                span: 23..50,
+                span: 14..50,
             }))],
             ..ast::MessageBody::default()
         },
@@ -1482,7 +1482,7 @@ pub fn parse_oneof() {
     case!(parse_oneof("oneof Foo { optional group Bar = 1 {} }") => ast::Oneof {
         name: ast::Ident::new("Foo", 6..9),
         fields: vec![ast::MessageField::Group(ast::Group {
-            label: Some(ast::FieldLabel::Optional),
+            label: Some((ast::FieldLabel::Optional, 12..20)),
             name: ast::Ident::new("Bar", 27..30),
             number: ast::Int {
                 negative: false,

@@ -140,7 +140,7 @@ fn build_message_field<'a>(
         ast::MessageField::Field(field) => {
             if oneof_index.is_none()
                 && syntax != ast::Syntax::Proto2
-                && field.label == Some(ast::FieldLabel::Optional)
+                && matches!(field.label, Some((ast::FieldLabel::Optional, _)))
             {
                 let oneof_index = Some(index_to_i32(oneofs.len()));
                 fields.push(Field {

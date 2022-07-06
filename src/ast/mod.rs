@@ -136,7 +136,7 @@ pub(crate) struct Message {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Field {
-    pub label: std::option::Option<FieldLabel>,
+    pub label: std::option::Option<(FieldLabel, Span)>,
     pub name: Ident,
     pub ty: Ty,
     pub number: Int,
@@ -223,7 +223,7 @@ pub(crate) struct Oneof {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Map {
-    pub label: std::option::Option<FieldLabel>,
+    pub label: std::option::Option<(FieldLabel, Span)>,
     pub key_ty: KeyTy,
     pub ty: Ty,
     pub name: Ident,
@@ -243,7 +243,7 @@ pub(crate) struct Extend {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Group {
-    pub label: std::option::Option<FieldLabel>,
+    pub label: std::option::Option<(FieldLabel, Span)>,
     pub name: Ident,
     pub number: Int,
     pub body: MessageBody,
