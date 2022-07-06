@@ -1,5 +1,5 @@
 use std::{
-    borrow::{Borrow, Cow},
+    borrow::Cow,
     collections::{hash_map, HashMap},
 };
 
@@ -7,7 +7,6 @@ use logos::Span;
 
 use crate::{
     ast,
-    case::to_pascal_case,
     compile::{ParsedFile, ParsedFileMap},
 };
 
@@ -214,23 +213,12 @@ impl NamePass {
     }
 
     fn add_message(&mut self, message: &ir::Message) {
-        let (body, name, span) = match message.ast {
-            ir::MessageSource::Message(message) => (
-                Some(&message.body),
-                Cow::Borrowed(message.name.value.as_str()),
-                message.name.span.clone(),
-            ),
-            ir::MessageSource::Group(group) => (
-                Some(&group.body),
-                Cow::Borrowed(group.name.value.as_str()),
-                group.name.span.clone(),
-            ),
-            ir::MessageSource::Map(map) => {
-                (None, Cow::Owned(map.message_name()), map.name.span.clone())
-            }
-        };
-
-        self.add_name(name.as_ref(), DefinitionKind::Message, span);
+        let name = message.ast.name();
+        self.add_name(
+            name.as_ref(),
+            DefinitionKind::Message,
+            message.ast.name_span(),
+        );
         self.enter(name);
 
         for field in &message.fields {
@@ -272,7 +260,7 @@ impl NamePass {
             self.add_message(nested_message);
         }
 
-        if let Some(body) = body {
+        if let Some(body) = message.ast.body() {
             for item in &body.items {
                 match item {
                     ast::MessageItem::Enum(enu) => {

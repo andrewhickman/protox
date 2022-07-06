@@ -356,6 +356,12 @@ fn message_field_duplicate_number() {}
 fn message_reserved_range_extrema() {}
 
 #[test]
+fn message_reserved_range_invalid() {
+    // empty
+    // end < start
+}
+
+#[test]
 fn message_reserved_range_overlap() {}
 
 #[test]
@@ -421,6 +427,12 @@ fn enum_value_extrema() {}
 
 #[test]
 fn enum_reserved_range_extrema() {}
+
+#[test]
+fn enum_reserved_range_invalid() {
+    // empty
+    // end < start
+}
 
 #[test]
 fn enum_reserved_range_overlap_with_value() {}

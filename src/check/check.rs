@@ -1,6 +1,11 @@
-use prost_types::{DescriptorProto, FileDescriptorProto, EnumDescriptorProto, FieldDescriptorProto, ServiceDescriptorProto, FileOptions};
+use std::{fmt::Display, convert::TryFrom};
 
-use crate::{ast, index_to_i32};
+use prost_types::{
+    DescriptorProto, EnumDescriptorProto, FieldDescriptorProto, FileDescriptorProto, FileOptions,
+    ServiceDescriptorProto, OneofDescriptorProto, MessageOptions, descriptor_proto::{ReservedRange, ExtensionRange}, enum_descriptor_proto::EnumReservedRange, ExtensionRangeOptions,
+};
+
+use crate::{ast::{self, MessageBody}, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
 
 use super::{ir, CheckError, NameMap};
 
@@ -54,6 +59,19 @@ impl<'a> Context<'a> {
         self.scope.pop().expect("unbalanced scope stack");
     }
 
+    fn full_name(&self, name: impl Display) -> String {
+        for def in self.scope.iter().rev() {
+            match def {
+                Scope::Message { full_name, .. }
+                | Scope::Service { full_name, .. }
+                | Scope::Package { full_name } => return format!("{}.{}", full_name, name),
+                _ => continue,
+            }
+        }
+
+        name.to_string()
+    }
+
     fn check_file(&mut self, file: &ir::File) -> FileDescriptorProto {
         if let Some(package) = &file.ast.package {
             self.enter(Scope::Package {
@@ -86,7 +104,7 @@ impl<'a> Context<'a> {
             .map(|(index, _)| index_to_i32(index))
             .collect();
 
-        let mut message_type = file
+        let message_type = file
             .messages
             .iter()
             .map(|message| self.check_message(message))
@@ -133,32 +151,155 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_message(&self, message: &ir::Message) -> DescriptorProto {
-        // ctx.enter(Definition::Message {
-        //     full_name: self.full_name(&message.ast.name.value),
-        // });
+    fn check_message(&mut self, message: &ir::Message) -> DescriptorProto {
+        self.enter(Scope::Message {
+            full_name: self.full_name(&message.ast.name()),
+        });
 
-        // let name = s(&self.name.value);
-        // let body = self.body.to_message_descriptor(ctx);
+        let field = message.fields.iter()
+            .map(|field| self.check_field(field))
+            .collect();
+        let nested_type = message.messages.iter()
+            .map(|nested| self.check_message(nested))
+            .collect();
+        let oneof_decl = message.oneofs.iter()
+            .map(|oneof| self.check_oneof(oneof))
+            .collect();
 
-        // ctx.exit();
-        // DescriptorProto { name, ..body }
+        let mut enum_type = Vec::new();
+        let mut extension = Vec::new();
+        let mut extension_range = Vec::new();
+        let mut reserved_range = Vec::new();
+        let mut reserved_name = Vec::new();
+        let mut options = None;
+        if let Some(body) = message.ast.body() {
+            for item in &body.items {
+                match item {
+                    ast::MessageItem::Field(_) | ast::MessageItem::Message(_) => continue,
+                    ast::MessageItem::Enum(e) => enum_type.push(self.check_enum(e)),
+                    ast::MessageItem::Extend(e) => extension.push(self.check_extend(e)),
+                }
+            }
+
+            for reserved in &body.reserved {
+                match &reserved.kind {
+                    ast::ReservedKind::Ranges(ranges) => reserved_range.extend(ranges.iter().map(|range| self.check_message_reserved_range(range))),
+                    ast::ReservedKind::Names(names) => reserved_name.extend(names.iter().map(|name| name.value.to_owned())),
+                }
+            }
+
+            for extension in &body.extensions {
+                let extension_options = self.check_extension_range_options(&extension.options);
+
+                extension_range.extend(extension.ranges.iter().map(|e| {
+                    ExtensionRange {
+                        options: extension_options.clone(),
+                        ..self.check_message_extension_range(e)
+                    }
+                }));
+            }
+
+            options = self.check_message_options(&body.options);
+        };
+
+        self.exit();
+        DescriptorProto { name: s(message.ast.name()), field, nested_type, extension, enum_type, extension_range, oneof_decl, options, reserved_range, reserved_name }
+    }
+
+    fn check_field(&mut self, field: &ir::Field) -> FieldDescriptorProto {
         todo!()
     }
 
-    fn check_enum(&self, e: &ast::Enum) -> EnumDescriptorProto {
+    fn check_oneof(&mut self, field: &ir::Oneof) -> OneofDescriptorProto {
         todo!()
     }
 
-    fn check_extend(&self, e: &ast::Extend) -> FieldDescriptorProto {
+    fn check_enum(&mut self, e: &ast::Enum) -> EnumDescriptorProto {
         todo!()
     }
 
-    fn check_service(&self, s: &ast::Service) -> ServiceDescriptorProto {
+    fn check_extend(&mut self, e: &ast::Extend) -> FieldDescriptorProto {
         todo!()
     }
 
-    fn check_file_options(&self, options: &[ast::Option]) -> Option<FileOptions> {
+    fn check_service(&mut self, s: &ast::Service) -> ServiceDescriptorProto {
+        todo!()
+    }
+
+    fn check_message_reserved_range(&mut self, range: &ast::ReservedRange) -> ReservedRange {
+        let start = self.check_field_number(&range.start);
+        let end = match &range.end {
+            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
+            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+        };
+
+        ReservedRange { start, end }
+    }
+
+    fn check_message_extension_range(&mut self, range: &ast::ReservedRange) -> ExtensionRange {
+        let start = self.check_field_number(&range.start);
+        let end = match &range.end {
+            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
+            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+        };
+
+        ExtensionRange {
+            start,
+            end,
+            ..Default::default()
+        }
+    }
+
+    fn check_enum_reserved_range(&mut self, range: &ast::ReservedRange) -> EnumReservedRange {
+        let start = self.check_enum_number(&range.start);
+        let end = match &range.end {
+            ast::ReservedRangeEnd::None => start,
+            ast::ReservedRangeEnd::Int(value) => self.check_enum_number(value),
+            ast::ReservedRangeEnd::Max => Some(i32::MAX),
+        };
+
+        EnumReservedRange { start, end }
+    }
+
+    fn check_field_number(&mut self, int: &ast::Int) -> Option<i32> {
+        match (int.negative, i32::try_from(int.value)) {
+            (false, Ok(number @ 1..=MAX_MESSAGE_FIELD_NUMBER)) => Some(number),
+            _ => {
+                self.errors.push(CheckError::InvalidMessageNumber {
+                    span: int.span.clone(),
+                });
+                None
+            }
+        }
+    }
+
+    fn check_enum_number(&mut self, int: &ast::Int) -> Option<i32> {
+        let as_i32 = if int.negative {
+            int.value.checked_neg().and_then(|n| i32::try_from(n).ok())
+        } else {
+            i32::try_from(int.value).ok()
+        };
+
+        if as_i32.is_none() {
+            self.errors.push(CheckError::InvalidEnumNumber {
+                span: int.span.clone(),
+            });
+        }
+
+        as_i32
+    }
+
+    fn check_file_options(&mut self, options: &[ast::Option]) -> Option<FileOptions> {
+        todo!()
+    }
+
+    fn check_message_options(&mut self, options: &[ast::Option]) -> Option<MessageOptions> {
+        todo!()
+    }
+
+    fn check_extension_range_options(&mut self, options: &[ast::OptionBody]) -> Option<ExtensionRangeOptions> {
         todo!()
     }
 }

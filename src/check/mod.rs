@@ -1,6 +1,6 @@
 use logos::Span;
 use miette::Diagnostic;
-use prost_types::{source_code_info, FileDescriptorProto, SourceCodeInfo};
+use prost_types::{FileDescriptorProto, SourceCodeInfo};
 use thiserror::Error;
 
 use crate::{ast, compile::ParsedFileMap, MAX_MESSAGE_FIELD_NUMBER};

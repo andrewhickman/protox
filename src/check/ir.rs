@@ -1,4 +1,6 @@
-use std::cmp::Ordering;
+use std::{borrow::Cow, cmp::Ordering};
+
+use logos::Span;
 
 use crate::{ast, index_to_i32};
 
@@ -58,6 +60,32 @@ impl<'a> File<'a> {
         }
 
         File { ast, messages }
+    }
+}
+
+impl<'a> MessageSource<'a> {
+    pub fn name(&self) -> Cow<'_, str> {
+        match self {
+            MessageSource::Message(message) => Cow::Borrowed(message.name.value.as_str()),
+            MessageSource::Group(group) => Cow::Borrowed(group.name.value.as_str()),
+            MessageSource::Map(map) => Cow::Owned(map.message_name()),
+        }
+    }
+
+    pub fn name_span(&self) -> Span {
+        match self {
+            MessageSource::Message(message) => message.name.span.clone(),
+            MessageSource::Group(group) => group.name.span.clone(),
+            MessageSource::Map(map) => map.name.span.clone(),
+        }
+    }
+
+    pub fn body(&self) -> Option<&'a ast::MessageBody> {
+        match self {
+            MessageSource::Message(message) => Some(&message.body),
+            MessageSource::Group(group) => Some(&group.body),
+            MessageSource::Map(map) => None,
+        }
     }
 }
 
