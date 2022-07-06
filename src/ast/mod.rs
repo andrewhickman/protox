@@ -388,6 +388,26 @@ impl fmt::Display for TypeName {
     }
 }
 
+impl MessageField {
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            MessageField::Field(_) => "normal",
+            MessageField::Group(_) => "group",
+            MessageField::Map(_) => "map",
+            MessageField::Oneof(_) => "oneof",
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            MessageField::Field(field) => field.span.clone(),
+            MessageField::Group(field) => field.span.clone(),
+            MessageField::Map(field) => field.span.clone(),
+            MessageField::Oneof(field) => field.span.clone(),
+        }
+    }
+}
+
 impl Map {
     pub fn message_name(&self) -> std::string::String {
         to_pascal_case(&self.name.value) + "Entry"

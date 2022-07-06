@@ -96,6 +96,11 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Span,
     },
+    #[error("a map field key type must be a numeric type or string")]
+    InvalidMapFieldKeyType {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("extendee type '{name}' is not a message")]
     InvalidExtendeeTypeName {
         name: String,

@@ -465,7 +465,10 @@ impl<'a> Parser<'a> {
         label: Option<(FieldLabel, Span)>,
     ) -> Result<ast::Map, ()> {
         let map_span = self.expect_eq(Token::Map)?;
-        let start = label.clone().map(|(_, label_span)| label_span).unwrap_or(map_span);
+        let start = label
+            .clone()
+            .map(|(_, label_span)| label_span)
+            .unwrap_or(map_span);
 
         self.expect_eq(Token::LeftAngleBracket)?;
         let key_ty = self.parse_field_type(&[ExpectedToken::COMMA])?;

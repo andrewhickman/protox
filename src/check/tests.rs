@@ -347,6 +347,9 @@ fn map_field_with_label() {}
 fn map_field_with_default() {}
 
 #[test]
+fn map_field_invalid_type() {}
+
+#[test]
 fn message_field_with_default() {}
 
 #[test]
