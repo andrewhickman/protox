@@ -1019,6 +1019,7 @@ pub fn parse_map() {
     case!(parse_map("map<string, Project> projects = 3;") => ast::Map {
         label: None,
         key_ty: ast::Ty::String,
+        key_ty_span: 4..10,
         ty: ast::Ty::Named(ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Project", 12..19)),
@@ -1036,6 +1037,7 @@ pub fn parse_map() {
     case!(parse_map("/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n") => ast::Map {
         label: None,
         key_ty: ast::Ty::String,
+        key_ty_span: 15..21,
         ty: ast::Ty::Int32,
         name: ast::Ident::new("projects", 30..38),
         number: ast::Int {
@@ -1054,6 +1056,7 @@ pub fn parse_map() {
     case!(parse_map("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];") => ast::Map {
         label: None,
         key_ty: ast::Ty::Int32,
+        key_ty_span: 4..9,
         ty: ast::Ty::Bool,
         name: ast::Ident::new("name", 17..21),
         number: ast::Int {
@@ -1091,6 +1094,7 @@ pub fn parse_map() {
                 ast::Ident::new("bar", 9..12),
             ]),
         }),
+        key_ty_span: 4..12,
         ty: ast::Ty::Bool,
         name: ast::Ident::new("invalid", 20..27),
         number: ast::Int {
@@ -1246,6 +1250,7 @@ pub fn parse_message() {
                 ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                     label: Some((ast::FieldLabel::Optional, 45..53)),
                     key_ty: ast::Ty::Int32,
+                    key_ty_span: 58..63,
                     ty: ast::Ty::Bool,
                     name: ast::Ident::new("b", 71..72),
                     number: ast::Int {
@@ -1414,6 +1419,7 @@ pub fn parse_message() {
             items: vec![ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                 label: Some((ast::FieldLabel::Repeated, 14..22)),
                 key_ty: ast::Ty::Sint32,
+                key_ty_span: 27..33,
                 ty: ast::Ty::Fixed64,
                 name: ast::Ident::new("m", 44..45),
                 number: ast::Int {

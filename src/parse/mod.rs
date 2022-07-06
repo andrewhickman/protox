@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             _ => {
-                let ty = self.parse_field_type(&[ExpectedToken::Ident])?;
+                let (ty, _) = self.parse_field_type(&[ExpectedToken::Ident])?;
 
                 let name = self.parse_ident()?;
 
@@ -471,9 +471,9 @@ impl<'a> Parser<'a> {
             .unwrap_or(map_span);
 
         self.expect_eq(Token::LeftAngleBracket)?;
-        let key_ty = self.parse_field_type(&[ExpectedToken::COMMA])?;
+        let (key_ty, key_ty_span) = self.parse_field_type(&[ExpectedToken::COMMA])?;
         self.expect_eq(Token::Comma)?;
-        let ty = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
+        let (ty, _) = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
         self.expect_eq(Token::RightAngleBracket)?;
 
         let name = self.parse_ident()?;
@@ -494,6 +494,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Map {
             label,
             key_ty,
+            key_ty_span,
             ty,
             name,
             number,
@@ -771,25 +772,27 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_field_type(&mut self, terminators: &[ExpectedToken]) -> Result<ast::Ty, ()> {
+    fn parse_field_type(&mut self, terminators: &[ExpectedToken]) -> Result<(ast::Ty, Span), ()> {
         let scalar_ty = match self.peek() {
-            Some((Token::Double, _)) => ast::Ty::Double,
-            Some((Token::Float, _)) => ast::Ty::Float,
-            Some((Token::Int32, _)) => ast::Ty::Int32,
-            Some((Token::Int64, _)) => ast::Ty::Int64,
-            Some((Token::Uint32, _)) => ast::Ty::Uint32,
-            Some((Token::Uint64, _)) => ast::Ty::Uint64,
-            Some((Token::Sint32, _)) => ast::Ty::Sint32,
-            Some((Token::Sint64, _)) => ast::Ty::Sint64,
-            Some((Token::Fixed32, _)) => ast::Ty::Fixed32,
-            Some((Token::Fixed64, _)) => ast::Ty::Fixed64,
-            Some((Token::Sfixed32, _)) => ast::Ty::Sfixed32,
-            Some((Token::Sfixed64, _)) => ast::Ty::Sfixed64,
-            Some((Token::Bool, _)) => ast::Ty::Bool,
-            Some((Token::String, _)) => ast::Ty::String,
-            Some((Token::Bytes, _)) => ast::Ty::Bytes,
+            Some((Token::Double, span)) => (ast::Ty::Double, span),
+            Some((Token::Float, span)) => (ast::Ty::Float, span),
+            Some((Token::Int32, span)) => (ast::Ty::Int32, span),
+            Some((Token::Int64, span)) => (ast::Ty::Int64, span),
+            Some((Token::Uint32, span)) => (ast::Ty::Uint32, span),
+            Some((Token::Uint64, span)) => (ast::Ty::Uint64, span),
+            Some((Token::Sint32, span)) => (ast::Ty::Sint32, span),
+            Some((Token::Sint64, span)) => (ast::Ty::Sint64, span),
+            Some((Token::Fixed32, span)) => (ast::Ty::Fixed32, span),
+            Some((Token::Fixed64, span)) => (ast::Ty::Fixed64, span),
+            Some((Token::Sfixed32, span)) => (ast::Ty::Sfixed32, span),
+            Some((Token::Sfixed64, span)) => (ast::Ty::Sfixed64, span),
+            Some((Token::Bool, span)) => (ast::Ty::Bool, span),
+            Some((Token::String, span)) => (ast::Ty::String, span),
+            Some((Token::Bytes, span)) => (ast::Ty::Bytes, span),
             Some((Token::Dot | Token::Ident(_), _)) => {
-                return Ok(ast::Ty::Named(self.parse_type_name(terminators)?))
+                let type_name = self.parse_type_name(terminators)?;
+                let span = type_name.span();
+                return Ok((ast::Ty::Named(type_name), span));
             }
             _ => self.unexpected_token("a field type")?,
         };

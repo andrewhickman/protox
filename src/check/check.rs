@@ -5,11 +5,11 @@ use prost_types::{
     descriptor_proto::{ExtensionRange, ReservedRange},
     enum_descriptor_proto::EnumReservedRange,
     field_descriptor_proto, DescriptorProto, EnumDescriptorProto, ExtensionRangeOptions,
-    FieldDescriptorProto, FileDescriptorProto, FileOptions, MessageOptions, OneofDescriptorProto,
-    ServiceDescriptorProto, FieldOptions,
+    FieldDescriptorProto, FieldOptions, FileDescriptorProto, FileOptions, MessageOptions,
+    OneofDescriptorProto, ServiceDescriptorProto,
 };
 
-use crate::{ast, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER, case::to_camel_case};
+use crate::{ast, case::to_camel_case, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
 
 use super::{ir, names::DefinitionKind, CheckError, NameMap};
 
@@ -318,12 +318,13 @@ impl<'a> Context<'a> {
 
         let json_name = Some(to_camel_case(&field.name.value));
 
-        let proto3_optional =
-            if self.syntax == ast::Syntax::Proto3 && matches!(field.label, Some((ast::FieldLabel::Optional, _))) {
-                Some(true)
-            } else {
-                None
-            };
+        let proto3_optional = if self.syntax == ast::Syntax::Proto3
+            && matches!(field.label, Some((ast::FieldLabel::Optional, _)))
+        {
+            Some(true)
+        } else {
+            None
+        };
 
         FieldDescriptorProto {
             name,
@@ -432,9 +433,8 @@ impl<'a> Context<'a> {
             ast::Ty::Bool => Some(field_descriptor_proto::Type::Bool),
             ast::Ty::String => Some(field_descriptor_proto::Type::String),
             _ => {
-                self.errors.push(CheckError::InvalidMapFieldKeyType {
-                    span: todo!(),
-                });
+                self.errors
+                    .push(CheckError::InvalidMapFieldKeyType { span: todo!() });
                 None
             }
         }
@@ -460,7 +460,11 @@ impl<'a> Context<'a> {
             ast::Ty::Bool => (Some(field_descriptor_proto::Type::Bool), None),
             ast::Ty::String => (Some(field_descriptor_proto::Type::String), None),
             ast::Ty::Bytes => (Some(field_descriptor_proto::Type::Bytes), None),
-            ast::Ty::Named(type_name) => match self.resolve_type_name(type_name.leading_dot.is_some(), type_name.to_string(), type_name.span()) {
+            ast::Ty::Named(type_name) => match self.resolve_type_name(
+                type_name.leading_dot.is_some(),
+                type_name.to_string(),
+                type_name.span(),
+            ) {
                 (name, None) => (None, Some(name)),
                 (name, Some(DefinitionKind::Message)) => {
                     (Some(field_descriptor_proto::Type::Message as _), Some(name))
@@ -600,7 +604,10 @@ impl<'a> Context<'a> {
         todo!()
     }
 
-    fn check_field_options(&mut self, options: &[ast::OptionBody]) -> (Option<String>, Option<FieldOptions>) {
+    fn check_field_options(
+        &mut self,
+        options: &[ast::OptionBody],
+    ) -> (Option<String>, Option<FieldOptions>) {
         todo!()
     }
 

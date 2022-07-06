@@ -209,6 +209,7 @@ pub(crate) struct Oneof {
 pub(crate) struct Map {
     pub label: std::option::Option<(FieldLabel, Span)>,
     pub key_ty: Ty,
+    pub key_ty_span: Span,
     pub ty: Ty,
     pub name: Ident,
     pub number: Int,
