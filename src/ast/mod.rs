@@ -197,22 +197,6 @@ pub(crate) enum Ty {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum KeyTy {
-    Int32,
-    Int64,
-    Uint32,
-    Uint64,
-    Sint32,
-    Sint64,
-    Fixed32,
-    Fixed64,
-    Sfixed32,
-    Sfixed64,
-    Bool,
-    String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Oneof {
     pub name: Ident,
     pub options: Vec<Option>,
@@ -224,7 +208,7 @@ pub(crate) struct Oneof {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Map {
     pub label: std::option::Option<(FieldLabel, Span)>,
-    pub key_ty: KeyTy,
+    pub key_ty: Ty,
     pub ty: Ty,
     pub name: Ident,
     pub number: Int,

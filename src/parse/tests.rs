@@ -1018,7 +1018,7 @@ pub fn parse_group() {
 pub fn parse_map() {
     case!(parse_map("map<string, Project> projects = 3;") => ast::Map {
         label: None,
-        key_ty: ast::KeyTy::String,
+        key_ty: ast::Ty::String,
         ty: ast::Ty::Named(ast::TypeName {
             leading_dot: None,
             name: ast::FullIdent::from(ast::Ident::new("Project", 12..19)),
@@ -1035,7 +1035,7 @@ pub fn parse_map() {
     });
     case!(parse_map("/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n") => ast::Map {
         label: None,
-        key_ty: ast::KeyTy::String,
+        key_ty: ast::Ty::String,
         ty: ast::Ty::Int32,
         name: ast::Ident::new("projects", 30..38),
         number: ast::Int {
@@ -1053,7 +1053,7 @@ pub fn parse_map() {
     });
     case!(parse_map("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];") => ast::Map {
         label: None,
-        key_ty: ast::KeyTy::Int32,
+        key_ty: ast::Ty::Int32,
         ty: ast::Ty::Bool,
         name: ast::Ident::new("name", 17..21),
         number: ast::Int {
@@ -1082,13 +1082,33 @@ pub fn parse_map() {
         comments: ast::Comments::default(),
         span: 0..51,
     });
+    case!(parse_map("map<.foo.bar, bool> invalid = -0;") => ast::Map {
+        label: None,
+        key_ty: ast::Ty::Named(ast::TypeName {
+            leading_dot: Some(4..5),
+            name: ast::FullIdent::from(vec![
+                ast::Ident::new("foo", 5..8),
+                ast::Ident::new("bar", 9..12),
+            ]),
+        }),
+        ty: ast::Ty::Bool,
+        name: ast::Ident::new("invalid", 20..27),
+        number: ast::Int {
+            negative: true,
+            value: 0,
+            span: 30..32,
+        },
+        options: vec![],
+        comments: ast::Comments::default(),
+        span: 0..33,
+    });
     case!(parse_map("map>") => Err(vec![ParseError::UnexpectedToken {
         expected: "'<'".to_owned(),
         found: Token::RightAngleBracket,
         span: 3..4,
     }]));
     case!(parse_map("map<;") => Err(vec![ParseError::UnexpectedToken {
-        expected: "an integer type or 'string'".to_owned(),
+        expected: "a field type".to_owned(),
         found: Token::Semicolon,
         span: 4..5,
     }]));
@@ -1126,6 +1146,11 @@ pub fn parse_map() {
         expected: "';' or '['".to_owned(),
         found: Token::Service,
         span: 24..31,
+    }]));
+    case!(parse_map("map<foo;") => Err(vec![ParseError::UnexpectedToken {
+        expected: "'.' or ','".to_owned(),
+        found: Token::Semicolon,
+        span: 7..8,
     }]));
 }
 
@@ -1220,7 +1245,7 @@ pub fn parse_message() {
                 })),
                 ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                     label: Some((ast::FieldLabel::Optional, 45..53)),
-                    key_ty: ast::KeyTy::Int32,
+                    key_ty: ast::Ty::Int32,
                     ty: ast::Ty::Bool,
                     name: ast::Ident::new("b", 71..72),
                     number: ast::Int {
@@ -1388,7 +1413,7 @@ pub fn parse_message() {
         body: ast::MessageBody {
             items: vec![ast::MessageItem::Field(ast::MessageField::Map(ast::Map {
                 label: Some((ast::FieldLabel::Repeated, 14..22)),
-                key_ty: ast::KeyTy::Sint32,
+                key_ty: ast::Ty::Sint32,
                 ty: ast::Ty::Fixed64,
                 name: ast::Ident::new("m", 44..45),
                 number: ast::Int {

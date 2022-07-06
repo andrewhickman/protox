@@ -468,7 +468,7 @@ impl<'a> Parser<'a> {
         let start = label.clone().map(|(_, label_span)| label_span).unwrap_or(map_span);
 
         self.expect_eq(Token::LeftAngleBracket)?;
-        let key_ty = self.parse_key_type()?;
+        let key_ty = self.parse_field_type(&[ExpectedToken::COMMA])?;
         self.expect_eq(Token::Comma)?;
         let ty = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
         self.expect_eq(Token::RightAngleBracket)?;
@@ -766,27 +766,6 @@ impl<'a> Parser<'a> {
             comments,
             span: join_span(start, end),
         })
-    }
-
-    fn parse_key_type(&mut self) -> Result<ast::KeyTy, ()> {
-        let ty = match self.peek() {
-            Some((Token::Int32, _)) => ast::KeyTy::Int32,
-            Some((Token::Int64, _)) => ast::KeyTy::Int64,
-            Some((Token::Uint32, _)) => ast::KeyTy::Uint32,
-            Some((Token::Uint64, _)) => ast::KeyTy::Uint64,
-            Some((Token::Sint32, _)) => ast::KeyTy::Sint32,
-            Some((Token::Sint64, _)) => ast::KeyTy::Sint64,
-            Some((Token::Fixed32, _)) => ast::KeyTy::Fixed32,
-            Some((Token::Fixed64, _)) => ast::KeyTy::Fixed64,
-            Some((Token::Sfixed32, _)) => ast::KeyTy::Sfixed32,
-            Some((Token::Sfixed64, _)) => ast::KeyTy::Sfixed64,
-            Some((Token::Bool, _)) => ast::KeyTy::Bool,
-            Some((Token::String, _)) => ast::KeyTy::String,
-            _ => self.unexpected_token("an integer type or 'string'")?,
-        };
-
-        self.bump();
-        Ok(ty)
     }
 
     fn parse_field_type(&mut self, terminators: &[ExpectedToken]) -> Result<ast::Ty, ()> {
