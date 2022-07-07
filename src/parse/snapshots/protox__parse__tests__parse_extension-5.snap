@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_extend()
+expression: "match parser.parse_extend() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Extend {
@@ -18,60 +18,60 @@ Ok(
             },
         },
         fields: [
-            Field(
-                Field {
-                    label: Some(
-                        (
-                            Optional,
-                            14..22,
-                        ),
+            Field {
+                label: Some(
+                    (
+                        Optional,
+                        14..22,
                     ),
-                    name: Ident {
-                        value: "bar",
-                        span: 29..32,
-                    },
+                ),
+                name: Ident {
+                    value: "bar",
+                    span: 29..32,
+                },
+                kind: Normal {
                     ty: Int32,
-                    number: Int {
-                        negative: false,
-                        value: 126,
-                        span: 35..38,
-                    },
-                    options: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 14..39,
                 },
-            ),
-            Field(
-                Field {
-                    label: Some(
-                        (
-                            Repeated,
-                            40..48,
-                        ),
+                number: Int {
+                    negative: false,
+                    value: 126,
+                    span: 35..38,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 14..39,
+            },
+            Field {
+                label: Some(
+                    (
+                        Repeated,
+                        40..48,
                     ),
-                    name: Ident {
-                        value: "quz",
-                        span: 56..59,
-                    },
-                    ty: String,
-                    number: Int {
-                        negative: false,
-                        value: 127,
-                        span: 62..65,
-                    },
-                    options: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 40..66,
+                ),
+                name: Ident {
+                    value: "quz",
+                    span: 56..59,
                 },
-            ),
+                kind: Normal {
+                    ty: String,
+                },
+                number: Int {
+                    negative: false,
+                    value: 127,
+                    span: 62..65,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 40..66,
+            },
         ],
         comments: Comments {
             leading_detached_comments: [],

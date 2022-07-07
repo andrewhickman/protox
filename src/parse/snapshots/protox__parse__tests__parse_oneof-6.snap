@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_oneof()
+expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Oneof {
@@ -10,33 +10,33 @@ Ok(
         },
         options: [],
         fields: [
-            Group(
-                Group {
-                    label: None,
-                    name: Ident {
-                        value: "Baz",
-                        span: 18..21,
-                    },
-                    number: Int {
-                        negative: true,
-                        value: 1,
-                        span: 24..26,
-                    },
+            Field {
+                label: None,
+                name: Ident {
+                    value: "Baz",
+                    span: 18..21,
+                },
+                kind: Group {
                     body: MessageBody {
                         items: [],
                         extensions: [],
                         options: [],
                         reserved: [],
                     },
-                    options: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 12..29,
                 },
-            ),
+                number: Int {
+                    negative: true,
+                    value: 1,
+                    span: 24..26,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 12..29,
+            },
         ],
         comments: Comments {
             leading_detached_comments: [],

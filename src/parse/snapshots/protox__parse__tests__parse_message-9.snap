@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_message()
+expression: "match parser.parse_message() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Message {
@@ -11,35 +11,36 @@ Ok(
         body: MessageBody {
             items: [
                 Field(
-                    Map(
-                        Map {
-                            label: Some(
-                                (
-                                    Repeated,
-                                    14..22,
-                                ),
+                    Field {
+                        label: Some(
+                            (
+                                Repeated,
+                                14..22,
                             ),
+                        ),
+                        name: Ident {
+                            value: "m",
+                            span: 44..45,
+                        },
+                        kind: Map {
                             key_ty: Sint32,
                             key_ty_span: 27..33,
                             ty: Fixed64,
-                            name: Ident {
-                                value: "m",
-                                span: 44..45,
-                            },
-                            number: Int {
-                                negative: false,
-                                value: 1,
-                                span: 48..49,
-                            },
-                            options: [],
-                            comments: Comments {
-                                leading_detached_comments: [],
-                                leading_comment: None,
-                                trailing_comment: None,
-                            },
-                            span: 14..50,
+                            ty_span: 35..42,
                         },
-                    ),
+                        number: Int {
+                            negative: false,
+                            value: 1,
+                            span: 48..49,
+                        },
+                        options: [],
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 14..50,
+                    },
                 ),
             ],
             extensions: [],

@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_file()
+expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     File {
@@ -19,34 +19,34 @@ Ok(
                     body: MessageBody {
                         items: [
                             Field(
-                                Field(
-                                    Field {
-                                        label: None,
-                                        name: Ident {
-                                            value: "bar",
-                                            span: 133..136,
-                                        },
-                                        ty: Int32,
-                                        number: Int {
-                                            negative: false,
-                                            value: 1,
-                                            span: 139..140,
-                                        },
-                                        options: [],
-                                        comments: Comments {
-                                            leading_detached_comments: [
-                                                " detached\n",
-                                            ],
-                                            leading_comment: Some(
-                                                " leading\n",
-                                            ),
-                                            trailing_comment: Some(
-                                                " trailing2\n",
-                                            ),
-                                        },
-                                        span: 127..141,
+                                Field {
+                                    label: None,
+                                    name: Ident {
+                                        value: "bar",
+                                        span: 133..136,
                                     },
-                                ),
+                                    kind: Normal {
+                                        ty: Int32,
+                                    },
+                                    number: Int {
+                                        negative: false,
+                                        value: 1,
+                                        span: 139..140,
+                                    },
+                                    options: [],
+                                    comments: Comments {
+                                        leading_detached_comments: [
+                                            " detached\n",
+                                        ],
+                                        leading_comment: Some(
+                                            " leading\n",
+                                        ),
+                                        trailing_comment: Some(
+                                            " trailing2\n",
+                                        ),
+                                    },
+                                    span: 127..141,
+                                },
                             ),
                         ],
                         extensions: [],

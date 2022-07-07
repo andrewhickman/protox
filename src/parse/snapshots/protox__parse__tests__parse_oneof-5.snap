@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_oneof()
+expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Oneof {
@@ -10,38 +10,38 @@ Ok(
         },
         options: [],
         fields: [
-            Group(
-                Group {
-                    label: Some(
-                        (
-                            Optional,
-                            12..20,
-                        ),
+            Field {
+                label: Some(
+                    (
+                        Optional,
+                        12..20,
                     ),
-                    name: Ident {
-                        value: "Bar",
-                        span: 27..30,
-                    },
-                    number: Int {
-                        negative: false,
-                        value: 1,
-                        span: 33..34,
-                    },
+                ),
+                name: Ident {
+                    value: "Bar",
+                    span: 27..30,
+                },
+                kind: Group {
                     body: MessageBody {
                         items: [],
                         extensions: [],
                         options: [],
                         reserved: [],
                     },
-                    options: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 12..37,
                 },
-            ),
+                number: Int {
+                    negative: false,
+                    value: 1,
+                    span: 33..34,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 12..37,
+            },
         ],
         comments: Comments {
             leading_detached_comments: [],

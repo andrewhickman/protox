@@ -1,11 +1,15 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_field()
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
-    Map(
-        Map {
-            label: None,
+    Field {
+        label: None,
+        name: Ident {
+            value: "projects",
+            span: 21..29,
+        },
+        kind: Map {
             key_ty: String,
             key_ty_span: 4..10,
             ty: Named(
@@ -21,22 +25,19 @@ Ok(
                     },
                 },
             ),
-            name: Ident {
-                value: "projects",
-                span: 21..29,
-            },
-            number: Int {
-                negative: false,
-                value: 3,
-                span: 32..33,
-            },
-            options: [],
-            comments: Comments {
-                leading_detached_comments: [],
-                leading_comment: None,
-                trailing_comment: None,
-            },
-            span: 0..34,
+            ty_span: 12..19,
         },
-    ),
+        number: Int {
+            negative: false,
+            value: 3,
+            span: 32..33,
+        },
+        options: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..34,
+    },
 )

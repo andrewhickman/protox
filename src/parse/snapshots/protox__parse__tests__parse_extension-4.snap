@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_extend()
+expression: "match parser.parse_extend() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Extend {
@@ -20,33 +20,33 @@ Ok(
             },
         },
         fields: [
-            Field(
-                Field {
-                    label: Some(
-                        (
-                            Optional,
-                            17..25,
-                        ),
+            Field {
+                label: Some(
+                    (
+                        Optional,
+                        17..25,
                     ),
-                    name: Ident {
-                        value: "bar",
-                        span: 32..35,
-                    },
-                    ty: Int32,
-                    number: Int {
-                        negative: false,
-                        value: 126,
-                        span: 38..41,
-                    },
-                    options: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 17..42,
+                ),
+                name: Ident {
+                    value: "bar",
+                    span: 32..35,
                 },
-            ),
+                kind: Normal {
+                    ty: Int32,
+                },
+                number: Int {
+                    negative: false,
+                    value: 126,
+                    span: 38..41,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 17..42,
+            },
         ],
         comments: Comments {
             leading_detached_comments: [],

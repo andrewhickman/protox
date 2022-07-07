@@ -1,42 +1,42 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_field()
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
-    Group(
-        Group {
-            label: Some(
-                (
-                    Optional,
-                    10..18,
-                ),
+    Field {
+        label: Some(
+            (
+                Optional,
+                10..18,
             ),
-            name: Ident {
-                value: "A",
-                span: 25..26,
-            },
-            number: Int {
-                negative: false,
-                value: 1,
-                span: 29..30,
-            },
+        ),
+        name: Ident {
+            value: "A",
+            span: 25..26,
+        },
+        kind: Group {
             body: MessageBody {
                 items: [],
                 extensions: [],
                 options: [],
                 reserved: [],
             },
-            options: [],
-            comments: Comments {
-                leading_detached_comments: [],
-                leading_comment: Some(
-                    "leading\n",
-                ),
-                trailing_comment: Some(
-                    "trailing",
-                ),
-            },
-            span: 10..47,
         },
-    ),
+        number: Int {
+            negative: false,
+            value: 1,
+            span: 29..30,
+        },
+        options: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: Some(
+                "leading\n",
+            ),
+            trailing_comment: Some(
+                "trailing",
+            ),
+        },
+        span: 10..47,
+    },
 )

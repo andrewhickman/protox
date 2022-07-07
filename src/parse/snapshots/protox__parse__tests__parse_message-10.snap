@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_message()
+expression: "match parser.parse_message() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Message {
@@ -11,33 +11,33 @@ Ok(
         body: MessageBody {
             items: [
                 Field(
-                    Group(
-                        Group {
-                            label: None,
-                            name: Ident {
-                                value: "Baz",
-                                span: 20..23,
-                            },
-                            number: Int {
-                                negative: false,
-                                value: 1,
-                                span: 26..27,
-                            },
+                    Field {
+                        label: None,
+                        name: Ident {
+                            value: "Baz",
+                            span: 20..23,
+                        },
+                        kind: Group {
                             body: MessageBody {
                                 items: [],
                                 extensions: [],
                                 options: [],
                                 reserved: [],
                             },
-                            options: [],
-                            comments: Comments {
-                                leading_detached_comments: [],
-                                leading_comment: None,
-                                trailing_comment: None,
-                            },
-                            span: 14..30,
                         },
-                    ),
+                        number: Int {
+                            negative: false,
+                            value: 1,
+                            span: 26..27,
+                        },
+                        options: [],
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 14..30,
+                    },
                 ),
             ],
             extensions: [],

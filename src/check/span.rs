@@ -106,7 +106,7 @@ struct Context {
 //         const PROTO3_OPTIONAL: i32 = 17;
 //     }
 
-//     fn visit_map(&mut self, _: &ast::Map) {}
+//     fn visit_map(&mut self, _: &ast::Field) {}
 
 //     fn visit_group(&mut self, group: &ast::Group) {
 //         group.body.visit(self)

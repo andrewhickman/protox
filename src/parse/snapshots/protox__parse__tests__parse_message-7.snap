@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_message()
+expression: "match parser.parse_message() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Message {
@@ -11,18 +11,18 @@ Ok(
         body: MessageBody {
             items: [
                 Field(
-                    Field(
-                        Field {
-                            label: Some(
-                                (
-                                    Repeated,
-                                    14..22,
-                                ),
+                    Field {
+                        label: Some(
+                            (
+                                Repeated,
+                                14..22,
                             ),
-                            name: Ident {
-                                value: "service",
-                                span: 27..34,
-                            },
+                        ),
+                        name: Ident {
+                            value: "service",
+                            span: 27..34,
+                        },
+                        kind: Normal {
                             ty: Named(
                                 TypeName {
                                     leading_dot: None,
@@ -36,20 +36,20 @@ Ok(
                                     },
                                 },
                             ),
-                            number: Int {
-                                negative: false,
-                                value: 2,
-                                span: 37..38,
-                            },
-                            options: [],
-                            comments: Comments {
-                                leading_detached_comments: [],
-                                leading_comment: None,
-                                trailing_comment: None,
-                            },
-                            span: 14..39,
                         },
-                    ),
+                        number: Int {
+                            negative: false,
+                            value: 2,
+                            span: 37..38,
+                        },
+                        options: [],
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 14..39,
+                    },
                 ),
             ],
             extensions: [],

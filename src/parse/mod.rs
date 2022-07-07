@@ -324,9 +324,7 @@ impl<'a> Parser<'a> {
                 Some((tok, _)) if is_field_start_token(&tok) => {
                     items.push(ast::MessageItem::Field(self.parse_field()?))
                 }
-                Some((Token::Oneof, _)) => items.push(ast::MessageItem::Field(
-                    ast::MessageField::Oneof(self.parse_oneof()?),
-                )),
+                Some((Token::Oneof, _)) => items.push(ast::MessageItem::Oneof(self.parse_oneof()?)),
                 Some((Token::Enum, _)) => items.push(ast::MessageItem::Enum(self.parse_enum()?)),
                 Some((Token::Message, _)) => {
                     items.push(ast::MessageItem::Message(self.parse_message()?))
@@ -362,7 +360,7 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn parse_field(&mut self) -> Result<ast::MessageField, ()> {
+    fn parse_field(&mut self) -> Result<ast::Field, ()> {
         let leading_comments = self.parse_leading_comments();
 
         let (label, start) = match self.peek() {
@@ -383,97 +381,24 @@ impl<'a> Parser<'a> {
         };
 
         match self.peek() {
-            Some((Token::Map, _)) => Ok(ast::MessageField::Map(
-                self.parse_map_inner(leading_comments, label)?,
-            )),
-            Some((Token::Group, _)) => {
-                self.bump();
-
-                let name = self.parse_ident()?;
-                if !is_valid_group_name(&name.value) {
-                    self.add_error(ParseError::InvalidGroupName {
-                        span: name.span.clone(),
-                    });
-                }
-
-                self.expect_eq(Token::Equals)?;
-
-                let number = self.parse_int()?;
-
-                let options = match self.peek() {
-                    Some((Token::LeftBracket, _)) => self.parse_options_list()?,
-                    Some((Token::LeftBrace, _)) => vec![],
-                    _ => self.unexpected_token("'{' or '['")?,
-                };
-
-                self.expect_eq(Token::LeftBrace)?;
-
-                let comments = self.parse_trailing_comment(leading_comments);
-
-                let (body, end) = self.parse_message_body()?;
-
-                Ok(ast::MessageField::Group(ast::Group {
-                    label,
-                    options,
-                    name,
-                    number,
-                    body,
-                    comments,
-                    span: join_span(start, end),
-                }))
-            }
-            _ => {
-                let (ty, _) = self.parse_field_type(&[ExpectedToken::Ident])?;
-
-                let name = self.parse_ident()?;
-
-                self.expect_eq(Token::Equals)?;
-
-                let number = self.parse_int()?;
-
-                let options = match self.peek() {
-                    Some((Token::LeftBracket, _)) => self.parse_options_list()?,
-                    Some((Token::Semicolon, _)) => vec![],
-                    _ => self.unexpected_token("';' or '['")?,
-                };
-
-                let end = self.expect_eq(Token::Semicolon)?;
-                let comments = self.parse_trailing_comment(leading_comments);
-
-                Ok(ast::MessageField::Field(ast::Field {
-                    label,
-                    ty,
-                    name,
-                    number,
-                    options,
-                    comments,
-                    span: join_span(start, end),
-                }))
-            }
+            Some((Token::Map, _)) => self.parse_map(leading_comments, start, label),
+            Some((Token::Group, _)) => self.parse_group(leading_comments, start, label),
+            _ => self.parse_normal_field(leading_comments, start, label),
         }
     }
 
-    #[cfg(test)]
-    fn parse_map(&mut self) -> Result<ast::Map, ()> {
-        let leading_comments = self.parse_leading_comments();
-        self.parse_map_inner(leading_comments, None)
-    }
-
-    fn parse_map_inner(
+    fn parse_map(
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
+        start: Span,
         label: Option<(FieldLabel, Span)>,
-    ) -> Result<ast::Map, ()> {
-        let map_span = self.expect_eq(Token::Map)?;
-        let start = label
-            .clone()
-            .map(|(_, label_span)| label_span)
-            .unwrap_or(map_span);
+    ) -> Result<ast::Field, ()> {
+        self.expect_eq(Token::Map)?;
 
         self.expect_eq(Token::LeftAngleBracket)?;
         let (key_ty, key_ty_span) = self.parse_field_type(&[ExpectedToken::COMMA])?;
         self.expect_eq(Token::Comma)?;
-        let (ty, _) = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
+        let (ty, ty_span) = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
         self.expect_eq(Token::RightAngleBracket)?;
 
         let name = self.parse_ident()?;
@@ -491,11 +416,90 @@ impl<'a> Parser<'a> {
         let end = self.expect_eq(Token::Semicolon)?;
         let comments = self.parse_trailing_comment(leading_comments);
 
-        Ok(ast::Map {
+        Ok(ast::Field {
             label,
-            key_ty,
-            key_ty_span,
-            ty,
+            kind: ast::FieldKind::Map {
+                key_ty,
+                key_ty_span,
+                ty,
+                ty_span,
+            },
+            name,
+            number,
+            options,
+            comments,
+            span: join_span(start, end),
+        })
+    }
+
+    fn parse_group(
+        &mut self,
+        leading_comments: (Vec<String>, Option<String>),
+        start: Span,
+        label: Option<(FieldLabel, Span)>,
+    ) -> Result<ast::Field, ()> {
+        self.expect_eq(Token::Group)?;
+
+        let name = self.parse_ident()?;
+        if !is_valid_group_name(&name.value) {
+            self.add_error(ParseError::InvalidGroupName {
+                span: name.span.clone(),
+            });
+        }
+
+        self.expect_eq(Token::Equals)?;
+
+        let number = self.parse_int()?;
+
+        let options = match self.peek() {
+            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            Some((Token::LeftBrace, _)) => vec![],
+            _ => self.unexpected_token("'{' or '['")?,
+        };
+
+        self.expect_eq(Token::LeftBrace)?;
+
+        let comments = self.parse_trailing_comment(leading_comments);
+
+        let (body, end) = self.parse_message_body()?;
+
+        Ok(ast::Field {
+            label,
+            options,
+            name,
+            number,
+            kind: ast::FieldKind::Group { body },
+            comments,
+            span: join_span(start, end),
+        })
+    }
+
+    fn parse_normal_field(
+        &mut self,
+        leading_comments: (Vec<String>, Option<String>),
+        start: Span,
+        label: Option<(FieldLabel, Span)>,
+    ) -> Result<ast::Field, ()> {
+        let (ty, _) = self.parse_field_type(&[ExpectedToken::Ident])?;
+
+        let name = self.parse_ident()?;
+
+        self.expect_eq(Token::Equals)?;
+
+        let number = self.parse_int()?;
+
+        let options = match self.peek() {
+            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            Some((Token::Semicolon, _)) => vec![],
+            _ => self.unexpected_token("';' or '['")?,
+        };
+
+        let end = self.expect_eq(Token::Semicolon)?;
+        let comments = self.parse_trailing_comment(leading_comments);
+
+        Ok(ast::Field {
+            label,
+            kind: ast::FieldKind::Normal { ty },
             name,
             number,
             options,

@@ -134,7 +134,7 @@ pub(crate) struct Message {
 pub(crate) struct Field {
     pub label: std::option::Option<(FieldLabel, Span)>,
     pub name: Ident,
-    pub ty: Ty,
+    pub kind: FieldKind,
     pub number: Int,
     pub options: Vec<OptionBody>,
     pub comments: Comments,
@@ -158,18 +158,27 @@ pub(crate) struct MessageBody {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum MessageItem {
-    Field(MessageField),
+    Field(Field),
     Enum(Enum),
     Message(Message),
     Extend(Extend),
+    Oneof(Oneof),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum MessageField {
-    Field(Field),
-    Group(Group),
-    Map(Map),
-    Oneof(Oneof),
+pub(crate) enum FieldKind {
+    Normal {
+        ty: Ty,
+    },
+    Group {
+        body: MessageBody,
+    },
+    Map {
+        key_ty: Ty,
+        key_ty_span: Span,
+        ty: Ty,
+        ty_span: Span,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -196,20 +205,7 @@ pub(crate) enum Ty {
 pub(crate) struct Oneof {
     pub name: Ident,
     pub options: Vec<Option>,
-    pub fields: Vec<MessageField>,
-    pub comments: Comments,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Map {
-    pub label: std::option::Option<(FieldLabel, Span)>,
-    pub key_ty: Ty,
-    pub key_ty_span: Span,
-    pub ty: Ty,
-    pub name: Ident,
-    pub number: Int,
-    pub options: Vec<OptionBody>,
+    pub fields: Vec<Field>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -217,18 +213,7 @@ pub(crate) struct Map {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Extend {
     pub extendee: TypeName,
-    pub fields: Vec<MessageField>,
-    pub comments: Comments,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Group {
-    pub label: std::option::Option<(FieldLabel, Span)>,
-    pub name: Ident,
-    pub number: Int,
-    pub body: MessageBody,
-    pub options: Vec<OptionBody>,
+    pub fields: Vec<Field>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -385,34 +370,20 @@ impl fmt::Display for TypeName {
     }
 }
 
-impl MessageField {
+impl Field {
     pub fn kind_name(&self) -> &'static str {
-        match self {
-            MessageField::Field(_) => "normal",
-            MessageField::Group(_) => "group",
-            MessageField::Map(_) => "map",
-            MessageField::Oneof(_) => "oneof",
+        match &self.kind {
+            FieldKind::Normal { .. } => "normal",
+            FieldKind::Group { .. } => "group",
+            FieldKind::Map { .. } => "map",
         }
     }
 
-    pub fn span(&self) -> Span {
-        match self {
-            MessageField::Field(field) => field.span.clone(),
-            MessageField::Group(field) => field.span.clone(),
-            MessageField::Map(field) => field.span.clone(),
-            MessageField::Oneof(field) => field.span.clone(),
-        }
-    }
-}
-
-impl Map {
-    pub fn message_name(&self) -> std::string::String {
+    pub fn map_message_name(&self) -> std::string::String {
         to_pascal_case(&self.name.value) + "Entry"
     }
-}
 
-impl Group {
-    pub fn field_name(&self) -> std::string::String {
+    pub fn group_field_name(&self) -> std::string::String {
         self.name.value.to_ascii_lowercase()
     }
 }

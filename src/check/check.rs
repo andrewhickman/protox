@@ -239,7 +239,9 @@ impl<'a> Context<'a> {
         if let Some(body) = message.ast.body() {
             for item in &body.items {
                 match item {
-                    ast::MessageItem::Field(_) | ast::MessageItem::Message(_) => continue,
+                    ast::MessageItem::Field(_)
+                    | ast::MessageItem::Message(_)
+                    | ast::MessageItem::Oneof(_) => continue,
                     ast::MessageItem::Enum(e) => enum_type.push(self.check_enum(e)),
                     ast::MessageItem::Extend(e) => extension.push(self.check_extend(e)),
                 }
@@ -288,12 +290,10 @@ impl<'a> Context<'a> {
     fn check_message_field(&mut self, field: &ir::Field) -> FieldDescriptorProto {
         let oneof_index = field.oneof_index;
 
-        let descriptor = match field.ast {
+        let descriptor = match &field.ast {
             ir::FieldSource::Field(ast) => self.check_field(ast),
-            ir::FieldSource::Group(group) => self.check_group(group),
-            ir::FieldSource::Map(map) => self.check_map(map),
-            ir::FieldSource::MapKey(map) => self.check_map_key(map),
-            ir::FieldSource::MapValue(map) => self.check_map_value(map),
+            ir::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
+            ir::FieldSource::MapValue(ty, _) => self.check_map_value(ty),
         };
 
         FieldDescriptorProto {
@@ -305,8 +305,8 @@ impl<'a> Context<'a> {
     fn check_field(&mut self, field: &ast::Field) -> FieldDescriptorProto {
         let name = s(&field.name.value);
         let number = self.check_field_number(&field.number);
-        let label = self.check_field_label(field.label.clone(), field.span.clone());
-        let (ty, type_name) = self.check_field_type(&field.ty);
+        let label = self.check_field_label(field);
+        let (ty, type_name) = self.check_field_type(field);
         let (default_value, options) = self.check_field_options(&field.options);
 
         if default_value.is_some() && ty == Some(field_descriptor_proto::Type::Message) {
@@ -340,15 +340,25 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_field_label(
-        &mut self,
-        label: Option<(ast::FieldLabel, Span)>,
-        field_span: Span,
-    ) -> Option<field_descriptor_proto::Label> {
-        let (label, span) = match label {
+    fn check_field_label(&mut self, field: &ast::Field) -> Option<field_descriptor_proto::Label> {
+        let (label, span) = match field.label.clone() {
             Some((label, span)) => (Some(label), span),
-            None => (None, field_span),
+            None => (None, field.span.clone()),
         };
+
+        if let ast::FieldKind::Map { .. } = &field.kind {
+            if label.is_some() {
+                self.errors.push(CheckError::MapFieldWithLabel { span })
+            }
+            return None;
+        } else if let ast::FieldKind::Group { .. } = &field.kind {
+            if self.syntax != ast::Syntax::Proto2 {
+                self.errors.push(CheckError::Proto3GroupField {
+                    span: field.span.clone(),
+                });
+            }
+            return None;
+        }
 
         match (self.in_extend(), self.in_oneof(), label) {
             (true, true, _) => unreachable!(),
@@ -381,47 +391,8 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_group(&mut self, field: &ast::Group) -> FieldDescriptorProto {
-        todo!()
-    }
-
-    fn check_map(&mut self, field: &ast::Map) -> FieldDescriptorProto {
-        todo!()
-    }
-
-    fn check_map_key(&mut self, map: &ast::Map) -> FieldDescriptorProto {
-        let ty = self.check_map_key_type(&map.key_ty, map.span.clone());
-
-        FieldDescriptorProto {
-            name: s("key"),
-            number: Some(1),
-            label: Some(field_descriptor_proto::Label::Optional as i32),
-            r#type: ty.map(|t| t as i32),
-            json_name: s("key"),
-            ..Default::default()
-        }
-    }
-
-    fn check_map_value(&mut self, map: &ast::Map) -> FieldDescriptorProto {
-        let (ty, type_name) = self.check_field_type(&map.key_ty);
-
-        FieldDescriptorProto {
-            name: s("value"),
-            number: Some(2),
-            label: Some(field_descriptor_proto::Label::Optional as i32),
-            r#type: ty.map(|t| t as i32),
-            type_name,
-            json_name: s("value"),
-            ..Default::default()
-        }
-    }
-
-    fn check_map_key_type(
-        &mut self,
-        ty: &ast::Ty,
-        span: Span,
-    ) -> Option<field_descriptor_proto::Type> {
-        match ty {
+    fn check_map_key(&mut self, ty: &ast::Ty, span: Span) -> FieldDescriptorProto {
+        let ty = match ty {
             ast::Ty::Double => Some(field_descriptor_proto::Type::Double),
             ast::Ty::Float => Some(field_descriptor_proto::Type::Float),
             ast::Ty::Int32 => Some(field_descriptor_proto::Type::Int32),
@@ -441,10 +412,60 @@ impl<'a> Context<'a> {
                     .push(CheckError::InvalidMapFieldKeyType { span });
                 None
             }
+        };
+
+        FieldDescriptorProto {
+            name: s("key"),
+            number: Some(1),
+            label: Some(field_descriptor_proto::Label::Optional as i32),
+            r#type: ty.map(|t| t as i32),
+            json_name: s("key"),
+            ..Default::default()
+        }
+    }
+
+    fn check_map_value(&mut self, ty: &ast::Ty) -> FieldDescriptorProto {
+        let (ty, type_name) = self.check_type(&ty);
+
+        FieldDescriptorProto {
+            name: s("value"),
+            number: Some(2),
+            label: Some(field_descriptor_proto::Label::Optional as i32),
+            r#type: ty.map(|t| t as i32),
+            type_name,
+            json_name: s("value"),
+            ..Default::default()
         }
     }
 
     fn check_field_type(
+        &mut self,
+        field: &ast::Field,
+    ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
+        match &field.kind {
+            ast::FieldKind::Group { body } => {
+                let (name, def) = self.resolve_type_name(
+                    false,
+                    field.name.value.clone(),
+                    field.name.span.clone(),
+                );
+                assert!(def.is_none() || def == Some(DefinitionKind::Group));
+                (Some(field_descriptor_proto::Type::Group), Some(name))
+            }
+            ast::FieldKind::Map { .. } => {
+                let (name, def) = self.resolve_type_name(
+                    false,
+                    field.map_message_name(),
+                    field.name.span.clone(),
+                );
+                assert!(def.is_none() || def == Some(DefinitionKind::Message));
+                (Some(field_descriptor_proto::Type::Message), Some(name))
+            }
+            ast::FieldKind::Normal { ty } => self.check_type(ty),
+        }
+    }
+
+    fn check_type(
         &mut self,
         ty: &ast::Ty,
     ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
@@ -491,23 +512,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_oneof(&mut self, oneof: &ir::Oneof) -> OneofDescriptorProto {
-        match &oneof.ast {
-            ir::OneofSource::Oneof(oneof) => {
-                for field in &oneof.fields {
-                    if matches!(
-                        field,
-                        ast::MessageField::Oneof(_) | ast::MessageField::Map(_)
-                    ) {
-                        self.errors.push(CheckError::InvalidOneofFieldKind {
-                            kind: field.kind_name(),
-                            span: field.span(),
-                        });
-                    }
-                }
-            }
-            ir::OneofSource::Field(_) => todo!(),
-        }
-
         todo!()
     }
 

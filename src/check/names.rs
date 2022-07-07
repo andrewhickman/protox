@@ -215,20 +215,13 @@ impl NamePass {
         self.enter(name);
 
         for field in &message.fields {
-            let (name, span) = match field.ast {
+            let (name, span) = match &field.ast {
                 ir::FieldSource::Field(field) => (
                     Cow::Borrowed(field.name.value.as_str()),
                     field.name.span.clone(),
                 ),
-                ir::FieldSource::Group(group) => {
-                    (Cow::Owned(group.field_name()), group.name.span.clone())
-                }
-                ir::FieldSource::Map(map) => (
-                    Cow::Borrowed(map.name.value.as_str()),
-                    map.name.span.clone(),
-                ),
-                ir::FieldSource::MapKey(map) => (Cow::Borrowed("key"), map.span.clone()),
-                ir::FieldSource::MapValue(map) => (Cow::Borrowed("value"), map.span.clone()),
+                ir::FieldSource::MapKey(_, span) => (Cow::Borrowed("key"), span.clone()),
+                ir::FieldSource::MapValue(_, span) => (Cow::Borrowed("value"), span.clone()),
             };
 
             self.add_name(name, DefinitionKind::Field, span);
@@ -262,7 +255,9 @@ impl NamePass {
                     ast::MessageItem::Extend(extend) => {
                         self.add_extend(extend);
                     }
-                    ast::MessageItem::Field(_) | ast::MessageItem::Message(_) => continue,
+                    ast::MessageItem::Field(_)
+                    | ast::MessageItem::Message(_)
+                    | ast::MessageItem::Oneof(_) => continue,
                 }
             }
         }
@@ -272,34 +267,23 @@ impl NamePass {
 
     fn add_extend(&mut self, extend: &ast::Extend) {
         for field in &extend.fields {
-            self.add_message_field(field);
+            self.add_field(field);
         }
     }
 
-    fn add_message_field(&mut self, field: &ast::MessageField) {
-        match field {
-            ast::MessageField::Field(field) => {
-                self.add_name(
-                    &field.name.value,
-                    DefinitionKind::Field,
-                    field.name.span.clone(),
-                );
-            }
-            ast::MessageField::Group(group) => {
-                self.add_name(
-                    &group.name.value,
-                    DefinitionKind::Field,
-                    group.name.span.clone(),
-                );
-            }
-            ast::MessageField::Map(map) => {
-                self.add_name(
-                    &map.name.value,
-                    DefinitionKind::Field,
-                    map.name.span.clone(),
-                );
-            }
-            ast::MessageField::Oneof(_) => (),
+    fn add_field(&mut self, field: &ast::Field) {
+        if let ast::FieldKind::Group { .. } = &field.kind {
+            self.add_name(
+                field.group_field_name(),
+                DefinitionKind::Field,
+                field.name.span.clone(),
+            );
+        } else {
+            self.add_name(
+                field.name.value.clone(),
+                DefinitionKind::Field,
+                field.name.span.clone(),
+            );
         }
     }
 
