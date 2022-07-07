@@ -29,6 +29,8 @@ pub struct Args {
 }
 
 pub fn main() -> Result<()> {
+    miette::set_panic_hook();
+
     let args = Args::parse();
     let files = compile(args.files, args.includes)?;
     // TODO include_source_info flag, include_imports
