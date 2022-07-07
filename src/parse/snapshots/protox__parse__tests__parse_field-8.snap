@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "a field type",
+            found: Equals,
+            span: 12..13,
+        },
+    ],
+)

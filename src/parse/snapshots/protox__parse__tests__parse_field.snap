@@ -1,0 +1,42 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_field()
+---
+Ok(
+    Map(
+        Map {
+            label: None,
+            key_ty: String,
+            key_ty_span: 4..10,
+            ty: Named(
+                TypeName {
+                    leading_dot: None,
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "Project",
+                                span: 12..19,
+                            },
+                        ],
+                    },
+                },
+            ),
+            name: Ident {
+                value: "projects",
+                span: 21..29,
+            },
+            number: Int {
+                negative: false,
+                value: 3,
+                span: 32..33,
+            },
+            options: [],
+            comments: Comments {
+                leading_detached_comments: [],
+                leading_comment: None,
+                trailing_comment: None,
+            },
+            span: 0..34,
+        },
+    ),
+)

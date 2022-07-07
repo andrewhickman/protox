@@ -1,0 +1,89 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_extend()
+---
+Ok(
+    Extend {
+        extendee: TypeName {
+            leading_dot: None,
+            name: FullIdent {
+                parts: [
+                    Ident {
+                        value: "Foo",
+                        span: 7..10,
+                    },
+                ],
+            },
+        },
+        fields: [
+            Group(
+                Group {
+                    label: Some(
+                        (
+                            Repeated,
+                            13..21,
+                        ),
+                    ),
+                    name: Ident {
+                        value: "A",
+                        span: 28..29,
+                    },
+                    number: Int {
+                        negative: false,
+                        value: 1,
+                        span: 32..33,
+                    },
+                    body: MessageBody {
+                        items: [
+                            Field(
+                                Field(
+                                    Field {
+                                        label: Some(
+                                            (
+                                                Optional,
+                                                36..44,
+                                            ),
+                                        ),
+                                        name: Ident {
+                                            value: "name",
+                                            span: 52..56,
+                                        },
+                                        ty: String,
+                                        number: Int {
+                                            negative: false,
+                                            value: 2,
+                                            span: 59..60,
+                                        },
+                                        options: [],
+                                        comments: Comments {
+                                            leading_detached_comments: [],
+                                            leading_comment: None,
+                                            trailing_comment: None,
+                                        },
+                                        span: 36..61,
+                                    },
+                                ),
+                            ),
+                        ],
+                        extensions: [],
+                        options: [],
+                        reserved: [],
+                    },
+                    options: [],
+                    comments: Comments {
+                        leading_detached_comments: [],
+                        leading_comment: None,
+                        trailing_comment: None,
+                    },
+                    span: 13..63,
+                },
+            ),
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..65,
+    },
+)

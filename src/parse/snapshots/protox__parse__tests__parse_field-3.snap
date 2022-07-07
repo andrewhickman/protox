@@ -1,0 +1,65 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_field()
+---
+Ok(
+    Map(
+        Map {
+            label: None,
+            key_ty: Int32,
+            key_ty_span: 4..9,
+            ty: Bool,
+            name: Ident {
+                value: "name",
+                span: 17..21,
+            },
+            number: Int {
+                negative: false,
+                value: 5,
+                span: 24..25,
+            },
+            options: [
+                OptionBody {
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "opt",
+                                span: 27..30,
+                            },
+                        ],
+                    },
+                    field_name: None,
+                    value: Bool(
+                        Bool {
+                            value: true,
+                            span: 33..37,
+                        },
+                    ),
+                },
+                OptionBody {
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "opt2",
+                                span: 39..43,
+                            },
+                        ],
+                    },
+                    field_name: None,
+                    value: Float(
+                        Float {
+                            value: 4.5,
+                            span: 46..49,
+                        },
+                    ),
+                },
+            ],
+            comments: Comments {
+                leading_detached_comments: [],
+                leading_comment: None,
+                trailing_comment: None,
+            },
+            span: 0..51,
+        },
+    ),
+)

@@ -1,0 +1,24 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_service()
+---
+Ok(
+    Service {
+        name: Ident {
+            value: "Foo",
+            span: 30..33,
+        },
+        options: [],
+        methods: [],
+        comments: Comments {
+            leading_detached_comments: [
+                "detached\n",
+            ],
+            leading_comment: Some(
+                "leading\n",
+            ),
+            trailing_comment: None,
+        },
+        span: 22..58,
+    },
+)

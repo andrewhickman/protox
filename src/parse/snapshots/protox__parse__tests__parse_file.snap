@@ -1,0 +1,14 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_file()
+---
+Ok(
+    File {
+        span: 0..0,
+        syntax: Proto2,
+        package: None,
+        imports: [],
+        options: [],
+        items: [],
+    },
+)

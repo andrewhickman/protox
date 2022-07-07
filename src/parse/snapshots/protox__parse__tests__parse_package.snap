@@ -1,0 +1,22 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_package()
+---
+Ok(
+    Package {
+        name: FullIdent {
+            parts: [
+                Ident {
+                    value: "foo",
+                    span: 8..11,
+                },
+            ],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..12,
+    },
+)

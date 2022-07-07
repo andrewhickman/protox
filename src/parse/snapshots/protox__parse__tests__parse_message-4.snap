@@ -1,0 +1,84 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_message()
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [
+                Message(
+                    Message {
+                        name: Ident {
+                            value: "Bar",
+                            span: 21..24,
+                        },
+                        body: MessageBody {
+                            items: [],
+                            extensions: [],
+                            options: [],
+                            reserved: [],
+                        },
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 13..27,
+                    },
+                ),
+                Enum(
+                    Enum {
+                        name: Ident {
+                            value: "Quz",
+                            span: 32..35,
+                        },
+                        options: [],
+                        values: [],
+                        reserved: [],
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 27..38,
+                    },
+                ),
+                Extend(
+                    Extend {
+                        extendee: TypeName {
+                            leading_dot: None,
+                            name: FullIdent {
+                                parts: [
+                                    Ident {
+                                        value: "Bar",
+                                        span: 45..48,
+                                    },
+                                ],
+                            },
+                        },
+                        fields: [],
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 38..51,
+                    },
+                ),
+            ],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..52,
+    },
+)

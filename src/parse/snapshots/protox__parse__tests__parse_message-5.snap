@@ -1,0 +1,185 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_message()
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [
+                Field(
+                    Field(
+                        Field {
+                            label: None,
+                            name: Ident {
+                                value: "a",
+                                span: 34..35,
+                            },
+                            ty: Fixed32,
+                            number: Int {
+                                negative: false,
+                                value: 1,
+                                span: 38..39,
+                            },
+                            options: [],
+                            comments: Comments {
+                                leading_detached_comments: [],
+                                leading_comment: None,
+                                trailing_comment: None,
+                            },
+                            span: 26..40,
+                        },
+                    ),
+                ),
+                Field(
+                    Map(
+                        Map {
+                            label: Some(
+                                (
+                                    Optional,
+                                    53..61,
+                                ),
+                            ),
+                            key_ty: Int32,
+                            key_ty_span: 66..71,
+                            ty: Bool,
+                            name: Ident {
+                                value: "b",
+                                span: 79..80,
+                            },
+                            number: Int {
+                                negative: false,
+                                value: 2,
+                                span: 83..84,
+                            },
+                            options: [],
+                            comments: Comments {
+                                leading_detached_comments: [],
+                                leading_comment: None,
+                                trailing_comment: None,
+                            },
+                            span: 53..85,
+                        },
+                    ),
+                ),
+                Field(
+                    Group(
+                        Group {
+                            label: Some(
+                                (
+                                    Optional,
+                                    99..107,
+                                ),
+                            ),
+                            name: Ident {
+                                value: "C",
+                                span: 114..115,
+                            },
+                            number: Int {
+                                negative: false,
+                                value: 3,
+                                span: 118..119,
+                            },
+                            body: MessageBody {
+                                items: [
+                                    Field(
+                                        Field(
+                                            Field {
+                                                label: Some(
+                                                    (
+                                                        Required,
+                                                        138..146,
+                                                    ),
+                                                ),
+                                                name: Ident {
+                                                    value: "d",
+                                                    span: 153..154,
+                                                },
+                                                ty: Float,
+                                                number: Int {
+                                                    negative: false,
+                                                    value: 1,
+                                                    span: 157..158,
+                                                },
+                                                options: [],
+                                                comments: Comments {
+                                                    leading_detached_comments: [],
+                                                    leading_comment: None,
+                                                    trailing_comment: None,
+                                                },
+                                                span: 138..159,
+                                            },
+                                        ),
+                                    ),
+                                ],
+                                extensions: [],
+                                options: [],
+                                reserved: [],
+                            },
+                            options: [],
+                            comments: Comments {
+                                leading_detached_comments: [],
+                                leading_comment: None,
+                                trailing_comment: None,
+                            },
+                            span: 99..173,
+                        },
+                    ),
+                ),
+                Field(
+                    Oneof(
+                        Oneof {
+                            name: Ident {
+                                value: "x",
+                                span: 193..194,
+                            },
+                            options: [],
+                            fields: [
+                                Field(
+                                    Field {
+                                        label: None,
+                                        name: Ident {
+                                            value: "y",
+                                            span: 220..221,
+                                        },
+                                        ty: String,
+                                        number: Int {
+                                            negative: false,
+                                            value: 4,
+                                            span: 224..225,
+                                        },
+                                        options: [],
+                                        comments: Comments {
+                                            leading_detached_comments: [],
+                                            leading_comment: None,
+                                            trailing_comment: None,
+                                        },
+                                        span: 213..226,
+                                    },
+                                ),
+                            ],
+                            comments: Comments {
+                                leading_detached_comments: [],
+                                leading_comment: None,
+                                trailing_comment: None,
+                            },
+                            span: 187..240,
+                        },
+                    ),
+                ),
+            ],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..250,
+    },
+)

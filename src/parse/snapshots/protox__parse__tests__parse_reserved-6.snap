@@ -1,0 +1,22 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_reserved()
+---
+Ok(
+    Reserved {
+        kind: Names(
+            [
+                Ident {
+                    value: "0foo",
+                    span: 9..15,
+                },
+            ],
+        ),
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..16,
+    },
+)

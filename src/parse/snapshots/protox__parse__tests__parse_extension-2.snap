@@ -1,0 +1,30 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_extend()
+---
+Ok(
+    Extend {
+        extendee: TypeName {
+            leading_dot: None,
+            name: FullIdent {
+                parts: [
+                    Ident {
+                        value: "Foo",
+                        span: 18..21,
+                    },
+                ],
+            },
+        },
+        fields: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: Some(
+                "leading",
+            ),
+            trailing_comment: Some(
+                "trailing\n",
+            ),
+        },
+        span: 11..37,
+    },
+)

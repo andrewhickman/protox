@@ -1,0 +1,54 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_message()
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [
+                Field(
+                    Group(
+                        Group {
+                            label: None,
+                            name: Ident {
+                                value: "Baz",
+                                span: 20..23,
+                            },
+                            number: Int {
+                                negative: false,
+                                value: 1,
+                                span: 26..27,
+                            },
+                            body: MessageBody {
+                                items: [],
+                                extensions: [],
+                                options: [],
+                                reserved: [],
+                            },
+                            options: [],
+                            comments: Comments {
+                                leading_detached_comments: [],
+                                leading_comment: None,
+                                trailing_comment: None,
+                            },
+                            span: 14..30,
+                        },
+                    ),
+                ),
+            ],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..32,
+    },
+)

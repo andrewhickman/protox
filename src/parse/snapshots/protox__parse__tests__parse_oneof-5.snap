@@ -1,0 +1,53 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_oneof()
+---
+Ok(
+    Oneof {
+        name: Ident {
+            value: "Foo",
+            span: 6..9,
+        },
+        options: [],
+        fields: [
+            Group(
+                Group {
+                    label: Some(
+                        (
+                            Optional,
+                            12..20,
+                        ),
+                    ),
+                    name: Ident {
+                        value: "Bar",
+                        span: 27..30,
+                    },
+                    number: Int {
+                        negative: false,
+                        value: 1,
+                        span: 33..34,
+                    },
+                    body: MessageBody {
+                        items: [],
+                        extensions: [],
+                        options: [],
+                        reserved: [],
+                    },
+                    options: [],
+                    comments: Comments {
+                        leading_detached_comments: [],
+                        leading_comment: None,
+                        trailing_comment: None,
+                    },
+                    span: 12..37,
+                },
+            ),
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..39,
+    },
+)

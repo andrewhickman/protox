@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_package() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "an identifier",
+            found: Equals,
+            span: 8..9,
+        },
+    ],
+)

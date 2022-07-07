@@ -1,0 +1,26 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_reserved()
+---
+Ok(
+    Reserved {
+        kind: Ranges(
+            [
+                ReservedRange {
+                    start: Int {
+                        negative: true,
+                        value: 1,
+                        span: 9..11,
+                    },
+                    end: None,
+                },
+            ],
+        ),
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..12,
+    },
+)

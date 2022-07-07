@@ -1,0 +1,56 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_field()
+---
+Ok(
+    Group(
+        Group {
+            label: Some(
+                (
+                    Optional,
+                    0..8,
+                ),
+            ),
+            name: Ident {
+                value: "A",
+                span: 15..16,
+            },
+            number: Int {
+                negative: false,
+                value: 1,
+                span: 19..20,
+            },
+            body: MessageBody {
+                items: [],
+                extensions: [],
+                options: [],
+                reserved: [],
+            },
+            options: [
+                OptionBody {
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "deprecated",
+                                span: 22..32,
+                            },
+                        ],
+                    },
+                    field_name: None,
+                    value: Bool(
+                        Bool {
+                            value: true,
+                            span: 35..39,
+                        },
+                    ),
+                },
+            ],
+            comments: Comments {
+                leading_detached_comments: [],
+                leading_comment: None,
+                trailing_comment: None,
+            },
+            span: 0..44,
+        },
+    ),
+)

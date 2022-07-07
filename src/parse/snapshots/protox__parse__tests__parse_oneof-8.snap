@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "'{'",
+            found: LeftAngleBracket,
+            span: 10..11,
+        },
+    ],
+)

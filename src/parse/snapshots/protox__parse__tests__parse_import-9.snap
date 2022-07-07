@@ -1,0 +1,20 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_import()
+---
+Ok(
+    Import {
+        kind: None,
+        kind_span: None,
+        value: String {
+            value: "foo//bar",
+            span: 7..17,
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..18,
+    },
+)

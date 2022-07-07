@@ -1,0 +1,16 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        InvalidGroupName {
+            span: 15..16,
+        },
+        UnexpectedToken {
+            expected: "'='",
+            found: LeftBracket,
+            span: 17..18,
+        },
+    ],
+)

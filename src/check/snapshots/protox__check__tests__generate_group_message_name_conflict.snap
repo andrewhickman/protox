@@ -1,6 +1,5 @@
 ---
 source: src/check/tests.rs
-assertion_line: 277
 expression: "check_ok(\"\\\n        message Foo {\n            optional group Bar = 1 {};\n        }\")"
 ---
 {

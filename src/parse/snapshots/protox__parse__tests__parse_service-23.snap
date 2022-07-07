@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_service() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "'option', '}' or ';'",
+            found: Rpc,
+            span: 45..48,
+        },
+    ],
+)

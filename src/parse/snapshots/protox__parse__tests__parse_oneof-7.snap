@@ -1,0 +1,15 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "an identifier",
+            found: FloatLiteral(
+                10.4,
+            ),
+            span: 6..10,
+        },
+    ],
+)

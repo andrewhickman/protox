@@ -1,0 +1,44 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_file()
+---
+Ok(
+    File {
+        span: 0..56,
+        syntax: Proto2,
+        package: None,
+        imports: [],
+        options: [
+            Option {
+                body: OptionBody {
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "optimize_for",
+                                span: 35..47,
+                            },
+                        ],
+                    },
+                    field_name: None,
+                    value: FullIdent(
+                        FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "SPEED",
+                                    span: 50..55,
+                                },
+                            ],
+                        },
+                    ),
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 28..56,
+            },
+        ],
+        items: [],
+    },
+)

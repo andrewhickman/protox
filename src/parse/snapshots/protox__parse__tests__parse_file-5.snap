@@ -1,0 +1,29 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_file()
+---
+Ok(
+    File {
+        span: 0..47,
+        syntax: Proto3,
+        package: None,
+        imports: [
+            Import {
+                kind: None,
+                kind_span: None,
+                value: String {
+                    value: "foo.proto",
+                    span: 35..46,
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 28..47,
+            },
+        ],
+        options: [],
+        items: [],
+    },
+)

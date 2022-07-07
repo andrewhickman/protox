@@ -1,0 +1,27 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_enum()
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 29..32,
+        },
+        options: [],
+        values: [],
+        reserved: [],
+        comments: Comments {
+            leading_detached_comments: [
+                "detached",
+            ],
+            leading_comment: Some(
+                "leading",
+            ),
+            trailing_comment: Some(
+                "trailing\n",
+            ),
+        },
+        span: 24..52,
+    },
+)

@@ -1,0 +1,48 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_field()
+---
+Ok(
+    Map(
+        Map {
+            label: None,
+            key_ty: Named(
+                TypeName {
+                    leading_dot: Some(
+                        4..5,
+                    ),
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "foo",
+                                span: 5..8,
+                            },
+                            Ident {
+                                value: "bar",
+                                span: 9..12,
+                            },
+                        ],
+                    },
+                },
+            ),
+            key_ty_span: 4..12,
+            ty: Bool,
+            name: Ident {
+                value: "invalid",
+                span: 20..27,
+            },
+            number: Int {
+                negative: true,
+                value: 0,
+                span: 30..32,
+            },
+            options: [],
+            comments: Comments {
+                leading_detached_comments: [],
+                leading_comment: None,
+                trailing_comment: None,
+            },
+            span: 0..33,
+        },
+    ),
+)

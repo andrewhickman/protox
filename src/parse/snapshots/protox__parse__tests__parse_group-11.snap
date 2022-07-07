@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "a message field, oneof, reserved range, enum, message, option or '}'",
+            found: RightBracket,
+            span: 22..23,
+        },
+    ],
+)

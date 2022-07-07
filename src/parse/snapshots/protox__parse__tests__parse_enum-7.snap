@@ -1,0 +1,61 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_enum()
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 5..8,
+        },
+        options: [],
+        values: [
+            EnumValue {
+                name: Ident {
+                    value: "BAR",
+                    span: 11..14,
+                },
+                value: Int {
+                    negative: false,
+                    value: 0,
+                    span: 17..18,
+                },
+                options: [],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 11..19,
+            },
+        ],
+        reserved: [
+            Reserved {
+                kind: Ranges(
+                    [
+                        ReservedRange {
+                            start: Int {
+                                negative: true,
+                                value: 1,
+                                span: 29..31,
+                            },
+                            end: Max,
+                        },
+                    ],
+                ),
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 20..39,
+            },
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..41,
+    },
+)

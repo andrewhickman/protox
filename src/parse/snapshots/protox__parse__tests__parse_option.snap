@@ -1,0 +1,32 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_option()
+---
+Ok(
+    Option {
+        body: OptionBody {
+            name: FullIdent {
+                parts: [
+                    Ident {
+                        value: "foo",
+                        span: 7..10,
+                    },
+                ],
+            },
+            field_name: None,
+            value: Int(
+                Int {
+                    negative: false,
+                    value: 5,
+                    span: 13..14,
+                },
+            ),
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..15,
+    },
+)

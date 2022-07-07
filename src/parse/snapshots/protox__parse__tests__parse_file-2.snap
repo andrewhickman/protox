@@ -1,0 +1,35 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_file()
+---
+Ok(
+    File {
+        span: 0..19,
+        syntax: Proto2,
+        package: Some(
+            Package {
+                name: FullIdent {
+                    parts: [
+                        Ident {
+                            value: "protox",
+                            span: 8..14,
+                        },
+                        Ident {
+                            value: "lib",
+                            span: 15..18,
+                        },
+                    ],
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 0..19,
+            },
+        ),
+        imports: [],
+        options: [],
+        items: [],
+    },
+)

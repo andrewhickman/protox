@@ -1,0 +1,58 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_extend()
+---
+Ok(
+    Extend {
+        extendee: TypeName {
+            leading_dot: None,
+            name: FullIdent {
+                parts: [
+                    Ident {
+                        value: "Foo",
+                        span: 7..10,
+                    },
+                    Ident {
+                        value: "Foo",
+                        span: 11..14,
+                    },
+                ],
+            },
+        },
+        fields: [
+            Field(
+                Field {
+                    label: Some(
+                        (
+                            Optional,
+                            17..25,
+                        ),
+                    ),
+                    name: Ident {
+                        value: "bar",
+                        span: 32..35,
+                    },
+                    ty: Int32,
+                    number: Int {
+                        negative: false,
+                        value: 126,
+                        span: 38..41,
+                    },
+                    options: [],
+                    comments: Comments {
+                        leading_detached_comments: [],
+                        leading_comment: None,
+                        trailing_comment: None,
+                    },
+                    span: 17..42,
+                },
+            ),
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..44,
+    },
+)

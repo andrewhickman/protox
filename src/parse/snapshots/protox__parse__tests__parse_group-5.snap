@@ -1,0 +1,68 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_field()
+---
+Ok(
+    Group(
+        Group {
+            label: Some(
+                (
+                    Optional,
+                    0..8,
+                ),
+            ),
+            name: Ident {
+                value: "A",
+                span: 15..16,
+            },
+            number: Int {
+                negative: false,
+                value: 1,
+                span: 19..20,
+            },
+            body: MessageBody {
+                items: [
+                    Field(
+                        Field(
+                            Field {
+                                label: Some(
+                                    (
+                                        Optional,
+                                        23..31,
+                                    ),
+                                ),
+                                name: Ident {
+                                    value: "foo",
+                                    span: 39..42,
+                                },
+                                ty: Sint32,
+                                number: Int {
+                                    negative: false,
+                                    value: 2,
+                                    span: 45..46,
+                                },
+                                options: [],
+                                comments: Comments {
+                                    leading_detached_comments: [],
+                                    leading_comment: None,
+                                    trailing_comment: None,
+                                },
+                                span: 23..47,
+                            },
+                        ),
+                    ),
+                ],
+                extensions: [],
+                options: [],
+                reserved: [],
+            },
+            options: [],
+            comments: Comments {
+                leading_detached_comments: [],
+                leading_comment: None,
+                trailing_comment: None,
+            },
+            span: 0..49,
+        },
+    ),
+)

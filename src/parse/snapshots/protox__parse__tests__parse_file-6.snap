@@ -1,0 +1,11 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Err(
+    [
+        UnknownSyntax {
+            span: 9..18,
+        },
+    ],
+)

@@ -1,0 +1,89 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_service()
+---
+Ok(
+    Service {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        options: [],
+        methods: [
+            Method {
+                name: Ident {
+                    value: "bar",
+                    span: 18..21,
+                },
+                input_ty: TypeName {
+                    leading_dot: None,
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "A",
+                                span: 22..23,
+                            },
+                        ],
+                    },
+                },
+                output_ty: TypeName {
+                    leading_dot: None,
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "B",
+                                span: 34..35,
+                            },
+                            Ident {
+                                value: "C",
+                                span: 36..37,
+                            },
+                        ],
+                    },
+                },
+                options: [
+                    Option {
+                        body: OptionBody {
+                            name: FullIdent {
+                                parts: [
+                                    Ident {
+                                        value: "opt",
+                                        span: 48..51,
+                                    },
+                                ],
+                            },
+                            field_name: None,
+                            value: Int(
+                                Int {
+                                    negative: true,
+                                    value: 1,
+                                    span: 55..56,
+                                },
+                            ),
+                        },
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 41..57,
+                    },
+                ],
+                is_client_streaming: false,
+                is_server_streaming: false,
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 14..59,
+            },
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..61,
+    },
+)

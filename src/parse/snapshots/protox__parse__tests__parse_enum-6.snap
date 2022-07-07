@@ -1,0 +1,58 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_enum()
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 5..8,
+        },
+        options: [],
+        values: [
+            EnumValue {
+                name: Ident {
+                    value: "BAR",
+                    span: 11..14,
+                },
+                value: Int {
+                    negative: false,
+                    value: 0,
+                    span: 17..18,
+                },
+                options: [
+                    OptionBody {
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "opt",
+                                    span: 20..23,
+                                },
+                            ],
+                        },
+                        field_name: None,
+                        value: Float(
+                            Float {
+                                value: 0.5,
+                                span: 26..29,
+                            },
+                        ),
+                    },
+                ],
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 11..31,
+            },
+        ],
+        reserved: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..33,
+    },
+)

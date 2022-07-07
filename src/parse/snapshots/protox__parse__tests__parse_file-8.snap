@@ -1,0 +1,68 @@
+---
+source: src/parse/tests.rs
+expression: parser.parse_file()
+---
+Ok(
+    File {
+        span: 0..176,
+        syntax: Proto3,
+        package: None,
+        imports: [],
+        options: [],
+        items: [
+            Message(
+                Message {
+                    name: Ident {
+                        value: "Foo",
+                        span: 36..39,
+                    },
+                    body: MessageBody {
+                        items: [
+                            Field(
+                                Field(
+                                    Field {
+                                        label: None,
+                                        name: Ident {
+                                            value: "bar",
+                                            span: 133..136,
+                                        },
+                                        ty: Int32,
+                                        number: Int {
+                                            negative: false,
+                                            value: 1,
+                                            span: 139..140,
+                                        },
+                                        options: [],
+                                        comments: Comments {
+                                            leading_detached_comments: [
+                                                " detached\n",
+                                            ],
+                                            leading_comment: Some(
+                                                " leading\n",
+                                            ),
+                                            trailing_comment: Some(
+                                                " trailing2\n",
+                                            ),
+                                        },
+                                        span: 127..141,
+                                    },
+                                ),
+                            ),
+                        ],
+                        extensions: [],
+                        options: [],
+                        reserved: [],
+                    },
+                    comments: Comments {
+                        leading_detached_comments: [],
+                        leading_comment: None,
+                        trailing_comment: Some(
+                            " trailing\n",
+                        ),
+                    },
+                    span: 28..176,
+                },
+            ),
+        ],
+    },
+)
