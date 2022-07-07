@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, fmt::Display};
+use std::{convert::TryFrom, fmt::Display, collections::{HashMap, hash_map}};
 
 use logos::Span;
 use prost_types::{
@@ -10,7 +10,7 @@ use prost_types::{
     MethodOptions, OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, ServiceOptions,
 };
 
-use crate::{ast, case::to_camel_case, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
+use crate::{ast, case::{to_camel_case, to_lower_without_underscores}, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
 
 use super::{ir, names::DefinitionKind, CheckError, NameMap};
 
@@ -242,6 +242,8 @@ impl<'a> Context<'a> {
             .iter()
             .map(|oneof| self.check_oneof(oneof))
             .collect();
+
+        self.check_message_field_camel_case_names(message.fields.iter());
 
         let mut enum_type = Vec::new();
         let mut extension = Vec::new();
@@ -551,6 +553,25 @@ impl<'a> Context<'a> {
                     (None, Some(name))
                 }
             },
+        }
+    }
+
+    fn check_message_field_camel_case_names<'b>(&mut self, fields: impl Iterator<Item = &'b ir::Field<'b>>) {
+        if self.syntax != ast::Syntax::Proto2 {
+            let mut names: HashMap<String, (String, Span)> = HashMap::new();
+            for field in fields {
+                let name = field.ast.name().into_owned();
+                let span = field.ast.name_span();
+
+                match names.entry(to_lower_without_underscores(&name)) {
+                    hash_map::Entry::Occupied(entry) => {
+                        self.errors.push(CheckError::DuplicateCamelCaseFieldName { first_name: entry.get().0.clone(), first: entry.get().1.clone(), second_name: name, second: span })
+                    }
+                    hash_map::Entry::Vacant(entry) => {
+                        entry.insert((name, span));
+                    }
+                }
+            }
         }
     }
 

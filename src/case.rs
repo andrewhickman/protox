@@ -39,7 +39,7 @@ pub fn to_pascal_case(name: &str) -> String {
     result
 }
 
-pub fn to_lower_camel_case(name: &str) -> String {
+pub fn to_lower_without_underscores(name: &str) -> String {
     name.chars()
         .filter_map(|ch| match ch {
             '_' => None,

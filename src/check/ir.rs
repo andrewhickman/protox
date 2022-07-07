@@ -98,6 +98,24 @@ impl<'a> MessageSource<'a> {
     }
 }
 
+impl<'a> FieldSource<'a> {
+    pub fn name(&self) -> Cow<'_, str> {
+        match self {
+            FieldSource::Field(field) => field.field_name(),
+            FieldSource::MapKey(_, _) => Cow::Borrowed("key"),
+            FieldSource::MapValue(_, _) => Cow::Borrowed("value"),
+        }
+    }
+
+    pub fn name_span(&self) -> Span {
+        match self {
+            FieldSource::Field(field) => field.name.span.clone(),
+            FieldSource::MapKey(_, key_span) => key_span.clone(),
+            FieldSource::MapValue(_, value_span) => value_span.clone(),
+        }
+    }
+}
+
 fn build_message<'a>(syntax: ast::Syntax, ast: &'a ast::Message, messages: &mut Vec<Message<'a>>) {
     let (fields, nested_messages, oneofs) = build_message_body(syntax, &ast.body);
     messages.push(Message {

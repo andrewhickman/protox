@@ -219,17 +219,7 @@ impl NamePass {
         self.enter(name);
 
         for field in &message.fields {
-            let (name, span) = match &field.ast {
-                ir::FieldSource::Field(field) =>
-                (
-                    field.field_name(),
-                    field.name.span.clone(),
-                ),
-                ir::FieldSource::MapKey(_, span) => (Cow::Borrowed("key"), span.clone()),
-                ir::FieldSource::MapValue(_, span) => (Cow::Borrowed("value"), span.clone()),
-            };
-
-            self.add_name(name, DefinitionKind::Field, span);
+            self.add_name(field.ast.name(), DefinitionKind::Field, field.ast.name_span());
         }
 
         for oneof in &message.oneofs {
