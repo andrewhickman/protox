@@ -1,24 +1,23 @@
 use insta::assert_debug_snapshot;
 
-use crate::s;
 use super::*;
 
 macro_rules! case {
-    ($method:ident($source:expr)) => {
-        {
-            let mut parser = Parser::new($source);
-            assert_debug_snapshot!(match parser.$method() {
-                Ok(value) => Ok(value),
-                Err(()) => Err(parser.lexer.extras.errors)
-            });
-        }
-    };
+    ($method:ident($source:expr)) => {{
+        let mut parser = Parser::new($source);
+        assert_debug_snapshot!(match parser.$method() {
+            Ok(value) => Ok(value),
+            Err(()) => Err(parser.lexer.extras.errors),
+        });
+    }};
 }
 
 #[test]
 pub fn parse_option() {
     case!(parse_option("option foo = 5;"));
-    case!(parse_option("//detached\n\n /*leading*/\noption foo = 5;//trailing"));
+    case!(parse_option(
+        "//detached\n\n /*leading*/\noption foo = 5;//trailing"
+    ));
     case!(parse_option("option (foo.bar) = \"hello\";"));
     case!(parse_option("option (foo).bar = true;"));
     case!(parse_option("option ;"));
@@ -32,7 +31,9 @@ pub fn parse_option() {
 fn parse_enum() {
     case!(parse_enum("enum Foo {}"));
     case!(parse_enum("enum Foo { ; ; }"));
-    case!(parse_enum("/*detached*//*leading*/\nenum Foo {\n//trailing\n\n; ; }"));
+    case!(parse_enum(
+        "/*detached*//*leading*/\nenum Foo {\n//trailing\n\n; ; }"
+    ));
     case!(parse_enum("enum Foo { BAR = 1; }"));
     case!(parse_enum("enum Foo { option bar = 'quz' ; VAL = -1; }"));
     case!(parse_enum("enum Foo { BAR = 0 [opt = 0.5]; }"));
@@ -48,13 +49,23 @@ fn parse_enum() {
 fn parse_service() {
     case!(parse_service("service Foo {}"));
     case!(parse_service("service Foo { ; ; }"));
-    case!(parse_service("//detached\n\n//leading\nservice Foo {\n/* nottrailing */; ; }"));
+    case!(parse_service(
+        "//detached\n\n//leading\nservice Foo {\n/* nottrailing */; ; }"
+    ));
     case!(parse_service("service service { }"));
     case!(parse_service("service Foo { rpc bar(A) returns (B.C); }"));
-    case!(parse_service("service Foo { rpc bar(stream .A.B) returns (stream .C); }"));
-    case!(parse_service("service Foo { rpc bar(A) returns (B.C) { } }"));
-    case!(parse_service("service Foo { rpc bar(A) returns (B.C) { ; ; } }"));
-    case!(parse_service("service Foo { rpc bar(A) returns (B.C) { option opt = -1; } }"));
+    case!(parse_service(
+        "service Foo { rpc bar(stream .A.B) returns (stream .C); }"
+    ));
+    case!(parse_service(
+        "service Foo { rpc bar(A) returns (B.C) { } }"
+    ));
+    case!(parse_service(
+        "service Foo { rpc bar(A) returns (B.C) { ; ; } }"
+    ));
+    case!(parse_service(
+        "service Foo { rpc bar(A) returns (B.C) { option opt = -1; } }"
+    ));
     case!(parse_service("service ;"));
     case!(parse_service("service Foo ("));
     case!(parse_service("service Foo { bar"));
@@ -67,14 +78,20 @@ fn parse_service() {
     case!(parse_service("service Foo { rpc bar(A) returns ()"));
     case!(parse_service("service Foo { rpc bar(A) returns (stream =)"));
     case!(parse_service("service Foo { rpc bar(A) returns (stream B}"));
-    case!(parse_service("service Foo { rpc bar(A) returns (stream B) )"));
-    case!(parse_service("service Foo { rpc bar(A) returns (stream B) {rpc"));
+    case!(parse_service(
+        "service Foo { rpc bar(A) returns (stream B) )"
+    ));
+    case!(parse_service(
+        "service Foo { rpc bar(A) returns (stream B) {rpc"
+    ));
 }
 
 #[test]
 pub fn parse_package() {
     case!(parse_package("package foo;"));
-    case!(parse_package("//detached\n//detached2\n\n//detached3\n\npackage foo;\n/*trailing*/"));
+    case!(parse_package(
+        "//detached\n//detached2\n\n//detached3\n\npackage foo;\n/*trailing*/"
+    ));
     case!(parse_package("package foo.bar;"));
     case!(parse_package("package ="));
     case!(parse_package("package foo)"));
@@ -101,8 +118,12 @@ pub fn parse_extension() {
     case!(parse_extend("/*leading*/extend Foo {\n//trailing\n }"));
     case!(parse_extend("extend Foo { ; ; }"));
     case!(parse_extend("extend Foo.Foo { optional int32 bar = 126; }"));
-    case!(parse_extend("extend .Foo { optional int32 bar = 126; repeated string quz = 127; }"));
-    case!(parse_extend("extend Foo { repeated group A = 1 { optional string name = 2; } }"));
+    case!(parse_extend(
+        "extend .Foo { optional int32 bar = 126; repeated string quz = 127; }"
+    ));
+    case!(parse_extend(
+        "extend Foo { repeated group A = 1 { optional string name = 2; } }"
+    ));
     case!(parse_extend("extend ] "));
 }
 
@@ -118,11 +139,15 @@ pub fn parse_reserved() {
 
 #[test]
 pub fn parse_group() {
-    case!(parse_field("//leading\noptional group A = 1 {\n/*trailing*/ }"));
+    case!(parse_field(
+        "//leading\noptional group A = 1 {\n/*trailing*/ }"
+    ));
     case!(parse_field("optional group A = 1 { }"));
     case!(parse_field("optional group A = 1 { ; ; }"));
     case!(parse_field("optional group A = 1 [deprecated = true] { }"));
-    case!(parse_field("optional group A = 1 { optional sint32 foo = 2; }"));
+    case!(parse_field(
+        "optional group A = 1 { optional sint32 foo = 2; }"
+    ));
     case!(parse_field("optional group a = 1 { }"));
     case!(parse_field("optional group , { }"));
     case!(parse_field("optional group a ["));
@@ -134,8 +159,12 @@ pub fn parse_group() {
 #[test]
 pub fn parse_field() {
     case!(parse_field("map<string, Project> projects = 3;"));
-    case!(parse_field("/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n"));
-    case!(parse_field("map<int32, bool> name = 5 [opt = true, opt2 = 4.5];"));
+    case!(parse_field(
+        "/*leading*/map<string, int32> projects = 3;\n/*trailing*/\n"
+    ));
+    case!(parse_field(
+        "map<int32, bool> name = 5 [opt = true, opt2 = 4.5];"
+    ));
     case!(parse_field("map<.foo.bar, bool> invalid = -0;"));
     case!(parse_field("map>"));
     case!(parse_field("map<;"));
@@ -152,16 +181,20 @@ pub fn parse_field() {
 #[test]
 pub fn parse_message() {
     case!(parse_message("message Foo {}"));
-    case!(parse_message("//detached\n/*leading*/message Foo {/*trailing*/}"));
+    case!(parse_message(
+        "//detached\n/*leading*/message Foo {/*trailing*/}"
+    ));
     case!(parse_message("message Foo { ; ; }"));
-    case!(parse_message("\
+    case!(parse_message(
+        "\
         message Foo {\
             message Bar {}\
             enum Quz {}\
             extend Bar {}\
         }"
     ));
-    case!(parse_message("\
+    case!(parse_message(
+        "\
         message Foo {
             fixed32 a = 1;
             optional map<int32, bool> b = 2;
@@ -177,8 +210,12 @@ pub fn parse_message() {
     ));
     case!(parse_message("message Foo { repeated Bar a = 1; }"));
     case!(parse_message("message Foo { repeated Bar service = 2; }"));
-    case!(parse_message("message Foo { extensions 5, 7 to 8, 10 to max [deprecated = false]; }"));
-    case!(parse_message("message Foo { repeated map<sint32, fixed64> m = 1; }"));
+    case!(parse_message(
+        "message Foo { extensions 5, 7 to 8, 10 to max [deprecated = false]; }"
+    ));
+    case!(parse_message(
+        "message Foo { repeated map<sint32, fixed64> m = 1; }"
+    ));
     case!(parse_message("message Foo { group Baz = 1 {} }"));
     case!(parse_message("message Foo { , }"));
 }
@@ -187,7 +224,9 @@ pub fn parse_message() {
 pub fn parse_oneof() {
     case!(parse_oneof("oneof Foo {}"));
     case!(parse_oneof("oneof Foo { ; ; }"));
-    case!(parse_oneof("/*detached1*///detached2\n\n//leading\noneof Foo {/*nottrailing*/ ; ; }"));
+    case!(parse_oneof(
+        "/*detached1*///detached2\n\n//leading\noneof Foo {/*nottrailing*/ ; ; }"
+    ));
     case!(parse_oneof("oneof Foo { int32 bar = 1; }"));
     case!(parse_oneof("oneof Foo { optional group Bar = 1 {} }"));
     case!(parse_oneof("oneof Foo { group Baz = -1 {} }"));
@@ -202,31 +241,42 @@ pub fn parse_oneof() {
 pub fn parse_file() {
     case!(parse_file(""));
     case!(parse_file("package protox.lib;"));
-    case!(parse_file("\
+    case!(parse_file(
+        "\
         package protox.lib;
         package another.one;
-    "));
-    case!(parse_file("\
+    "
+    ));
+    case!(parse_file(
+        "\
         syntax = 'proto2';
 
         option optimize_for = SPEED;
-    "));
-    case!(parse_file("\
+    "
+    ));
+    case!(parse_file(
+        "\
         syntax = \"proto3\";
 
         import \"foo.proto\";
-    "));
-    case!(parse_file("\
+    "
+    ));
+    case!(parse_file(
+        "\
         syntax = 'unknown';
-    "));
-    case!(parse_file("\
+    "
+    ));
+    case!(parse_file(
+        "\
         syntax = 'proto2';
 
         message Foo { , }
         enum Bar { ; }
         option quz 1;
-    "));
-    case!(parse_file("\
+    "
+    ));
+    case!(parse_file(
+        "\
         syntax = 'proto3';
 
         message Foo {
@@ -238,6 +288,7 @@ pub fn parse_file() {
             int32 bar = 1;
             // trailing2
         }
-    "));
+    "
+    ));
     case!(parse_file("syntax = 'proto3'"));
 }

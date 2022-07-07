@@ -110,7 +110,6 @@ impl NameMap {
     }
 
     pub(super) fn get(&self, name: &str) -> Option<DefinitionKind> {
-        let name = name.strip_prefix('.').unwrap_or(name);
         self.map.get(name).map(|e| e.kind)
     }
 }
@@ -206,18 +205,24 @@ impl NamePass {
     }
 
     fn add_message(&mut self, message: &ir::Message) {
+        let def = match message.ast {
+            ir::MessageSource::Group(..) => DefinitionKind::Group,
+            ir::MessageSource::Map(_) | ir::MessageSource::Message(_)  => DefinitionKind::Message,
+        };
+
         let name = message.ast.name();
         self.add_name(
             name.as_ref(),
-            DefinitionKind::Message,
+            def,
             message.ast.name_span(),
         );
         self.enter(name);
 
         for field in &message.fields {
             let (name, span) = match &field.ast {
-                ir::FieldSource::Field(field) => (
-                    Cow::Borrowed(field.name.value.as_str()),
+                ir::FieldSource::Field(field) =>
+                (
+                    field.field_name(),
                     field.name.span.clone(),
                 ),
                 ir::FieldSource::MapKey(_, span) => (Cow::Borrowed("key"), span.clone()),
@@ -272,25 +277,16 @@ impl NamePass {
     }
 
     fn add_field(&mut self, field: &ast::Field) {
-        if let ast::FieldKind::Group { .. } = &field.kind {
-            self.add_name(
-                field.group_field_name(),
-                DefinitionKind::Field,
-                field.name.span.clone(),
-            );
-        } else {
-            self.add_name(
-                field.name.value.clone(),
-                DefinitionKind::Field,
-                field.name.span.clone(),
-            );
-        }
+        self.add_name(
+            field.field_name(),
+            DefinitionKind::Field,
+            field.name.span.clone(),
+        );
     }
 
     fn add_enum(&mut self, enu: &ast::Enum) {
         self.add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
 
-        self.enter(&enu.name.value);
         for value in &enu.values {
             self.add_name(
                 &value.name.value,
@@ -298,7 +294,6 @@ impl NamePass {
                 value.name.span.clone(),
             )
         }
-        self.exit();
     }
 
     fn add_service(&mut self, service: &ast::Service) {

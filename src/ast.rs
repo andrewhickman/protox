@@ -1,4 +1,4 @@
-use std::{fmt, ops::Range, vec};
+use std::{fmt, ops::Range, vec, borrow::Cow};
 
 use logos::Span;
 
@@ -371,20 +371,24 @@ impl fmt::Display for TypeName {
 }
 
 impl Field {
-    pub fn kind_name(&self) -> &'static str {
-        match &self.kind {
-            FieldKind::Normal { .. } => "normal",
-            FieldKind::Group { .. } => "group",
-            FieldKind::Map { .. } => "map",
-        }
+    pub fn is_map(&self) -> bool {
+        matches!(&self.kind, FieldKind::Map { .. })
+    }
+
+    pub fn is_group(&self) -> bool {
+        matches!(&self.kind, FieldKind::Group { .. })
     }
 
     pub fn map_message_name(&self) -> std::string::String {
         to_pascal_case(&self.name.value) + "Entry"
     }
 
-    pub fn group_field_name(&self) -> std::string::String {
-        self.name.value.to_ascii_lowercase()
+    pub fn field_name(&self) -> Cow<'_, str> {
+        if self.is_group() {
+            Cow::Owned(self.name.value.to_ascii_lowercase())
+        } else {
+            Cow::Borrowed(self.name.value.as_str())
+        }
     }
 }
 

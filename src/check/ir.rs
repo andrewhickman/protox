@@ -8,11 +8,13 @@ use crate::{
 };
 
 /// A protobuf file structure, with synthetic oneofs, groups and map messages expanded.
+#[derive(Debug)]
 pub(crate) struct File<'a> {
     pub ast: &'a ast::File,
     pub messages: Vec<Message<'a>>,
 }
 
+#[derive(Debug)]
 pub(crate) struct Message<'a> {
     pub ast: MessageSource<'a>,
     pub fields: Vec<Field<'a>>,
@@ -20,27 +22,33 @@ pub(crate) struct Message<'a> {
     pub oneofs: Vec<Oneof<'a>>,
 }
 
+#[derive(Debug)]
 pub(crate) enum MessageSource<'a> {
     Message(&'a ast::Message),
     Group(&'a ast::Field, &'a MessageBody),
     Map(&'a ast::Field),
 }
 
+#[derive(Debug)]
 pub(crate) struct Field<'a> {
     pub ast: FieldSource<'a>,
     pub oneof_index: Option<i32>,
+    pub is_synthetic_oneof: bool,
 }
 
+#[derive(Debug)]
 pub(crate) enum FieldSource<'a> {
     Field(&'a ast::Field),
     MapKey(&'a ast::Ty, Span),
     MapValue(&'a ast::Ty, Span),
 }
 
+#[derive(Debug)]
 pub(crate) struct Oneof<'a> {
     pub ast: OneofSource<'a>,
 }
 
+#[derive(Debug)]
 pub(crate) enum OneofSource<'a> {
     Oneof(&'a ast::Oneof),
     Field(&'a ast::Field),
@@ -138,23 +146,21 @@ fn build_field<'a>(
     fields: &mut Vec<Field<'a>>,
     messages: &mut Vec<Message<'a>>,
     oneofs: &mut Vec<Oneof<'a>>,
-    oneof_index: Option<i32>,
+    mut oneof_index: Option<i32>,
 ) {
-    fields.push(Field {
-        ast: FieldSource::Field(field),
-        oneof_index,
-    });
-
-    match &field.kind {
+    let is_synthetic_oneof = match &field.kind {
         ast::FieldKind::Normal { .. } => {
             if oneof_index.is_none()
                 && syntax != ast::Syntax::Proto2
                 && matches!(field.label, Some((ast::FieldLabel::Optional, _)))
             {
-                let oneof_index = Some(index_to_i32(oneofs.len()));
+                oneof_index = Some(index_to_i32(oneofs.len()));
                 oneofs.push(Oneof {
                     ast: OneofSource::Field(field),
                 });
+                true
+            } else {
+                false
             }
         }
         ast::FieldKind::Group { body, .. } => {
@@ -164,7 +170,8 @@ fn build_field<'a>(
                 fields: nested_fields,
                 messages: nested_messages,
                 oneofs,
-            })
+            });
+            false
         }
         ast::FieldKind::Map {
             key_ty,
@@ -178,17 +185,26 @@ fn build_field<'a>(
                     Field {
                         ast: FieldSource::MapKey(key_ty, key_ty_span.clone()),
                         oneof_index: None,
+                        is_synthetic_oneof: false,
                     },
                     Field {
                         ast: FieldSource::MapValue(ty, ty_span.clone()),
                         oneof_index: None,
+                        is_synthetic_oneof: false,
                     },
                 ],
                 messages: Vec::new(),
                 oneofs: Vec::new(),
             });
+            false
         }
-    }
+    };
+
+    fields.push(Field {
+        ast: FieldSource::Field(field),
+        oneof_index,
+        is_synthetic_oneof,
+    });
 }
 
 fn build_oneof<'a>(
@@ -210,15 +226,13 @@ fn build_oneof<'a>(
 fn build_extend<'a>(syntax: ast::Syntax, ast: &'a ast::Extend, messages: &mut Vec<Message<'a>>) {
     for field in &ast.fields {
         if let ast::FieldKind::Group { body, .. } = &field.kind {
-            {
-                let (fields, nested_messages, oneofs) = build_message_body(syntax, body);
-                messages.push(Message {
-                    ast: MessageSource::Group(field, body),
-                    fields,
-                    messages: nested_messages,
-                    oneofs,
-                })
-            };
+            let (fields, nested_messages, oneofs) = build_message_body(syntax, body);
+            messages.push(Message {
+                ast: MessageSource::Group(field, body),
+                fields,
+                messages: nested_messages,
+                oneofs,
+            })
         }
     }
 }

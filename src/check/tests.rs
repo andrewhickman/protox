@@ -314,6 +314,11 @@ fn generate_synthetic_oneof_ordering() {
 }
 
 #[test]
+fn generate_synthetic_oneof_message_type() {
+
+}
+
+#[test]
 fn invalid_service_type() {
     // use enum/service/oneof etc
 }

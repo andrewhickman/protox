@@ -4,9 +4,10 @@ use logos::Span;
 use prost_types::{
     descriptor_proto::{ExtensionRange, ReservedRange},
     enum_descriptor_proto::EnumReservedRange,
-    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, ExtensionRangeOptions,
-    FieldDescriptorProto, FieldOptions, FileDescriptorProto, FileOptions, MessageOptions,
-    OneofDescriptorProto, ServiceDescriptorProto,
+    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumOptions,
+    EnumValueDescriptorProto, EnumValueOptions, ExtensionRangeOptions, FieldDescriptorProto,
+    FieldOptions, FileDescriptorProto, FileOptions, MessageOptions, MethodDescriptorProto,
+    MethodOptions, OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, ServiceOptions,
 };
 
 use crate::{ast, case::to_camel_case, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
@@ -47,11 +48,8 @@ struct Context<'a> {
 enum Scope {
     Package { full_name: String },
     Message { full_name: String },
-    Enum,
-    Service { full_name: String },
-    Oneof,
-    Extend { extendee: String },
-    Group,
+    Oneof { synthetic: bool },
+    Extend,
 }
 
 impl<'a> Context<'a> {
@@ -66,14 +64,25 @@ impl<'a> Context<'a> {
     fn full_name(&self, name: impl Display) -> String {
         for def in self.scope.iter().rev() {
             match def {
-                Scope::Message { full_name, .. }
-                | Scope::Service { full_name, .. }
-                | Scope::Package { full_name } => return format!("{}.{}", full_name, name),
+                Scope::Message { full_name, .. } | Scope::Package { full_name } => {
+                    return format!("{}.{}", full_name, name)
+                }
                 _ => continue,
             }
         }
 
         name.to_string()
+    }
+
+    fn resolve_ast_type_name(
+        &mut self,
+        type_name: &ast::TypeName,
+    ) -> (String, Option<DefinitionKind>) {
+        self.resolve_type_name(
+            type_name.leading_dot.is_some(),
+            type_name.name.to_string(),
+            type_name.span(),
+        )
     }
 
     fn resolve_type_name(
@@ -96,13 +105,13 @@ impl<'a> Context<'a> {
             } else {
                 for scope in self.scope.iter().rev() {
                     let full_name = match scope {
-                        Scope::Message { full_name, .. }
-                        | Scope::Service { full_name, .. }
-                        | Scope::Package { full_name } => format!(".{}.{}", full_name, name),
+                        Scope::Message { full_name, .. } | Scope::Package { full_name } => {
+                            format!(".{}.{}", full_name, name)
+                        }
                         _ => continue,
                     };
 
-                    if let Some(def) = name_map.get(&full_name) {
+                    if let Some(def) = name_map.get(&full_name[1..]) {
                         return (full_name, Some(def));
                     }
                 }
@@ -122,12 +131,16 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn in_oneof(&self) -> bool {
-        matches!(self.scope.last(), Some(Scope::Oneof { .. }))
-    }
-
     fn in_extend(&self) -> bool {
         matches!(self.scope.last(), Some(Scope::Extend { .. }))
+    }
+
+    fn in_oneof(&self) -> bool {
+        matches!(self.scope.last(), Some(Scope::Oneof { synthetic: false }))
+    }
+
+    fn in_synthetic_oneof(&self) -> bool {
+        matches!(self.scope.last(), Some(Scope::Oneof { synthetic: true }))
     }
 
     fn check_file(&mut self, file: &ir::File) -> FileDescriptorProto {
@@ -176,7 +189,7 @@ impl<'a> Context<'a> {
             match item {
                 ast::FileItem::Message(_) => continue,
                 ast::FileItem::Enum(e) => enum_type.push(self.check_enum(e)),
-                ast::FileItem::Extend(e) => extension.push(self.check_extend(e)),
+                ast::FileItem::Extend(e) => self.check_extend(e, &mut extension),
                 ast::FileItem::Service(s) => service.push(self.check_service(s)),
             }
         }
@@ -243,7 +256,7 @@ impl<'a> Context<'a> {
                     | ast::MessageItem::Message(_)
                     | ast::MessageItem::Oneof(_) => continue,
                     ast::MessageItem::Enum(e) => enum_type.push(self.check_enum(e)),
-                    ast::MessageItem::Extend(e) => extension.push(self.check_extend(e)),
+                    ast::MessageItem::Extend(e) => self.check_extend(e, &mut extension),
                 }
             }
 
@@ -272,6 +285,10 @@ impl<'a> Context<'a> {
             options = self.check_message_options(&body.options);
         };
 
+        if let ir::MessageSource::Map(_) = &message.ast {
+            options.get_or_insert_with(Default::default).map_entry = Some(true);
+        };
+
         self.exit();
         DescriptorProto {
             name: s(message.ast.name()),
@@ -290,11 +307,17 @@ impl<'a> Context<'a> {
     fn check_message_field(&mut self, field: &ir::Field) -> FieldDescriptorProto {
         let oneof_index = field.oneof_index;
 
+        if oneof_index.is_some() {
+            self.enter(Scope::Oneof { synthetic: field.is_synthetic_oneof });
+        }
         let descriptor = match &field.ast {
             ir::FieldSource::Field(ast) => self.check_field(ast),
             ir::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
             ir::FieldSource::MapValue(ty, _) => self.check_map_value(ty),
         };
+        if oneof_index.is_some() {
+            self.exit();
+        }
 
         FieldDescriptorProto {
             oneof_index: field.oneof_index,
@@ -303,24 +326,34 @@ impl<'a> Context<'a> {
     }
 
     fn check_field(&mut self, field: &ast::Field) -> FieldDescriptorProto {
-        let name = s(&field.name.value);
+        let name = s(&field.field_name());
         let number = self.check_field_number(&field.number);
         let label = self.check_field_label(field);
         let (ty, type_name) = self.check_field_type(field);
         let (default_value, options) = self.check_field_options(&field.options);
 
-        if default_value.is_some() && ty == Some(field_descriptor_proto::Type::Message) {
-            self.errors.push(CheckError::InvalidDefault {
-                kind: "message",
-                span: field.span.clone(),
-            })
+        if let Some((_, default_value_span)) = &default_value {
+            if field.is_map() {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "map",
+                    span: default_value_span.clone(),
+                })
+            } else if field.is_group() {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "group",
+                    span: default_value_span.clone(),
+                })
+            } else if ty == Some(field_descriptor_proto::Type::Message) {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "message",
+                    span: default_value_span.clone(),
+                })
+            }
         }
 
-        let json_name = Some(to_camel_case(&field.name.value));
+        let json_name = Some(to_camel_case(&field.field_name()));
 
-        let proto3_optional = if self.syntax == ast::Syntax::Proto3
-            && matches!(field.label, Some((ast::FieldLabel::Optional, _)))
-        {
+        let proto3_optional = if self.in_synthetic_oneof() {
             Some(true)
         } else {
             None
@@ -332,7 +365,7 @@ impl<'a> Context<'a> {
             label: label.map(|l| l as i32),
             r#type: ty.map(|t| t as i32),
             type_name,
-            default_value,
+            default_value: default_value.map(|(v, _)| v),
             json_name,
             options,
             proto3_optional,
@@ -347,17 +380,31 @@ impl<'a> Context<'a> {
         };
 
         if let ast::FieldKind::Map { .. } = &field.kind {
-            if label.is_some() {
-                self.errors.push(CheckError::MapFieldWithLabel { span })
+            if self.in_oneof() {
+                self.errors.push(CheckError::InvalidOneofFieldKind {
+                    kind: "map",
+                    span: field.span.clone(),
+                });
+                return None;
+            } else if self.in_extend() {
+                self.errors.push(CheckError::InvalidExtendFieldKind {
+                    kind: "map",
+                    span: field.span.clone(),
+                });
+                return None;
+            } else if label.is_some() {
+                self.errors.push(CheckError::MapFieldWithLabel { span });
+                return None;
+            } else {
+                return Some(field_descriptor_proto::Label::Repeated)
             }
-            return None;
         } else if let ast::FieldKind::Group { .. } = &field.kind {
             if self.syntax != ast::Syntax::Proto2 {
                 self.errors.push(CheckError::Proto3GroupField {
                     span: field.span.clone(),
                 });
+                return None;
             }
-            return None;
         }
 
         match (self.in_extend(), self.in_oneof(), label) {
@@ -425,7 +472,7 @@ impl<'a> Context<'a> {
     }
 
     fn check_map_value(&mut self, ty: &ast::Ty) -> FieldDescriptorProto {
-        let (ty, type_name) = self.check_type(&ty);
+        let (ty, type_name) = self.check_type(ty);
 
         FieldDescriptorProto {
             name: s("value"),
@@ -443,7 +490,7 @@ impl<'a> Context<'a> {
         field: &ast::Field,
     ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
         match &field.kind {
-            ast::FieldKind::Group { body } => {
+            ast::FieldKind::Group { .. } => {
                 let (name, def) = self.resolve_type_name(
                     false,
                     field.name.value.clone(),
@@ -485,11 +532,7 @@ impl<'a> Context<'a> {
             ast::Ty::Bool => (Some(field_descriptor_proto::Type::Bool), None),
             ast::Ty::String => (Some(field_descriptor_proto::Type::String), None),
             ast::Ty::Bytes => (Some(field_descriptor_proto::Type::Bytes), None),
-            ast::Ty::Named(type_name) => match self.resolve_type_name(
-                type_name.leading_dot.is_some(),
-                type_name.to_string(),
-                type_name.span(),
-            ) {
+            ast::Ty::Named(type_name) => match self.resolve_ast_type_name(type_name) {
                 (name, None) => (None, Some(name)),
                 (name, Some(DefinitionKind::Message)) => {
                     (Some(field_descriptor_proto::Type::Message as _), Some(name))
@@ -512,31 +555,145 @@ impl<'a> Context<'a> {
     }
 
     fn check_oneof(&mut self, oneof: &ir::Oneof) -> OneofDescriptorProto {
-        todo!()
+        match oneof.ast {
+            ir::OneofSource::Oneof(oneof) => {
+                let options = self.check_oneof_options(&oneof.options);
+
+                OneofDescriptorProto {
+                    name: s(&oneof.name.value),
+                    options,
+                }
+            }
+            ir::OneofSource::Field(field) => OneofDescriptorProto {
+                name: Some(field.synthetic_oneof_name()),
+                options: None,
+            },
+        }
+    }
+
+    fn check_extend(&mut self, extend: &ast::Extend, result: &mut Vec<FieldDescriptorProto>) {
+        let (extendee, def) = self.resolve_ast_type_name(&extend.extendee);
+        if def.is_some() && def != Some(DefinitionKind::Message) {
+            self.errors.push(CheckError::InvalidExtendeeTypeName {
+                name: extend.extendee.to_string(),
+                span: extend.extendee.span(),
+            })
+        }
+
+        self.enter(Scope::Extend);
+        result.extend(extend.fields.iter().map(|field| {
+            let descriptor = self.check_field(field);
+            FieldDescriptorProto {
+                extendee: Some(extendee.clone()),
+                ..descriptor
+            }
+        }));
+        self.exit();
     }
 
     fn check_enum(&mut self, e: &ast::Enum) -> EnumDescriptorProto {
-        todo!()
+        let name = s(&e.name.value);
+
+        let value = e
+            .values
+            .iter()
+            .map(|value| self.check_enum_value(value))
+            .collect();
+
+        let mut reserved_range = Vec::new();
+        let mut reserved_name = Vec::new();
+        for reserved in &e.reserved {
+            match &reserved.kind {
+                ast::ReservedKind::Ranges(ranges) => reserved_range.extend(
+                    ranges
+                        .iter()
+                        .map(|range| self.check_enum_reserved_range(range)),
+                ),
+                ast::ReservedKind::Names(names) => {
+                    reserved_name.extend(names.iter().map(|name| name.value.to_owned()))
+                }
+            }
+        }
+
+        let options = self.check_enum_options(&e.options);
+
+        EnumDescriptorProto {
+            name,
+            value,
+            reserved_name,
+            reserved_range,
+            options,
+        }
     }
 
-    fn check_extend(&mut self, e: &ast::Extend) -> FieldDescriptorProto {
-        todo!()
-        // } else if ctx.in_extend()
-        //     && matches!(
-        //         self,
-        //         ast::MessageField::Oneof(_) | ast::MessageField::Map(_)
-        //     )
-        // {
-        //     ctx.errors.push(CheckError::InvalidExtendFieldKind {
-        //         kind: self.kind_name(),
-        //         span: self.span(),
-        //     });
-        //     return;
-        // }
+    fn check_enum_value(&mut self, value: &ast::EnumValue) -> EnumValueDescriptorProto {
+        let name = s(&value.name.value);
+        let number = self.check_enum_number(&value.value);
+
+        let options = self.check_enum_value_options(&value.options);
+
+        EnumValueDescriptorProto {
+            name,
+            number,
+            options,
+        }
     }
 
-    fn check_service(&mut self, s: &ast::Service) -> ServiceDescriptorProto {
-        todo!()
+    fn check_service(&mut self, service: &ast::Service) -> ServiceDescriptorProto {
+        let name = s(&service.name.value);
+
+        let method = service
+            .methods
+            .iter()
+            .map(|method| self.check_method(method))
+            .collect();
+
+        let options = self.check_service_options(&service.options);
+
+        ServiceDescriptorProto {
+            name,
+            method,
+            options,
+        }
+    }
+
+    fn check_method(&mut self, method: &ast::Method) -> MethodDescriptorProto {
+        let name = s(&method.name);
+
+        let (input_type, kind) = self.resolve_ast_type_name(&method.input_ty);
+        if !matches!(
+            kind,
+            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+        ) {
+            self.errors.push(CheckError::InvalidMethodTypeName {
+                name: method.input_ty.to_string(),
+                kind: "input",
+                span: method.input_ty.span(),
+            })
+        }
+
+        let (output_type, kind) = self.resolve_ast_type_name(&method.output_ty);
+        if !matches!(
+            kind,
+            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+        ) {
+            self.errors.push(CheckError::InvalidMethodTypeName {
+                name: method.output_ty.to_string(),
+                kind: "output",
+                span: method.output_ty.span(),
+            })
+        }
+
+        let options = self.check_method_options(&method.options);
+
+        MethodDescriptorProto {
+            name,
+            input_type: Some(input_type),
+            output_type: Some(output_type),
+            options,
+            client_streaming: Some(method.is_client_streaming),
+            server_streaming: Some(method.is_server_streaming),
+        }
     }
 
     fn check_message_reserved_range(&mut self, range: &ast::ReservedRange) -> ReservedRange {
@@ -605,17 +762,29 @@ impl<'a> Context<'a> {
     }
 
     fn check_file_options(&mut self, options: &[ast::Option]) -> Option<FileOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
         todo!()
     }
 
     fn check_message_options(&mut self, options: &[ast::Option]) -> Option<MessageOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
         todo!()
     }
 
     fn check_field_options(
         &mut self,
         options: &[ast::OptionBody],
-    ) -> (Option<String>, Option<FieldOptions>) {
+    ) -> (Option<(String, Span)>, Option<FieldOptions>) {
+        if options.is_empty() {
+            return (None, None);
+        }
+
         todo!()
     }
 
@@ -623,6 +792,50 @@ impl<'a> Context<'a> {
         &mut self,
         options: &[ast::OptionBody],
     ) -> Option<ExtensionRangeOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn check_oneof_options(&self, options: &[ast::Option]) -> Option<OneofOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn check_enum_options(&self, options: &[ast::Option]) -> Option<EnumOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn check_enum_value_options(&self, options: &[ast::OptionBody]) -> Option<EnumValueOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn check_service_options(&self, options: &[ast::Option]) -> Option<ServiceOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
+        todo!()
+    }
+
+    fn check_method_options(&self, options: &[ast::Option]) -> Option<MethodOptions> {
+        if options.is_empty() {
+            return None;
+        }
+
         todo!()
     }
 }
