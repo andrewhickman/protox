@@ -6,6 +6,9 @@ Ok(
     File {
         span: 0..47,
         syntax: Proto3,
+        syntax_span: Some(
+            0..18,
+        ),
         package: None,
         imports: [
             Import {

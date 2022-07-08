@@ -14,6 +14,8 @@ impl<'a> ir::File<'a> {
 
         ctx.visit_file(self);
 
+        ctx.locations.sort_by_key(|loc| loc.span.first().copied());
+
         SourceCodeInfo {
             location: ctx.locations,
         }
@@ -28,7 +30,6 @@ struct Context {
 
 impl Context {
     fn visit_file(&mut self, file: &ir::File) {
-        const NAME: i32 = 1;
         const PACKAGE: i32 = 2;
         const DEPENDENCY: i32 = 3;
         const PUBLIC_DEPENDENCY: i32 = 10;
@@ -80,6 +81,99 @@ impl Context {
                 ctx.add_location(span);
             },
         );
+
+        self.with_path_items(MESSAGE_TYPE, file.messages.iter(), |ctx, message| {
+            ctx.visit_message(message);
+        });
+
+        self.with_path_items(
+            ENUM_TYPE,
+            file.ast.items.iter().filter_map(|item| {
+                if let ast::FileItem::Enum(enu) = item {
+                    Some(enu)
+                } else {
+                    None
+                }
+            }),
+            |ctx, enu| {
+                ctx.visit_enum(enu);
+            },
+        );
+
+        self.with_path_items(
+            SERVICE,
+            file.ast.items.iter().filter_map(|item| {
+                if let ast::FileItem::Service(service) = item {
+                    Some(service)
+                } else {
+                    None
+                }
+            }),
+            |ctx, service| {
+                ctx.visit_service(service);
+            },
+        );
+
+        self.with_path_items(
+            EXTENSION,
+            file.ast.items.iter().filter_map(|item| {
+                if let ast::FileItem::Extend(extend) = item {
+                    Some(extend)
+                } else {
+                    None
+                }
+            }),
+            |ctx, extend| {
+                ctx.visit_extend(extend);
+            },
+        );
+
+        self.visit_options(OPTIONS, &file.ast.options);
+
+        if let Some(syntax_span) = &file.ast.syntax_span {
+            self.add_location(syntax_span.clone());
+        }
+    }
+
+    fn visit_message(&mut self, message: &ir::Message) {
+        const NAME: i32 = 1;
+        const FIELD: i32 = 2;
+        const EXTENSION: i32 = 6;
+        const NESTED_TYPE: i32 = 3;
+        const ENUM_TYPE: i32 = 4;
+        const EXTENSION_RANGE: i32 = 5;
+        const OPTIONS: i32 = 7;
+        const ONEOF_DECL: i32 = 8;
+        const RESERVED_RANGE: i32 = 9;
+        const RESERVED_NAME: i32 = 10;
+
+        todo!()
+    }
+
+    fn visit_enum(&mut self, enu: &ast::Enum) {
+        const NAME: i32 = 1;
+        const VALUE: i32 = 2;
+        const OPTIONS: i32 = 3;
+        const RESERVED_RANGE: i32 = 4;
+        const RESERVED_NAME: i32 = 5;
+
+        todo!()
+    }
+
+    fn visit_service(&mut self, service: &ast::Service) {
+        const NAME: i32 = 1;
+        const METHOD: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        todo!()
+    }
+
+    fn visit_extend(&mut self, extend: &ast::Extend) {
+        todo!()
+    }
+
+    fn visit_options(&mut self, path_item: i32, options: &[ast::Option]) {
+        todo!()
     }
 
     // impl ast::Visitor for Context {
@@ -103,11 +197,6 @@ impl Context {
     //     }
 
     //     fn visit_enum(&mut self, enu: &ast::Enum) {
-    //         const NAME: i32 = 1;
-    //         const VALUE: i32 = 2;
-    //         const OPTIONS: i32 = 3;
-    //         const RESERVED_RANGE: i32 = 4;
-    //         const RESERVED_NAME: i32 = 5;
 
     //         enu.visit(self)
     //     }
@@ -119,17 +208,6 @@ impl Context {
     //     }
 
     //     fn visit_message(&mut self, message: &ast::Message) {
-    //         const NAME: i32 = 1;
-    //         const FIELD: i32 = 2;
-    //         const EXTENSION: i32 = 6;
-    //         const NESTED_TYPE: i32 = 3;
-    //         const ENUM_TYPE: i32 = 4;
-    //         const EXTENSION_RANGE: i32 = 5;
-    //         const OPTIONS: i32 = 7;
-    //         const ONEOF_DECL: i32 = 8;
-    //         const RESERVED_RANGE: i32 = 9;
-    //         const RESERVED_NAME: i32 = 10;
-
     //         message.body.visit(self)
     //     }
 
@@ -168,9 +246,6 @@ impl Context {
     //     }
 
     //     fn visit_service(&mut self, service: &ast::Service) {
-    //         const NAME: i32 = 1;
-    //         const METHOD: i32 = 2;
-    //         const OPTIONS: i32 = 3;
     //         service.visit(self)
     //     }
 

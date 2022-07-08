@@ -451,3 +451,24 @@ fn proto2_enum_in_proto3_message() {}
 
 #[test]
 fn proto3_enum_default() {}
+
+/*
+syntax = 'proto2';
+
+import 'google/protobuf/descriptor.proto';
+
+message Foo {
+    optional int32 a = 1;
+    optional int32 b = 2;
+}
+
+extend google.protobuf.FileOptions {
+    optional Foo foo = 1001;
+}
+
+option (foo).a = 1;
+
+option optimize_for = SPEED;
+
+option (foo).b = 1;
+*/

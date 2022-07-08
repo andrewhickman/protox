@@ -138,31 +138,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
-        let mut file_span = self.peek().map(|(_, span)| span).unwrap_or_default();
-
-        if self.bump_if_eq(Token::Syntax) {
-            self.expect_eq(Token::Equals)?;
-            self.syntax = match self.peek() {
-                Some((Token::StringLiteral(syntax), span)) => match &*syntax {
-                    "proto2" => {
-                        self.bump();
-                        let end = self.expect_eq(Token::Semicolon)?;
-                        file_span = join_span(file_span, end);
-                        ast::Syntax::Proto2
-                    }
-                    "proto3" => {
-                        self.bump();
-                        let end = self.expect_eq(Token::Semicolon)?;
-                        file_span = join_span(file_span, end);
-                        ast::Syntax::Proto3
-                    }
-                    _ => {
-                        self.add_error(ParseError::UnknownSyntax { span });
-                        return Err(());
-                    }
-                },
-                _ => self.unexpected_token("an identifier or '('")?,
+        let mut file_span = Span::default();
+        let mut syntax = ast::Syntax::Proto2;
+        let mut syntax_span = None;
+        match self.peek() {
+            Some((Token::Syntax, _)) => {
+                let (parsed_syntax, span) = self.parse_syntax()?;
+                file_span = span.clone();
+                syntax = parsed_syntax;
+                syntax_span = Some(span);
             }
+            Some((_, span)) => {
+                file_span = span;
+            }
+            None => (),
         }
 
         let mut package: Option<ast::Package> = None;
@@ -208,13 +197,41 @@ impl<'a> Parser<'a> {
         }
 
         Ok(ast::File {
-            syntax: self.syntax,
+            syntax,
+            syntax_span,
             package,
             imports,
             options,
             items,
             span: file_span,
         })
+    }
+
+    fn parse_syntax(&mut self) -> Result<(ast::Syntax, Span), ()> {
+        let start = self.expect_eq(Token::Syntax)?;
+        self.expect_eq(Token::Equals)?;
+
+        let syntax = match self.peek() {
+            Some((Token::StringLiteral(syntax), span)) => match &*syntax {
+                "proto2" => {
+                    self.bump();
+                    ast::Syntax::Proto2
+                }
+                "proto3" => {
+                    self.bump();
+                    ast::Syntax::Proto3
+                }
+                _ => {
+                    self.add_error(ParseError::UnknownSyntax { span });
+                    return Err(());
+                }
+            },
+            _ => self.unexpected_token("an identifier or '('")?,
+        };
+
+        let end = self.expect_eq(Token::Semicolon)?;
+
+        Ok((syntax, join_span(start, end)))
     }
 
     fn parse_statement(&mut self) -> Result<Option<Statement>, ()> {
