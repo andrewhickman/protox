@@ -1,14 +1,14 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_import()
+expression: "match parser.parse_import() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Import {
         kind: Some(
-            Public,
-        ),
-        kind_span: Some(
-            7..13,
+            (
+                Public,
+                7..13,
+            ),
         ),
         value: String {
             value: "foo",

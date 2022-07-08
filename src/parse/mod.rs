@@ -260,16 +260,16 @@ impl<'a> Parser<'a> {
 
         let start = self.expect_eq(Token::Import)?;
 
-        let (kind, kind_span) = match self.peek() {
+        let kind = match self.peek() {
             Some((Token::Weak, span)) => {
                 self.bump();
-                (Some(ast::ImportKind::Weak), Some(span))
+                Some((ast::ImportKind::Weak, span))
             }
             Some((Token::Public, span)) => {
                 self.bump();
-                (Some(ast::ImportKind::Public), Some(span))
+                Some((ast::ImportKind::Public, span))
             }
-            Some((Token::StringLiteral(_), _)) => (None, None),
+            Some((Token::StringLiteral(_), _)) => None,
             _ => self.unexpected_token("a string literal, 'public' or 'weak'")?,
         };
 
@@ -286,7 +286,6 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Import {
             kind,
-            kind_span,
             value,
             comments,
             span: join_span(start, end),

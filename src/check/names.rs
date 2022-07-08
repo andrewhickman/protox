@@ -177,7 +177,10 @@ impl NamePass {
     fn add_file(&mut self, file: &ir::File, file_map: &ParsedFileMap) {
         for import in &file.ast.imports {
             let file = &file_map[import.value.value.as_str()];
-            self.merge_names(file, import.kind == Some(ast::ImportKind::Public));
+            self.merge_names(
+                file,
+                matches!(import.kind, Some((ast::ImportKind::Public, _))),
+            );
         }
 
         if let Some(package) = &file.ast.package {
@@ -207,19 +210,19 @@ impl NamePass {
     fn add_message(&mut self, message: &ir::Message) {
         let def = match message.ast {
             ir::MessageSource::Group(..) => DefinitionKind::Group,
-            ir::MessageSource::Map(_) | ir::MessageSource::Message(_)  => DefinitionKind::Message,
+            ir::MessageSource::Map(_) | ir::MessageSource::Message(_) => DefinitionKind::Message,
         };
 
         let name = message.ast.name();
-        self.add_name(
-            name.as_ref(),
-            def,
-            message.ast.name_span(),
-        );
+        self.add_name(name.as_ref(), def, message.ast.name_span());
         self.enter(name);
 
         for field in &message.fields {
-            self.add_name(field.ast.name(), DefinitionKind::Field, field.ast.name_span());
+            self.add_name(
+                field.ast.name(),
+                DefinitionKind::Field,
+                field.ast.name_span(),
+            );
         }
 
         for oneof in &message.oneofs {

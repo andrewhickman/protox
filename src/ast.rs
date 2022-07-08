@@ -1,4 +1,4 @@
-use std::{fmt, ops::Range, vec, borrow::Cow};
+use std::{borrow::Cow, fmt, ops::Range, vec};
 
 use logos::Span;
 
@@ -88,8 +88,7 @@ pub(crate) enum Constant {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Import {
-    pub kind: std::option::Option<ImportKind>,
-    pub kind_span: std::option::Option<Span>,
+    pub kind: std::option::Option<(ImportKind, Span)>,
     pub value: String,
     pub comments: Comments,
     pub span: Span,

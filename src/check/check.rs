@@ -1,4 +1,8 @@
-use std::{convert::TryFrom, fmt::Display, collections::{HashMap, hash_map}};
+use std::{
+    collections::{hash_map, HashMap},
+    convert::TryFrom,
+    fmt::Display,
+};
 
 use logos::Span;
 use prost_types::{
@@ -10,7 +14,11 @@ use prost_types::{
     MethodOptions, OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, ServiceOptions,
 };
 
-use crate::{ast, case::{to_camel_case, to_lower_without_underscores}, index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER};
+use crate::{
+    ast,
+    case::{to_camel_case, to_lower_without_underscores},
+    index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER,
+};
 
 use super::{ir, names::DefinitionKind, CheckError, NameMap};
 
@@ -163,16 +171,18 @@ impl<'a> Context<'a> {
             .imports
             .iter()
             .enumerate()
-            .filter(|(_, i)| i.kind == Some(ast::ImportKind::Public))
-            .map(|(index, _)| index_to_i32(index))
+            .map(|(index, import)| (index_to_i32(index), import))
+            .filter(|(_, i)| matches!(i.kind, Some((ast::ImportKind::Public, _))))
+            .map(|(index, _)| index)
             .collect();
         let weak_dependency = file
             .ast
             .imports
             .iter()
             .enumerate()
-            .filter(|(_, i)| i.kind == Some(ast::ImportKind::Weak))
-            .map(|(index, _)| index_to_i32(index))
+            .map(|(index, import)| (index_to_i32(index), import))
+            .filter(|(_, i)| matches!(i.kind, Some((ast::ImportKind::Weak, _))))
+            .map(|(index, _)| index)
             .collect();
 
         let message_type = file
@@ -310,7 +320,9 @@ impl<'a> Context<'a> {
         let oneof_index = field.oneof_index;
 
         if oneof_index.is_some() {
-            self.enter(Scope::Oneof { synthetic: field.is_synthetic_oneof });
+            self.enter(Scope::Oneof {
+                synthetic: field.is_synthetic_oneof,
+            });
         }
         let descriptor = match &field.ast {
             ir::FieldSource::Field(ast) => self.check_field(ast),
@@ -398,7 +410,7 @@ impl<'a> Context<'a> {
                 self.errors.push(CheckError::MapFieldWithLabel { span });
                 return None;
             } else {
-                return Some(field_descriptor_proto::Label::Repeated)
+                return Some(field_descriptor_proto::Label::Repeated);
             }
         } else if let ast::FieldKind::Group { .. } = &field.kind {
             if self.syntax != ast::Syntax::Proto2 {
@@ -556,7 +568,10 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_message_field_camel_case_names<'b>(&mut self, fields: impl Iterator<Item = &'b ir::Field<'b>>) {
+    fn check_message_field_camel_case_names<'b>(
+        &mut self,
+        fields: impl Iterator<Item = &'b ir::Field<'b>>,
+    ) {
         if self.syntax != ast::Syntax::Proto2 {
             let mut names: HashMap<String, (String, Span)> = HashMap::new();
             for field in fields {
@@ -565,7 +580,12 @@ impl<'a> Context<'a> {
 
                 match names.entry(to_lower_without_underscores(&name)) {
                     hash_map::Entry::Occupied(entry) => {
-                        self.errors.push(CheckError::DuplicateCamelCaseFieldName { first_name: entry.get().0.clone(), first: entry.get().1.clone(), second_name: name, second: span })
+                        self.errors.push(CheckError::DuplicateCamelCaseFieldName {
+                            first_name: entry.get().0.clone(),
+                            first: entry.get().1.clone(),
+                            second_name: name,
+                            second: span,
+                        })
                     }
                     hash_map::Entry::Vacant(entry) => {
                         entry.insert((name, span));
