@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt, ops::Range, vec};
 
 use logos::Span;
 
-use crate::{case::to_pascal_case, join_span};
+use crate::{case::to_pascal_case, index_to_i32, join_span};
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {
@@ -320,6 +320,100 @@ impl TypeName {
         } else {
             self.name.span()
         }
+    }
+}
+
+impl File {
+    pub fn public_imports(&self) -> impl Iterator<Item = (i32, &'_ Import)> {
+        self.imports
+            .iter()
+            .enumerate()
+            .filter_map(|(index, import)| match &import.kind {
+                Some((ImportKind::Public, span)) => Some((index_to_i32(index), import)),
+                _ => None,
+            })
+    }
+
+    pub fn weak_imports(&self) -> impl Iterator<Item = (i32, &'_ Import)> {
+        self.imports
+            .iter()
+            .enumerate()
+            .filter_map(|(index, import)| match &import.kind {
+                Some((ImportKind::Weak, span)) => Some((index_to_i32(index), import)),
+                _ => None,
+            })
+    }
+
+    pub fn extends(&self) -> impl Iterator<Item = &'_ Extend> {
+        self.items.iter().filter_map(|item| {
+            if let FileItem::Extend(extend) = item {
+                Some(extend)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn enums(&self) -> impl Iterator<Item = &'_ Enum> {
+        self.items.iter().filter_map(|item| {
+            if let FileItem::Enum(enu) = item {
+                Some(enu)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn services(&self) -> impl Iterator<Item = &'_ Service> {
+        self.items.iter().filter_map(|item| {
+            if let FileItem::Service(service) = item {
+                Some(service)
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl MessageBody {
+    pub fn extends(&self) -> impl Iterator<Item = &'_ Extend> {
+        self.items.iter().filter_map(|item| {
+            if let MessageItem::Extend(extend) = item {
+                Some(extend)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn enums(&self) -> impl Iterator<Item = &'_ Enum> {
+        self.items.iter().filter_map(|item| {
+            if let MessageItem::Enum(enu) = item {
+                Some(enu)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn reserved_ranges(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ ReservedRange)> {
+        self.reserved
+            .iter()
+            .filter_map(|reserved| match &reserved.kind {
+                ReservedKind::Ranges(ranges) => Some((reserved, ranges)),
+                _ => None,
+            })
+            .flat_map(|(reserved, ranges)| ranges.iter().map(move |range| (reserved, range)))
+    }
+
+    pub fn reserved_names(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ Ident)> {
+        self.reserved
+            .iter()
+            .filter_map(|reserved| match &reserved.kind {
+                ReservedKind::Names(names) => Some((reserved, names)),
+                _ => None,
+            })
+            .flat_map(|(reserved, names)| names.iter().map(move |name| (reserved, name)))
     }
 }
 

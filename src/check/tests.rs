@@ -472,3 +472,43 @@ option optimize_for = SPEED;
 
 option (foo).b = 1;
 */
+
+/*
+
+message Foo {
+    // hello
+    optional group A = 1 {}     ;
+}
+
+*/
+
+/*
+
+syntax = 'proto2';
+
+message Foo {
+    optional int32 a = 1;
+
+    oneof foo {
+        int32 c = 2;
+    }
+
+    extensions 3, 6 to max;
+
+    reserved 4 to 5;
+    reserved "d", "e";
+
+    extend Foo {
+        optional sint32 b = 3;
+    }
+
+    message Bar {}
+
+    enum Quz {
+        ZERO = 0;
+    }
+
+    option deprecated = true;
+}
+
+*/

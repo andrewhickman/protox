@@ -107,7 +107,6 @@ struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
     peek: Option<(Token<'a>, Span)>,
     comments: Comments,
-    syntax: ast::Syntax,
 }
 
 #[derive(Debug, Clone)]
@@ -133,13 +132,12 @@ impl<'a> Parser<'a> {
             lexer: Token::lexer(source),
             comments: Comments::new(),
             peek: None,
-            syntax: ast::Syntax::default(),
         }
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
         let mut file_span = Span::default();
-        let mut syntax = ast::Syntax::Proto2;
+        let mut syntax = ast::Syntax::default();
         let mut syntax_span = None;
         match self.peek() {
             Some((Token::Syntax, _)) => {
@@ -1235,10 +1233,6 @@ impl<'a> Parser<'a> {
             count += 1;
             assert!(count < 500);
         }
-    }
-
-    fn bump_if_eq(&mut self, t: Token) -> bool {
-        self.bump_if(|tok| *tok == t)
     }
 
     fn bump_if(&mut self, mut f: impl FnMut(&Token) -> bool) -> bool {

@@ -56,29 +56,17 @@ impl Context {
 
         self.with_path_items(
             PUBLIC_DEPENDENCY,
-            file.ast.imports.iter().filter_map(|import| {
-                if let Some((ast::ImportKind::Public, span)) = &import.kind {
-                    Some(span.clone())
-                } else {
-                    None
-                }
-            }),
-            |ctx, span| {
-                ctx.add_location(span);
+            file.ast.public_imports(),
+            |ctx, (_, import)| {
+                ctx.add_location(import.span.clone());
             },
         );
 
         self.with_path_items(
             WEAK_DEPENDENCY,
-            file.ast.imports.iter().filter_map(|import| {
-                if let Some((ast::ImportKind::Weak, span)) = &import.kind {
-                    Some(span.clone())
-                } else {
-                    None
-                }
-            }),
-            |ctx, span| {
-                ctx.add_location(span);
+            file.ast.weak_imports(),
+            |ctx, (_, import)| {
+                ctx.add_location(import.span.clone());
             },
         );
 
@@ -86,52 +74,24 @@ impl Context {
             ctx.visit_message(message);
         });
 
-        self.with_path_items(
-            ENUM_TYPE,
-            file.ast.items.iter().filter_map(|item| {
-                if let ast::FileItem::Enum(enu) = item {
-                    Some(enu)
-                } else {
-                    None
-                }
-            }),
-            |ctx, enu| {
-                ctx.visit_enum(enu);
-            },
-        );
+        self.with_path_items(ENUM_TYPE, file.ast.enums(), |ctx, enu| {
+            ctx.visit_enum(enu);
+        });
 
-        self.with_path_items(
-            SERVICE,
-            file.ast.items.iter().filter_map(|item| {
-                if let ast::FileItem::Service(service) = item {
-                    Some(service)
-                } else {
-                    None
-                }
-            }),
-            |ctx, service| {
-                ctx.visit_service(service);
-            },
-        );
+        self.with_path_items(SERVICE, file.ast.services(), |ctx, service| {
+            ctx.visit_service(service);
+        });
 
-        self.with_path_items(
-            EXTENSION,
-            file.ast.items.iter().filter_map(|item| {
-                if let ast::FileItem::Extend(extend) = item {
-                    Some(extend)
-                } else {
-                    None
-                }
-            }),
-            |ctx, extend| {
-                ctx.visit_extend(extend);
-            },
-        );
+        self.with_path_items(EXTENSION, file.ast.extends(), |ctx, extend| {
+            ctx.visit_extend(extend);
+        });
 
         self.visit_options(OPTIONS, &file.ast.options);
 
         if let Some(syntax_span) = &file.ast.syntax_span {
-            self.add_location(syntax_span.clone());
+            self.with_path_item(SYNTAX, |ctx| {
+                ctx.add_location(syntax_span.clone());
+            });
         }
     }
 
@@ -147,6 +107,92 @@ impl Context {
         const RESERVED_RANGE: i32 = 9;
         const RESERVED_NAME: i32 = 10;
 
+        let body = match message.ast {
+            ir::MessageSource::Message(message) => {
+                self.add_location_with_comments(message.span.clone(), message.comments.clone());
+                self.with_path_item(NAME, |ctx| {
+                    ctx.add_location(message.name.span.clone());
+                });
+                &message.body
+            }
+            ir::MessageSource::Group(field, body) => {
+                self.add_location_with_comments(field.span.clone(), field.comments.clone());
+                self.with_path_item(NAME, |ctx| {
+                    ctx.add_location(field.name.span.clone());
+                });
+                body
+            }
+            ir::MessageSource::Map(_) => return,
+        };
+
+        self.with_path_items(FIELD, message.fields.iter(), |ctx, field| {
+            ctx.visit_field(field);
+        });
+
+        self.with_path_items(EXTENSION, body.extends(), |ctx, extend| {
+            ctx.visit_extend(extend);
+        });
+
+        self.with_path_items(NESTED_TYPE, message.messages.iter(), |ctx, message| {
+            ctx.visit_message(message);
+        });
+
+        self.with_path_items(ENUM_TYPE, body.enums(), |ctx, enu| {
+            ctx.visit_enum(enu);
+        });
+
+        self.with_path_items(
+            EXTENSION_RANGE,
+            body.extensions.iter(),
+            |ctx, extensions| {
+                ctx.visit_extensions(extensions);
+            },
+        );
+
+        self.visit_options(OPTIONS, &body.options);
+
+        self.with_path_items(ONEOF_DECL, message.oneofs.iter(), |ctx, oneof| {
+            ctx.visit_oneof(oneof);
+        });
+
+        self.with_path_items(
+            RESERVED_RANGE,
+            body.reserved_ranges(),
+            |ctx, (reserved, range)| {
+                ctx.visit_reserved_range(reserved, range);
+            },
+        );
+
+        self.with_path_items(
+            RESERVED_NAME,
+            body.reserved_names(),
+            |ctx, (reserved, name)| {
+                ctx.visit_reserved_name(reserved, name);
+            },
+        );
+    }
+
+    fn visit_field(&mut self, field: &ir::Field) {
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 3;
+        const LABEL: i32 = 4;
+        const TYPE: i32 = 5;
+        const TYPE_NAME: i32 = 6;
+        const EXTENDEE: i32 = 2;
+        const DEFAULT_VALUE: i32 = 7;
+        const ONEOF_INDEX: i32 = 9;
+        const JSON_NAME: i32 = 10;
+        const OPTIONS: i32 = 8;
+        const PROTO3_OPTIONAL: i32 = 17;
+
+        todo!()
+    }
+
+    fn visit_extensions(&mut self, extensions: &ast::Extensions) {
+        todo!()
+    }
+
+    fn visit_oneof(&mut self, oneof: &ir::Oneof) {
         todo!()
     }
 
@@ -157,6 +203,14 @@ impl Context {
         const RESERVED_RANGE: i32 = 4;
         const RESERVED_NAME: i32 = 5;
 
+        todo!()
+    }
+
+    fn visit_reserved_range(&mut self, reserved: &ast::Reserved, range: &ast::ReservedRange) {
+        todo!()
+    }
+
+    fn visit_reserved_name(&mut self, reserved: &ast::Reserved, name: &ast::Ident) {
         todo!()
     }
 
@@ -216,17 +270,6 @@ impl Context {
     //     }
 
     //     fn visit_field(&mut self, _: &ast::Field) {
-    //         const NAME: i32 = 1;
-    //         const NUMBER: i32 = 3;
-    //         const LABEL: i32 = 4;
-    //         const TYPE: i32 = 5;
-    //         const TYPE_NAME: i32 = 6;
-    //         const EXTENDEE: i32 = 2;
-    //         const DEFAULT_VALUE: i32 = 7;
-    //         const ONEOF_INDEX: i32 = 9;
-    //         const JSON_NAME: i32 = 10;
-    //         const OPTIONS: i32 = 8;
-    //         const PROTO3_OPTIONAL: i32 = 17;
     //     }
 
     //     fn visit_map(&mut self, _: &ast::Field) {}

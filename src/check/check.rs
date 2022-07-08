@@ -17,7 +17,7 @@ use prost_types::{
 use crate::{
     ast,
     case::{to_camel_case, to_lower_without_underscores},
-    index_to_i32, s, MAX_MESSAGE_FIELD_NUMBER,
+    s, MAX_MESSAGE_FIELD_NUMBER,
 };
 
 use super::{ir, names::DefinitionKind, CheckError, NameMap};
@@ -166,24 +166,8 @@ impl<'a> Context<'a> {
             .iter()
             .map(|i| i.value.value.clone())
             .collect();
-        let public_dependency = file
-            .ast
-            .imports
-            .iter()
-            .enumerate()
-            .map(|(index, import)| (index_to_i32(index), import))
-            .filter(|(_, i)| matches!(i.kind, Some((ast::ImportKind::Public, _))))
-            .map(|(index, _)| index)
-            .collect();
-        let weak_dependency = file
-            .ast
-            .imports
-            .iter()
-            .enumerate()
-            .map(|(index, import)| (index_to_i32(index), import))
-            .filter(|(_, i)| matches!(i.kind, Some((ast::ImportKind::Weak, _))))
-            .map(|(index, _)| index)
-            .collect();
+        let public_dependency = file.ast.public_imports().map(|(index, _)| index).collect();
+        let weak_dependency = file.ast.weak_imports().map(|(index, _)| index).collect();
 
         let message_type = file
             .messages
