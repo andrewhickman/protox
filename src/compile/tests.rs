@@ -872,3 +872,23 @@ fn add_file_case_insensitive() {
         "foo.proto",
     );
 }
+
+/*
+
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+package demo;
+
+extend google.protobuf.EnumValueOptions {
+  optional uint32 len = 50000;
+}
+
+enum Foo {
+  None = 0 [(len) = 0];
+  One = 1 [(len) = 1];
+  Two = 2 [(len) = 2];
+}
+
+*/

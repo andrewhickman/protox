@@ -332,6 +332,18 @@ impl TypeName {
     }
 }
 
+impl Constant {
+    pub fn span(&self) -> Span {
+        match self {
+            Constant::FullIdent(ident) => ident.span(),
+            Constant::Int(int) => int.span.clone(),
+            Constant::Float(float) => float.span.clone(),
+            Constant::String(string) => string.span.clone(),
+            Constant::Bool(b) => b.span.clone(),
+        }
+    }
+}
+
 impl File {
     pub fn public_imports(&self) -> impl Iterator<Item = (i32, &'_ Import)> {
         self.imports
@@ -426,6 +438,23 @@ impl MessageBody {
     }
 }
 
+impl Field {
+    pub fn default_value(&self) -> std::option::Option<&OptionBody> {
+        self.options.as_ref().and_then(|options| {
+            options
+                .options
+                .iter()
+                .find(|o| o.name.parts.len() == 1 && o.name.parts[0].value == "default")
+        })
+    }
+}
+
+impl OptionBody {
+    pub fn span(&self) -> Span {
+        join_span(self.name.span(), self.value.span())
+    }
+}
+
 impl From<Ident> for FullIdent {
     fn from(value: Ident) -> Self {
         FullIdent { parts: vec![value] }
@@ -470,6 +499,42 @@ impl fmt::Display for TypeName {
             write!(f, ".")?;
         }
         write!(f, "{}", self.name)
+    }
+}
+
+impl fmt::Display for Constant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Constant::FullIdent(ident) => ident.fmt(f),
+            Constant::Int(int) => int.fmt(f),
+            Constant::Float(float) => float.fmt(f),
+            Constant::String(string) => string.fmt(f),
+            Constant::Bool(bool) => bool.fmt(f),
+        }
+    }
+}
+
+impl fmt::Display for Int {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl fmt::Display for Float {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl fmt::Display for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl fmt::Display for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.value.fmt(f)
     }
 }
 

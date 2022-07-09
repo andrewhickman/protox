@@ -329,26 +329,9 @@ impl<'a> Context<'a> {
         let number = self.check_field_number(&field.number);
         let label = self.check_field_label(field);
         let (ty, type_name) = self.check_field_type(field);
-        let (default_value, options) = self.check_field_options(field.options.as_ref());
+        let options = self.check_field_options(field.options.as_ref());
 
-        if let Some((_, default_value_span)) = &default_value {
-            if field.is_map() {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "map",
-                    span: default_value_span.clone(),
-                })
-            } else if field.is_group() {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "group",
-                    span: default_value_span.clone(),
-                })
-            } else if ty == Some(field_descriptor_proto::Type::Message) {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "message",
-                    span: default_value_span.clone(),
-                })
-            }
-        }
+        let default_value= self.check_field_default_value(field, ty);
 
         let json_name = Some(to_camel_case(&field.field_name()));
 
@@ -364,7 +347,7 @@ impl<'a> Context<'a> {
             label: label.map(|l| l as i32),
             r#type: ty.map(|t| t as i32),
             type_name,
-            default_value: default_value.map(|(v, _)| v),
+            default_value,
             json_name,
             options,
             proto3_optional,
@@ -550,6 +533,32 @@ impl<'a> Context<'a> {
                     (None, Some(name))
                 }
             },
+        }
+    }
+
+    fn check_field_default_value(&mut self, field: &ast::Field, ty: Option<field_descriptor_proto::Type>) -> Option<String> {
+        // TODO check type
+        if let Some(option) = field.default_value() {
+            if field.is_map() {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "map",
+                    span: option.span(),
+                })
+            } else if ty == Some(field_descriptor_proto::Type::Group) {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "group",
+                    span: option.span(),
+                })
+            } else if ty == Some(field_descriptor_proto::Type::Message) {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "message",
+                    span: option.span(),
+                })
+            }
+
+            Some(option.value.to_string())
+        } else {
+            None
         }
     }
 
@@ -806,11 +815,8 @@ impl<'a> Context<'a> {
     fn check_field_options(
         &mut self,
         options: Option<&ast::OptionList>,
-    ) -> (Option<(String, Span)>, Option<FieldOptions>) {
-        let _options = match options {
-            Some(options) => options,
-            None => return (None, None),
-        };
+    ) -> Option<FieldOptions> {
+        let _options = options?;
 
         todo!()
     }

@@ -39,7 +39,6 @@ impl Context {
         const SERVICE: i32 = 6;
         const EXTENSION: i32 = 7;
         const OPTIONS: i32 = 8;
-        const SOURCE_CODE_INFO: i32 = 9;
         const SYNTAX: i32 = 12;
 
         self.add_location(file.ast.span.clone());
@@ -214,14 +213,18 @@ impl Context {
             }
         }
 
-        // TODO: default_value
+        if let Some(default_value) = &ast.default_value() {
+            self.with_path_item(DEFAULT_VALUE, |ctx| {
+                ctx.add_location(default_value.value.span());
+            });
+        }
 
         if let Some(options) = &ast.options {
             self.visit_options_list(OPTIONS, options);
         }
     }
 
-    fn visit_extensions(&mut self, extensions: &ast::Extensions) {
+    fn visit_extensions(&mut self, _extensions: &ast::Extensions) {
         todo!()
     }
 
