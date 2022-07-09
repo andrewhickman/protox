@@ -390,10 +390,10 @@ impl Context {
         });
     }
 
-    fn visit_extend(&mut self, extend: &ast::Extend) {
+    fn visit_extend(&mut self, _extend: &ast::Extend) {
         todo!();
 
-        const FIELD_EXTENDEE: i32 = 2;
+        const _FIELD_EXTENDEE: i32 = 2;
         // extendee for all types
     }
 

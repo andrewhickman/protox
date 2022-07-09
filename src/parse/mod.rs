@@ -637,7 +637,7 @@ impl<'a> Parser<'a> {
                         Some((Token::Option, _)) => {
                             options.push(self.parse_option()?);
                         }
-                        Some((Token::RightBrace, span)) => break self.bump(),
+                        Some((Token::RightBrace, _)) => break self.bump(),
                         Some((Token::Semicolon, _)) => {
                             self.bump();
                             continue;
@@ -754,7 +754,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     continue;
                 }
-                Some((Token::RightBrace, span)) => break self.bump(),
+                Some((Token::RightBrace, _)) => break self.bump(),
                 _ => self.unexpected_token("a message field, option or '}'")?,
             }
         };
@@ -859,7 +859,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     names.push(self.parse_ident_string()?);
                 }
-                Some((Token::Semicolon, span)) => break self.bump(),
+                Some((Token::Semicolon, _)) => break self.bump(),
                 _ => self.unexpected_token("',' or ';'")?,
             }
         };
