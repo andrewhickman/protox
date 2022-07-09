@@ -87,6 +87,30 @@ expression: "check_ok(\"\n        extend Bar { optional group Baz = 1 {} }\n\n  
     "location": [
       {
         "path": [
+          7,
+          0
+        ],
+        "span": [
+          1,
+          8,
+          48
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          2
+        ],
+        "span": [
+          1,
+          15,
+          18
+        ]
+      },
+      {
+        "path": [
           4,
           0
         ],
@@ -94,6 +118,44 @@ expression: "check_ok(\"\n        extend Bar { optional group Baz = 1 {} }\n\n  
           1,
           21,
           46
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0
+        ],
+        "span": [
+          1,
+          21,
+          46
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          4
+        ],
+        "span": [
+          1,
+          21,
+          29
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          5
+        ],
+        "span": [
+          1,
+          30,
+          35
         ]
       },
       {
@@ -106,6 +168,45 @@ expression: "check_ok(\"\n        extend Bar { optional group Baz = 1 {} }\n\n  
           1,
           36,
           39
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          1
+        ],
+        "span": [
+          1,
+          36,
+          39
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          6
+        ],
+        "span": [
+          1,
+          36,
+          39
+        ]
+      },
+      {
+        "path": [
+          7,
+          0,
+          0,
+          3
+        ],
+        "span": [
+          1,
+          42,
+          43
         ]
       },
       {

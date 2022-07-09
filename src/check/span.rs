@@ -121,7 +121,10 @@ impl Context {
         };
 
         self.with_path_items(FIELD, message.fields.iter(), |ctx, field| {
-            ctx.visit_field(field);
+            match &field.ast {
+                ir::FieldSource::Field(field) => ctx.visit_field(field),
+                ir::FieldSource::MapKey(..) | ir::FieldSource::MapValue(..) => (),
+            };
         });
         self.with_path_items(EXTENSION, body.extends(), |ctx, extend| {
             ctx.visit_extend(extend);
@@ -150,7 +153,7 @@ impl Context {
         });
     }
 
-    fn visit_field(&mut self, field: &ir::Field) {
+    fn visit_field(&mut self, field: &ast::Field) {
         const NAME: i32 = 1;
         const NUMBER: i32 = 3;
         const LABEL: i32 = 4;
@@ -159,21 +162,16 @@ impl Context {
         const DEFAULT_VALUE: i32 = 7;
         const OPTIONS: i32 = 8;
 
-        let ast = match &field.ast {
-            ir::FieldSource::Field(ast) => ast,
-            ir::FieldSource::MapKey(..) | ir::FieldSource::MapValue(..) => return,
-        };
+        self.add_location_with_comments(field.span.clone(), field.comments.clone());
 
-        self.add_location_with_comments(ast.span.clone(), ast.comments.clone());
+        self.add_location_for(NAME, field.name.span.clone());
+        self.add_location_for(NUMBER, field.number.span.clone());
 
-        self.add_location_for(NAME, ast.name.span.clone());
-        self.add_location_for(NUMBER, ast.number.span.clone());
-
-        if let Some((_, label_span)) = &ast.label {
+        if let Some((_, label_span)) = &field.label {
             self.with_path_item(LABEL, |ctx| ctx.add_location(label_span.clone()));
         }
 
-        match &ast.kind {
+        match &field.kind {
             ast::FieldKind::Normal {
                 ty: ast::Ty::Named(name),
                 ..
@@ -185,18 +183,18 @@ impl Context {
             }
             ast::FieldKind::Group { ty_span, .. } => {
                 self.add_location_for(TYPE, ty_span.clone());
-                self.add_location_for(TYPE_NAME, ast.name.span.clone());
+                self.add_location_for(TYPE_NAME, field.name.span.clone());
             }
             ast::FieldKind::Map { ty_span, .. } => {
                 self.add_location_for(TYPE_NAME, ty_span.clone());
             }
         }
 
-        if let Some(default_value) = &ast.default_value() {
+        if let Some(default_value) = &field.default_value() {
             self.add_location_for(DEFAULT_VALUE, default_value.value.span());
         }
 
-        if let Some(options) = &ast.options {
+        if let Some(options) = &field.options {
             self.with_path_item(OPTIONS, |ctx| {
                 ctx.visit_options_list(options);
             });
@@ -354,28 +352,34 @@ impl Context {
         });
     }
 
-    fn visit_extend(&mut self, _extend: &ast::Extend) {
-        // todo!();
+    fn visit_extend(&mut self, extend: &ast::Extend) {
+        const FIELD_EXTENDEE: i32 = 2;
 
-        const _FIELD_EXTENDEE: i32 = 2;
-        // extendee for all types
+        self.add_location_with_comments(extend.span.clone(), extend.comments.clone());
+        for (index, field) in extend.fields.iter().enumerate() {
+            self.with_path_item(index_to_i32(index), |ctx| {
+                ctx.visit_field(field);
+                ctx.add_location_for(FIELD_EXTENDEE, extend.extendee.span());
+            });
+        }
     }
 
     fn visit_options(&mut self, options: &[ast::Option]) {
         for option in options {
             self.add_location(option.span.clone());
-            // self.with_path_item(option.number, f)
+
+            let number: i32 = 0; // TODO
+            self.add_location_for(number, option.span.clone());
         }
-        // self.with_path_items(path_item, options, |ctx, option| {
-        // self.add_location(option.span.clone());
-        // });
     }
 
     fn visit_options_list(&mut self, options: &ast::OptionList) {
         self.add_location(options.span.clone());
-        // self.with_path_items(path_item, &options.options, |ctx, option| {
-        //     self.add_location(option.span.clone());
-        // });
+
+        for option in &options.options {
+            let number: i32 = 0; // TODO
+            self.add_location_for(number, option.span());
+        }
     }
 
     fn add_location(&mut self, span: Span) {
