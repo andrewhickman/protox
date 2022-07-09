@@ -267,7 +267,8 @@ fn generate_group_message() {
 fn generate_group_message_name_conflict() {
     assert_eq!(
         check_err(
-            "message Foo {\
+            "\
+            message Foo {\
                 optional group Baz = 1 {}
 
                 enum Baz {
@@ -286,7 +287,7 @@ fn generate_group_message_name_conflict() {
 #[test]
 fn generated_message_ordering() {
     assert_json_snapshot!(check_ok(
-        "
+        "\
         extend Bar { optional group Baz = 1 {} }
 
         message Bar {
@@ -305,13 +306,60 @@ fn generated_message_ordering() {
 
 #[test]
 fn generate_synthetic_oneof() {
+    assert_json_snapshot!(check_ok("\
+        syntax = 'proto3';
 
-    // conflict with other oneof name
+        message Foo {
+            optional fixed64 val = 1;
+        }
+    "));
+    assert_json_snapshot!(check_ok("\
+        syntax = 'proto3';
+
+        message Foo {
+            optional fixed64 _val = 1;
+        }
+    "));
+}
+
+#[test]
+fn generate_synthetic_oneof_name_conflict() {
+    assert_eq!(
+        check_err(
+            "\
+            syntax = 'proto3';
+
+            message Foo {
+                optional fixed64 val = 1;
+
+                message _val {}
+            }"
+        ),
+        vec![DuplicateNameInFile {
+            name: "Foo._val".to_owned(),
+            first: 79..82,
+            second: 113..117,
+        }],
+    );
 }
 
 #[test]
 fn generate_synthetic_oneof_ordering() {
-    // ordered after other oneofs
+    assert_json_snapshot!(check_ok("\
+        syntax = 'proto3';
+
+        message Foo {
+            oneof o1 {
+                float a = 1;
+            }
+
+            optional bool o3 = 2;
+
+            oneof o2 {
+                string b = 3;
+            }
+        }
+    "));
 }
 
 #[test]

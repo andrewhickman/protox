@@ -1,4 +1,4 @@
-use std::{borrow::Cow, cmp::Ordering};
+use std::borrow::Cow;
 
 use logos::Span;
 
@@ -134,6 +134,10 @@ fn build_message_body(
     let mut messages = Vec::new();
     let mut oneofs = Vec::new();
 
+    for oneof in ast.oneofs() {
+        build_oneof(syntax, oneof, &mut fields, &mut messages, &mut oneofs);
+    }
+
     for field in &ast.items {
         match field {
             ast::MessageItem::Field(field) => {
@@ -141,19 +145,9 @@ fn build_message_body(
             }
             ast::MessageItem::Message(message) => build_message(syntax, message, &mut messages),
             ast::MessageItem::Extend(extend) => build_extend(syntax, extend, &mut messages),
-            ast::MessageItem::Oneof(oneof) => {
-                build_oneof(syntax, oneof, &mut fields, &mut messages, &mut oneofs)
-            }
-            ast::MessageItem::Enum(_) => continue,
+            ast::MessageItem::Oneof(_) | ast::MessageItem::Enum(_) => continue,
         }
     }
-
-    oneofs.sort_by(|l, r| match (&l.ast, &r.ast) {
-        (OneofSource::Oneof(_), OneofSource::Field(_)) => Ordering::Less,
-        (OneofSource::Field(_), OneofSource::Oneof(_)) => Ordering::Greater,
-        (OneofSource::Oneof(_), OneofSource::Oneof(_))
-        | (OneofSource::Field(_), OneofSource::Field(_)) => Ordering::Equal,
-    });
 
     (fields, messages, oneofs)
 }

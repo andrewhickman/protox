@@ -417,6 +417,16 @@ impl MessageBody {
         })
     }
 
+    pub fn oneofs(&self) -> impl Iterator<Item = &'_ Oneof> {
+        self.items.iter().filter_map(|item| {
+            if let MessageItem::Oneof(oneof) = item {
+                Some(oneof)
+            } else {
+                None
+            }
+        })
+    }
+
     pub fn reserved_ranges(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ [ReservedRange])> {
         self.reserved
             .iter()
@@ -489,7 +499,11 @@ impl Field {
 
 impl Field {
     pub fn synthetic_oneof_name(&self) -> std::string::String {
-        format!("_{}", &self.name.value)
+        if self.name.value.starts_with('_') {
+            format!("X{}", &self.name.value)
+        } else {
+            format!("_{}", &self.name.value)
+        }
     }
 }
 

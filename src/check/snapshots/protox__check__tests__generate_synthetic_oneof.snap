@@ -1,0 +1,144 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"\\\n        syntax = 'proto3';\n\n        message Foo {\n            optional fixed64 val = 1;\n        }\n    \")"
+---
+{
+  "name": "root.proto",
+  "messageType": [
+    {
+      "name": "Foo",
+      "field": [
+        {
+          "name": "val",
+          "number": 1,
+          "label": "LABEL_OPTIONAL",
+          "type": "TYPE_FIXED64",
+          "oneofIndex": 0,
+          "jsonName": "val",
+          "proto3Optional": true
+        }
+      ],
+      "oneofDecl": [
+        {
+          "name": "_val"
+        }
+      ]
+    }
+  ],
+  "sourceCodeInfo": {
+    "location": [
+      {
+        "span": [
+          0,
+          0,
+          4,
+          9
+        ]
+      },
+      {
+        "path": [
+          12
+        ],
+        "span": [
+          0,
+          0,
+          18
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          1
+        ],
+        "span": [
+          2,
+          16,
+          19
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          2,
+          0
+        ],
+        "span": [
+          3,
+          12,
+          37
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          2,
+          0,
+          4
+        ],
+        "span": [
+          3,
+          12,
+          20
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          2,
+          0,
+          5
+        ],
+        "span": [
+          3,
+          21,
+          28
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          2,
+          0,
+          1
+        ],
+        "span": [
+          3,
+          29,
+          32
+        ]
+      },
+      {
+        "path": [
+          4,
+          0,
+          2,
+          0,
+          3
+        ],
+        "span": [
+          3,
+          35,
+          36
+        ]
+      },
+      {
+        "path": [
+          4,
+          0
+        ],
+        "span": [
+          8,
+          8,
+          4,
+          9
+        ]
+      }
+    ]
+  },
+  "syntax": "proto3"
+}

@@ -8,7 +8,7 @@ use super::ParseError;
 #[logos(extras = TokenExtras)]
 #[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
 pub(crate) enum Token<'a> {
-    #[regex("[A-Za-z][A-Za-z0-9_]*", ident)]
+    #[regex("[A-Za-z_][A-Za-z0-9_]*", ident)]
     Ident(Cow<'a, str>),
     #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
@@ -586,7 +586,7 @@ mod tests {
     #[test]
     fn simple_tokens() {
         let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true
-            false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀'"#;
+            false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀' _foo"#;
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".into()));
@@ -608,6 +608,10 @@ mod tests {
         assert_eq!(
             lexer.next().unwrap(),
             Token::StringLiteral("hello 😀".into())
+        );
+        assert_eq!(
+            lexer.next().unwrap(),
+            Token::Ident("_foo".into())
         );
         assert_eq!(lexer.next(), None);
 
