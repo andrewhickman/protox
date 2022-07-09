@@ -291,4 +291,7 @@ pub fn parse_file() {
     "
     ));
     case!(parse_file("syntax = 'proto3'"));
+    case!(parse_file(
+        "/* leading detached */\n// leading\n syntax = 'proto3'; /* trailing */"
+    ));
 }

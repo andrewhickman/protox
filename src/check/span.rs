@@ -87,9 +87,9 @@ impl Context {
 
         self.with_path_item(OPTIONS, |ctx| ctx.visit_options(&file.ast.options));
 
-        if let Some(syntax_span) = &file.ast.syntax_span {
+        if let Some((syntax_span, syntax_comments)) = &file.ast.syntax_span {
             self.with_path_item(SYNTAX, |ctx| {
-                ctx.add_location(syntax_span.clone());
+                ctx.add_location_with_comments(syntax_span.clone(), syntax_comments.clone());
             });
         }
     }
@@ -109,16 +109,12 @@ impl Context {
         let body = match message.ast {
             ir::MessageSource::Message(message) => {
                 self.add_location_with_comments(message.span.clone(), message.comments.clone());
-                self.with_path_item(NAME, |ctx| {
-                    ctx.add_location(message.name.span.clone());
-                });
+                self.add_location_for(NAME, message.name.span.clone());
                 &message.body
             }
             ir::MessageSource::Group(field, body) => {
                 self.add_location_with_comments(field.span.clone(), field.comments.clone());
-                self.with_path_item(NAME, |ctx| {
-                    ctx.add_location(field.name.span.clone());
-                });
+                self.add_location_for(NAME, field.name.span.clone());
                 body
             }
             ir::MessageSource::Map(_) => return,
@@ -170,8 +166,8 @@ impl Context {
 
         self.add_location_with_comments(ast.span.clone(), ast.comments.clone());
 
-        self.with_path_item(NAME, |ctx| ctx.add_location(ast.name.span.clone()));
-        self.with_path_item(NUMBER, |ctx| ctx.add_location(ast.number.span.clone()));
+        self.add_location_for(NAME, ast.name.span.clone());
+        self.add_location_for(NUMBER, ast.number.span.clone());
 
         if let Some((_, label_span)) = &ast.label {
             self.with_path_item(LABEL, |ctx| ctx.add_location(label_span.clone()));
@@ -182,24 +178,22 @@ impl Context {
                 ty: ast::Ty::Named(name),
                 ..
             } => {
-                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(name.span()));
+                self.add_location_for(TYPE_NAME, name.span());
             }
             ast::FieldKind::Normal { ty_span, .. } => {
-                self.with_path_item(TYPE, |ctx| ctx.add_location(ty_span.clone()));
+                self.add_location_for(TYPE, ty_span.clone());
             }
             ast::FieldKind::Group { ty_span, .. } => {
-                self.with_path_item(TYPE, |ctx| ctx.add_location(ty_span.clone()));
-                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(ast.name.span.clone()));
+                self.add_location_for(TYPE, ty_span.clone());
+                self.add_location_for(TYPE_NAME, ast.name.span.clone());
             }
             ast::FieldKind::Map { ty_span, .. } => {
-                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(ty_span.clone()));
+                self.add_location_for(TYPE_NAME, ty_span.clone());
             }
         }
 
         if let Some(default_value) = &ast.default_value() {
-            self.with_path_item(DEFAULT_VALUE, |ctx| {
-                ctx.add_location(default_value.value.span());
-            });
+            self.add_location_for(DEFAULT_VALUE, default_value.value.span());
         }
 
         if let Some(options) = &ast.options {
@@ -221,12 +215,8 @@ impl Context {
             for range in &extension.ranges {
                 self.with_path_item(count, |ctx| {
                     ctx.add_location(range.span());
-                    ctx.with_path_item(START, |ctx| {
-                        ctx.add_location(range.start_span());
-                    });
-                    ctx.with_path_item(END, |ctx| {
-                        ctx.add_location(range.end_span());
-                    });
+                    ctx.add_location_for(START, range.start_span());
+                    ctx.add_location_for(END, range.end_span());
                     if let Some(options) = &extension.options {
                         ctx.with_path_item(OPTIONS, |ctx| {
                             ctx.visit_options_list(options);
@@ -244,9 +234,7 @@ impl Context {
 
         if let ir::OneofSource::Oneof(oneof) = &oneof.ast {
             self.add_location(oneof.span.clone());
-            self.with_path_item(NAME, |ctx| {
-                ctx.add_location(oneof.name.span.clone());
-            });
+            self.add_location_for(NAME, oneof.name.span.clone());
             self.with_path_item(OPTIONS, |ctx| {
                 ctx.visit_options(&oneof.options);
             });
@@ -261,9 +249,7 @@ impl Context {
         const RESERVED_NAME: i32 = 5;
 
         self.add_location_with_comments(enu.span.clone(), enu.comments.clone());
-        self.with_path_item(NAME, |ctx| {
-            ctx.add_location(enu.name.span.clone());
-        });
+        self.add_location_for(NAME, enu.name.span.clone());
         self.with_path_items(VALUE, enu.values.iter(), |ctx, value| {
             ctx.visit_enum_value(value);
         });
@@ -284,12 +270,8 @@ impl Context {
         const OPTIONS: i32 = 3;
 
         self.add_location_with_comments(value.span.clone(), value.comments.clone());
-        self.with_path_item(NAME, |ctx| {
-            ctx.add_location(value.span.clone());
-        });
-        self.with_path_item(NUMBER, |ctx| {
-            ctx.add_location(value.number.span.clone());
-        });
+        self.add_location_for(NAME, value.name.span.clone());
+        self.add_location_for(NUMBER, value.number.span.clone());
         if let Some(options) = &value.options {
             self.with_path_item(OPTIONS, |ctx| {
                 ctx.visit_options_list(options);
@@ -311,12 +293,8 @@ impl Context {
             for range in ranges {
                 self.with_path_item(count, |ctx| {
                     ctx.add_location(range.span());
-                    ctx.with_path_item(START, |ctx| {
-                        ctx.add_location(range.start_span());
-                    });
-                    ctx.with_path_item(END, |ctx| {
-                        ctx.add_location(range.end_span());
-                    });
+                    ctx.add_location_for(START, range.start_span());
+                    ctx.add_location_for(END, range.end_span());
                 });
                 count += 1;
             }
@@ -332,9 +310,7 @@ impl Context {
             self.add_location_with_comments(reserved.span.clone(), reserved.comments.clone());
 
             for name in names {
-                self.with_path_item(count, |ctx| {
-                    ctx.add_location(name.span.clone());
-                });
+                self.add_location_for(count, name.span.clone());
                 count += 1;
             }
         }
@@ -346,9 +322,7 @@ impl Context {
         const OPTIONS: i32 = 3;
 
         self.add_location_with_comments(service.span.clone(), service.comments.clone());
-        self.with_path_item(NAME, |ctx| {
-            ctx.add_location(service.name.span.clone());
-        });
+        self.add_location_for(NAME, service.name.span.clone());
         self.with_path_items(METHOD, service.methods.iter(), |ctx, method| {
             ctx.visit_method(method);
         });
@@ -366,24 +340,14 @@ impl Context {
         const SERVER_STREAMING: i32 = 6;
 
         self.add_location_with_comments(method.span.clone(), method.comments.clone());
-        self.with_path_item(NAME, |ctx| {
-            ctx.add_location(method.name.span.clone());
-        });
-        self.with_path_item(INPUT_TYPE, |ctx| {
-            ctx.add_location(method.input_ty.span());
-        });
-        self.with_path_item(OUTPUT_TYPE, |ctx| {
-            ctx.add_location(method.output_ty.span());
-        });
+        self.add_location_for(NAME, method.name.span.clone());
+        self.add_location_for(INPUT_TYPE, method.input_ty.span());
+        self.add_location_for(OUTPUT_TYPE, method.output_ty.span());
         if let Some(span) = &method.client_streaming {
-            self.with_path_item(CLIENT_STREAMING, |ctx| {
-                ctx.add_location(span.clone());
-            });
+            self.add_location_for(CLIENT_STREAMING, span.clone());
         }
         if let Some(span) = &method.server_streaming {
-            self.with_path_item(SERVER_STREAMING, |ctx| {
-                ctx.add_location(span.clone());
-            });
+            self.add_location_for(SERVER_STREAMING, span.clone());
         }
         self.with_path_item(OPTIONS, |ctx| {
             ctx.visit_options(&method.options);
@@ -420,6 +384,12 @@ impl Context {
             path: self.path.clone(),
             span,
             ..Default::default()
+        });
+    }
+
+    fn add_location_for(&mut self, path_item: i32, span: Span) {
+        self.with_path_item(path_item, |ctx| {
+            ctx.add_location(span);
         });
     }
 

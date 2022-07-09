@@ -7,7 +7,14 @@ Ok(
         span: 0..47,
         syntax: Proto3,
         syntax_span: Some(
-            0..18,
+            (
+                0..18,
+                Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+            ),
         ),
         package: None,
         imports: [

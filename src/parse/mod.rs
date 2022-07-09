@@ -141,10 +141,10 @@ impl<'a> Parser<'a> {
         let mut syntax_span = None;
         match self.peek() {
             Some((Token::Syntax, _)) => {
-                let (parsed_syntax, span) = self.parse_syntax()?;
+                let (parsed_syntax, span, comments) = self.parse_syntax()?;
                 file_span = span.clone();
                 syntax = parsed_syntax;
-                syntax_span = Some(span);
+                syntax_span = Some((span, comments));
             }
             Some((_, span)) => {
                 file_span = span;
@@ -205,7 +205,9 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_syntax(&mut self) -> Result<(ast::Syntax, Span), ()> {
+    fn parse_syntax(&mut self) -> Result<(ast::Syntax, Span, ast::Comments), ()> {
+        let leading_comments = self.parse_leading_comments();
+
         let start = self.expect_eq(Token::Syntax)?;
         self.expect_eq(Token::Equals)?;
 
@@ -229,7 +231,9 @@ impl<'a> Parser<'a> {
 
         let end = self.expect_eq(Token::Semicolon)?;
 
-        Ok((syntax, join_span(start, end)))
+        let comments = self.parse_trailing_comment(leading_comments);
+
+        Ok((syntax, join_span(start, end), comments))
     }
 
     fn parse_statement(&mut self) -> Result<Option<Statement>, ()> {

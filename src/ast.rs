@@ -8,7 +8,7 @@ use crate::{case::to_pascal_case, index_to_i32, join_span};
 pub(crate) struct File {
     pub span: Span,
     pub syntax: Syntax,
-    pub syntax_span: std::option::Option<Span>,
+    pub syntax_span: std::option::Option<(Span, Comments)>,
     pub package: std::option::Option<Package>,
     pub imports: Vec<Import>,
     pub options: Vec<Option>,

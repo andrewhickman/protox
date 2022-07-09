@@ -1,0 +1,30 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    File {
+        span: 35..53,
+        syntax: Proto3,
+        syntax_span: Some(
+            (
+                35..53,
+                Comments {
+                    leading_detached_comments: [
+                        " leading detached ",
+                    ],
+                    leading_comment: Some(
+                        " leading\n",
+                    ),
+                    trailing_comment: Some(
+                        " trailing ",
+                    ),
+                },
+            ),
+        ),
+        package: None,
+        imports: [],
+        options: [],
+        items: [],
+    },
+)
