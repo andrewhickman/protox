@@ -178,12 +178,8 @@ impl Context {
         const LABEL: i32 = 4;
         const TYPE: i32 = 5;
         const TYPE_NAME: i32 = 6;
-        const EXTENDEE: i32 = 2;
         const DEFAULT_VALUE: i32 = 7;
-        const ONEOF_INDEX: i32 = 9;
-        const JSON_NAME: i32 = 10;
         const OPTIONS: i32 = 8;
-        const PROTO3_OPTIONAL: i32 = 17;
 
         let ast = match &field.ast {
             ir::FieldSource::Field(ast) => ast,
@@ -218,10 +214,11 @@ impl Context {
             }
         }
 
-        // ty == message =>  type_name span
-        // else type
-        // group => type = 'group' keyword , type_name = field_name span
-        todo!()
+        // TODO: default_value
+
+        if let Some(options) = &ast.options {
+            self.visit_options_list(OPTIONS, options);
+        }
     }
 
     fn visit_extensions(&mut self, extensions: &ast::Extensions) {
@@ -229,7 +226,14 @@ impl Context {
     }
 
     fn visit_oneof(&mut self, oneof: &ir::Oneof) {
-        todo!()
+        const NAME: i32 = 1;
+
+        if let ir::OneofSource::Oneof(oneof) = &oneof.ast {
+            self.add_location(oneof.span.clone());
+            self.with_path_item(NAME, |ctx| {
+                ctx.add_location(oneof.name.span.clone());
+            });
+        }
     }
 
     fn visit_enum(&mut self, enu: &ast::Enum) {
@@ -259,11 +263,27 @@ impl Context {
     }
 
     fn visit_extend(&mut self, extend: &ast::Extend) {
-        todo!()
+        todo!();
+
+        const FIELD_EXTENDEE: i32 = 2;
+        // extendee for all types
     }
 
     fn visit_options(&mut self, path_item: i32, options: &[ast::Option]) {
-        todo!()
+        for option in options {
+            self.add_location(option.span.clone());
+            // self.with_path_item(option.number, f)
+        }
+        // self.with_path_items(path_item, options, |ctx, option| {
+        // self.add_location(option.span.clone());
+        // });
+    }
+
+    fn visit_options_list(&mut self, path_item: i32, options: &ast::OptionList) {
+        self.add_location(options.span.clone());
+        // self.with_path_items(path_item, &options.options, |ctx, option| {
+        //     self.add_location(option.span.clone());
+        // });
     }
 
     // impl ast::Visitor for Context {

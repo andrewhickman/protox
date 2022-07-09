@@ -52,7 +52,7 @@ Ok(
                                         value: 2,
                                         span: 59..60,
                                     },
-                                    options: [],
+                                    options: None,
                                     comments: Comments {
                                         leading_detached_comments: [],
                                         leading_comment: None,
@@ -72,7 +72,7 @@ Ok(
                     value: 1,
                     span: 32..33,
                 },
-                options: [],
+                options: None,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

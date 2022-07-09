@@ -30,7 +30,7 @@ Ok(
                     value: 1,
                     span: 24..26,
                 },
-                options: [],
+                options: None,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

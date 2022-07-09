@@ -37,7 +37,7 @@ Ok(
                                         value: 1,
                                         span: 139..140,
                                     },
-                                    options: [],
+                                    options: None,
                                     comments: Comments {
                                         leading_detached_comments: [
                                             " detached\n",

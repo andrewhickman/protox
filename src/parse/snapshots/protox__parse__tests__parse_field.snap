@@ -33,7 +33,7 @@ Ok(
             value: 3,
             span: 32..33,
         },
-        options: [],
+        options: None,
         comments: Comments {
             leading_detached_comments: [],
             leading_comment: None,

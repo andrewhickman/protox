@@ -28,25 +28,30 @@ Ok(
             value: 1,
             span: 19..20,
         },
-        options: [
-            OptionBody {
-                name: FullIdent {
-                    parts: [
-                        Ident {
-                            value: "deprecated",
-                            span: 22..32,
+        options: Some(
+            OptionList {
+                options: [
+                    OptionBody {
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "deprecated",
+                                    span: 22..32,
+                                },
+                            ],
                         },
-                    ],
-                },
-                field_name: None,
-                value: Bool(
-                    Bool {
-                        value: true,
-                        span: 35..39,
+                        field_name: None,
+                        value: Bool(
+                            Bool {
+                                value: true,
+                                span: 35..39,
+                            },
+                        ),
                     },
-                ),
+                ],
+                span: 21..40,
             },
-        ],
+        ),
         comments: Comments {
             leading_detached_comments: [],
             leading_comment: None,

@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_enum()
+expression: "match parser.parse_enum() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Enum {
@@ -20,25 +20,30 @@ Ok(
                     value: 0,
                     span: 17..18,
                 },
-                options: [
-                    OptionBody {
-                        name: FullIdent {
-                            parts: [
-                                Ident {
-                                    value: "opt",
-                                    span: 20..23,
+                options: Some(
+                    OptionList {
+                        options: [
+                            OptionBody {
+                                name: FullIdent {
+                                    parts: [
+                                        Ident {
+                                            value: "opt",
+                                            span: 20..23,
+                                        },
+                                    ],
                                 },
-                            ],
-                        },
-                        field_name: None,
-                        value: Float(
-                            Float {
-                                value: 0.5,
-                                span: 26..29,
+                                field_name: None,
+                                value: Float(
+                                    Float {
+                                        value: 0.5,
+                                        span: 26..29,
+                                    },
+                                ),
                             },
-                        ),
+                        ],
+                        span: 19..30,
                     },
-                ],
+                ),
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

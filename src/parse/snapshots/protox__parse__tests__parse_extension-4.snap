@@ -40,7 +40,7 @@ Ok(
                     value: 126,
                     span: 38..41,
                 },
-                options: [],
+                options: None,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

@@ -26,7 +26,7 @@ Ok(
                             value: 1,
                             span: 38..39,
                         },
-                        options: [],
+                        options: None,
                         comments: Comments {
                             leading_detached_comments: [],
                             leading_comment: None,
@@ -59,7 +59,7 @@ Ok(
                             value: 2,
                             span: 83..84,
                         },
-                        options: [],
+                        options: None,
                         comments: Comments {
                             leading_detached_comments: [],
                             leading_comment: None,
@@ -105,7 +105,7 @@ Ok(
                                                 value: 1,
                                                 span: 157..158,
                                             },
-                                            options: [],
+                                            options: None,
                                             comments: Comments {
                                                 leading_detached_comments: [],
                                                 leading_comment: None,
@@ -125,7 +125,7 @@ Ok(
                             value: 3,
                             span: 118..119,
                         },
-                        options: [],
+                        options: None,
                         comments: Comments {
                             leading_detached_comments: [],
                             leading_comment: None,
@@ -157,7 +157,7 @@ Ok(
                                     value: 4,
                                     span: 224..225,
                                 },
-                                options: [],
+                                options: None,
                                 comments: Comments {
                                     leading_detached_comments: [],
                                     leading_comment: None,

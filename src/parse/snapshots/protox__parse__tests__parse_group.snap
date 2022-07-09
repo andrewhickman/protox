@@ -28,7 +28,7 @@ Ok(
             value: 1,
             span: 29..30,
         },
-        options: [],
+        options: None,
         comments: Comments {
             leading_detached_comments: [],
             leading_comment: Some(

@@ -423,8 +423,8 @@ impl<'a> Parser<'a> {
         let number = self.parse_int()?;
 
         let options = match self.peek() {
-            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
-            Some((Token::Semicolon, _)) => vec![],
+            Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
+            Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
         };
 
@@ -468,8 +468,8 @@ impl<'a> Parser<'a> {
         let number = self.parse_int()?;
 
         let options = match self.peek() {
-            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
-            Some((Token::LeftBrace, _)) => vec![],
+            Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
+            Some((Token::LeftBrace, _)) => None,
             _ => self.unexpected_token("'{' or '['")?,
         };
 
@@ -505,8 +505,8 @@ impl<'a> Parser<'a> {
         let number = self.parse_int()?;
 
         let options = match self.peek() {
-            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
-            Some((Token::Semicolon, _)) => vec![],
+            Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
+            Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
         };
 
@@ -738,8 +738,8 @@ impl<'a> Parser<'a> {
         let value = self.parse_int()?;
 
         let options = match self.peek() {
-            Some((Token::Semicolon, _)) => vec![],
-            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
+            Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
         };
 
@@ -857,8 +857,8 @@ impl<'a> Parser<'a> {
             self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON, ExpectedToken::LEFT_BRACKET])?;
 
         let options = match self.peek() {
-            Some((Token::Semicolon, _)) => vec![],
-            Some((Token::LeftBracket, _)) => self.parse_options_list()?,
+            Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
+            Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
         };
 
@@ -954,12 +954,12 @@ impl<'a> Parser<'a> {
         Ok(ast::ReservedRange { start, end })
     }
 
-    fn parse_options_list(&mut self) -> Result<Vec<ast::OptionBody>, ()> {
-        self.expect_eq(Token::LeftBracket)?;
+    fn parse_options_list(&mut self) -> Result<ast::OptionList, ()> {
+        let start = self.expect_eq(Token::LeftBracket)?;
 
         let mut options =
             vec![self.parse_option_body(&[ExpectedToken::COMMA, ExpectedToken::RIGHT_BRACKET])?];
-        loop {
+        let end = loop {
             match self.peek() {
                 Some((Token::Comma, _)) => {
                     self.bump();
@@ -968,15 +968,17 @@ impl<'a> Parser<'a> {
                         ExpectedToken::RIGHT_BRACKET,
                     ])?);
                 }
-                Some((Token::RightBracket, _)) => {
-                    self.bump();
-                    break;
+                Some((Token::RightBracket, span)) => {
+                    break self.bump();
                 }
                 _ => self.unexpected_token("',' or ']'")?,
             }
-        }
+        };
 
-        Ok(options)
+        Ok(ast::OptionList {
+            span: join_span(start, end),
+            options,
+        })
     }
 
     fn parse_option(&mut self) -> Result<ast::Option, ()> {

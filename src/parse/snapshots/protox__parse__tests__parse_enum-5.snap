@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_enum()
+expression: "match parser.parse_enum() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Enum {
@@ -46,7 +46,7 @@ Ok(
                     value: 1,
                     span: 38..40,
                 },
-                options: [],
+                options: None,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

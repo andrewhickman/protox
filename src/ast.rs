@@ -122,6 +122,12 @@ pub(crate) struct OptionBody {
     pub value: Constant,
 }
 
+#[derive(Clone, Default, Debug, PartialEq)]
+pub(crate) struct OptionList {
+    pub options: Vec<OptionBody>,
+    pub span: Span,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Message {
     pub name: Ident,
@@ -136,7 +142,7 @@ pub(crate) struct Field {
     pub name: Ident,
     pub kind: FieldKind,
     pub number: Int,
-    pub options: Vec<OptionBody>,
+    pub options: std::option::Option<OptionList>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -231,7 +237,7 @@ pub(crate) struct Reserved {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Extensions {
     pub ranges: Vec<ReservedRange>,
-    pub options: Vec<OptionBody>,
+    pub options: std::option::Option<OptionList>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -269,7 +275,7 @@ pub(crate) struct Enum {
 pub(crate) struct EnumValue {
     pub name: Ident,
     pub value: Int,
-    pub options: Vec<OptionBody>,
+    pub options: std::option::Option<OptionList>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -332,7 +338,7 @@ impl File {
             .iter()
             .enumerate()
             .filter_map(|(index, import)| match &import.kind {
-                Some((ImportKind::Public, span)) => Some((index_to_i32(index), import)),
+                Some((ImportKind::Public, _)) => Some((index_to_i32(index), import)),
                 _ => None,
             })
     }
@@ -342,7 +348,7 @@ impl File {
             .iter()
             .enumerate()
             .filter_map(|(index, import)| match &import.kind {
-                Some((ImportKind::Weak, span)) => Some((index_to_i32(index), import)),
+                Some((ImportKind::Weak, _)) => Some((index_to_i32(index), import)),
                 _ => None,
             })
     }

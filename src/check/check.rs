@@ -270,7 +270,8 @@ impl<'a> Context<'a> {
             }
 
             for extension in &body.extensions {
-                let extension_options = self.check_extension_range_options(&extension.options);
+                let extension_options =
+                    self.check_extension_range_options(extension.options.as_ref());
 
                 extension_range.extend(extension.ranges.iter().map(|e| ExtensionRange {
                     options: extension_options.clone(),
@@ -328,7 +329,7 @@ impl<'a> Context<'a> {
         let number = self.check_field_number(&field.number);
         let label = self.check_field_label(field);
         let (ty, type_name) = self.check_field_type(field);
-        let (default_value, options) = self.check_field_options(&field.options);
+        let (default_value, options) = self.check_field_options(field.options.as_ref());
 
         if let Some((_, default_value_span)) = &default_value {
             if field.is_map() {
@@ -655,7 +656,7 @@ impl<'a> Context<'a> {
         let name = s(&value.name.value);
         let number = self.check_enum_number(&value.value);
 
-        let options = self.check_enum_value_options(&value.options);
+        let options = self.check_enum_value_options(value.options.as_ref());
 
         EnumValueDescriptorProto {
             name,
@@ -804,22 +805,21 @@ impl<'a> Context<'a> {
 
     fn check_field_options(
         &mut self,
-        options: &[ast::OptionBody],
+        options: Option<&ast::OptionList>,
     ) -> (Option<(String, Span)>, Option<FieldOptions>) {
-        if options.is_empty() {
-            return (None, None);
-        }
+        let _options = match options {
+            Some(options) => options,
+            None => return (None, None),
+        };
 
         todo!()
     }
 
     fn check_extension_range_options(
         &mut self,
-        options: &[ast::OptionBody],
+        options: Option<&ast::OptionList>,
     ) -> Option<ExtensionRangeOptions> {
-        if options.is_empty() {
-            return None;
-        }
+        let _options = options?;
 
         todo!()
     }
@@ -840,10 +840,11 @@ impl<'a> Context<'a> {
         todo!()
     }
 
-    fn check_enum_value_options(&self, options: &[ast::OptionBody]) -> Option<EnumValueOptions> {
-        if options.is_empty() {
-            return None;
-        }
+    fn check_enum_value_options(
+        &self,
+        options: Option<&ast::OptionList>,
+    ) -> Option<EnumValueOptions> {
+        let _options = options?;
 
         todo!()
     }
