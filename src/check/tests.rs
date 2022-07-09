@@ -6,13 +6,13 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use super::CheckError::*;
 use super::*;
-use crate::{error::ErrorKind, files::File, Compiler, Error, ImportResolver};
+use crate::{error::ErrorKind, file::File, file::FileResolver, Compiler, Error};
 
-struct TestImportResolver {
+struct TestFileResolver {
     files: HashMap<String, String>,
 }
 
-impl ImportResolver for TestImportResolver {
+impl FileResolver for TestFileResolver {
     fn open(&self, name: &str) -> Result<File, Error> {
         Ok(File {
             path: None,
@@ -33,7 +33,7 @@ fn check(source: &str) -> Result<FileDescriptorProto, Vec<CheckError>> {
 #[track_caller]
 fn check_with_imports(files: Vec<(&str, &str)>) -> Result<FileDescriptorSet, Vec<CheckError>> {
     let root = files.last().unwrap().0.to_owned();
-    let resolver = TestImportResolver {
+    let resolver = TestFileResolver {
         files: files
             .into_iter()
             .map(|(n, s)| (n.to_owned(), s.to_owned()))

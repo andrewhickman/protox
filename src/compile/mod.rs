@@ -12,8 +12,8 @@ use crate::{
     ast,
     check::{check_with_names, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
-    files::ends_with,
-    parse, FileImportResolver, ImportResolver, MAX_FILE_LEN,
+    file::{check_shadow, FileResolver, IncludeFileResolver},
+    parse, MAX_FILE_LEN,
 };
 
 #[cfg(test)]
@@ -21,7 +21,7 @@ mod tests;
 
 /// Options for compiling protobuf files.
 pub struct Compiler {
-    resolver: Box<dyn ImportResolver>,
+    resolver: Box<dyn FileResolver>,
     file_map: ParsedFileMap,
     include_imports: bool,
     include_source_info: bool,
@@ -45,14 +45,14 @@ pub(crate) struct ParsedFileMap {
 impl Compiler {
     /// Create a new [`Compiler`] with default options and the given non-empty set of include paths.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
-        let resolver = FileImportResolver::new(includes)?;
+        let resolver = IncludeFileResolver::new(includes)?;
         Ok(Compiler::with_import_resolver(resolver))
     }
 
-    /// Create a new [`Compiler`] with a custom [`ImportResolver`] for looking up imported files.
+    /// Create a new [`Compiler`] with a custom [`FileResolver`] for looking up imported files.
     pub fn with_import_resolver<R>(resolver: R) -> Self
     where
-        R: ImportResolver + 'static,
+        R: FileResolver + 'static,
     {
         Compiler {
             resolver: Box::new(resolver),
@@ -256,20 +256,6 @@ impl fmt::Debug for Compiler {
             .field("include_source_info", &self.include_source_info)
             .finish_non_exhaustive()
     }
-}
-
-fn check_shadow(actual_path: &Option<PathBuf>, expected_path: &Path) -> Result<(), Error> {
-    // actual_path is assumed to be an include path concatenated with `expected_path`
-    if let Some(actual_path) = actual_path {
-        if !ends_with(actual_path, expected_path) {
-            return Err(Error::from_kind(ErrorKind::FileShadowed {
-                path: expected_path.to_owned(),
-                shadow: actual_path.to_owned(),
-            }));
-        }
-    }
-
-    Ok(())
 }
 
 impl ParsedFileMap {

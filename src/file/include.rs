@@ -9,34 +9,16 @@ use crate::{
     Error, MAX_FILE_LEN,
 };
 
-/// A strategy for opening imported files. The default implementation is [`FileImportResolver`] which uses the file system.
-pub trait ImportResolver {
-    /// Converts a file system path to a unique file name.
-    fn resolve_path(&self, path: &Path) -> Option<String> {
-        to_import_name(path)
-    }
+use super::{to_import_name, File, FileResolver};
 
-    /// Opens a file by its unique name.
-    fn open(&self, name: &str) -> Result<File, Error>;
-}
-
-/// An opened protobuf source file, returned by [`ImportResolver::open`].
-#[derive(Debug, Clone)]
-pub struct File {
-    /// If this is a physical file on the filesystem, the path to the file.
-    pub path: Option<PathBuf>,
-    /// The full content of the file as a UTF-8 string.
-    pub content: String,
-}
-
-/// An implementation of [`ImportResolver`] which uses the filesystem, matching the behaviour of protoc.
+/// An implementation of [`FileResolver`] which searches an include path.
 #[derive(Debug)]
-pub struct FileImportResolver {
+pub struct IncludeFileResolver {
     includes: Vec<PathBuf>,
 }
 
-impl FileImportResolver {
-    /// Constructs a `FileImportResolver` from the set of include paths.
+impl IncludeFileResolver {
+    /// Constructs a `IncludeFileResolver` from the set of include paths.
     ///
     /// # Errors
     ///
@@ -54,19 +36,19 @@ impl FileImportResolver {
             return Err(Error::from_kind(ErrorKind::NoIncludePaths));
         }
 
-        Ok(FileImportResolver { includes })
+        Ok(IncludeFileResolver { includes })
     }
 }
 
-impl ImportResolver for FileImportResolver {
+impl FileResolver for IncludeFileResolver {
     /// Converts a file system path to a unique file name.
     ///
     /// # Examples
     ///
     /// ```
     /// # use std::path::Path;
-    /// # use protox::{FileImportResolver, ImportResolver};
-    /// let resolver = FileImportResolver::new(&["/path/to/include"]).unwrap();
+    /// # use protox::file::{IncludeFileResolver, FileResolver};
+    /// let resolver = IncludeFileResolver::new(&["/path/to/include"]).unwrap();
     /// assert_eq!(resolver.resolve_path(Path::new("/path/to/include/dir/foo.proto")), Some("dir/foo.proto".to_owned()));
     /// assert_eq!(resolver.resolve_path(Path::new("dir/foo.proto")), Some("dir/foo.proto".to_owned()));
     /// assert_eq!(resolver.resolve_path(Path::new("../foo.proto")), None);
@@ -95,12 +77,12 @@ impl ImportResolver for FileImportResolver {
     ///
     /// ```
     /// # use std::{fs, path::PathBuf};
-    /// # use protox::{FileImportResolver, ImportResolver};
+    /// # use protox::file::{IncludeFileResolver, FileResolver};
     /// # let tempdir = assert_fs::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("./foo.proto", "content").unwrap();
     ///
-    /// let resolver = FileImportResolver::new(&["."]).unwrap();
+    /// let resolver = IncludeFileResolver::new(&["."]).unwrap();
     /// let file = resolver.open("foo.proto").unwrap();
     /// assert_eq!(file.path, Some(PathBuf::from("./foo.proto")));
     /// assert_eq!(file.content, "content");
@@ -155,36 +137,32 @@ fn read_file(path: &Path) -> Result<String, Error> {
     Ok(buf)
 }
 
-fn to_import_name(path: &Path) -> Option<String> {
-    let mut name = String::new();
-    for component in path.components() {
-        match component {
-            path::Component::Normal(component) => {
-                if let Some(component) = component.to_str() {
-                    if !name.is_empty() {
-                        name.push('/');
-                    }
-                    name.push_str(component);
-                } else {
-                    return None;
-                }
-            }
-            _ => return None,
+pub(crate) fn check_shadow(
+    actual_path: &Option<PathBuf>,
+    expected_path: &Path,
+) -> Result<(), Error> {
+    // actual_path is assumed to be an include path concatenated with `expected_path`
+    if let Some(actual_path) = actual_path {
+        if !ends_with(actual_path, expected_path) {
+            return Err(Error::from_kind(ErrorKind::FileShadowed {
+                path: expected_path.to_owned(),
+                shadow: actual_path.to_owned(),
+            }));
         }
     }
 
-    Some(name)
+    Ok(())
 }
 
-/// Modification of std::path::Path::strip_prefix which ignores '.' components and is case-insensitive on windows.
-pub(crate) fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
+fn strip_prefix<'a>(path: &'a Path, prefix: &Path) -> Option<&'a Path> {
     Some(iter_after(path.components(), prefix.components())?.as_path())
 }
 
-pub(crate) fn ends_with(path: &Path, suffix: &Path) -> bool {
+fn ends_with(path: &Path, suffix: &Path) -> bool {
     iter_after(path.components().rev(), suffix.components().rev()).is_some()
 }
 
+/// Comparison of paths which ignores '.' components and is case-insensitive on windows.
 fn iter_after<'a, 'b, I, J>(mut iter: I, mut prefix: J) -> Option<I>
 where
     I: Iterator<Item = path::Component<'a>> + Clone,

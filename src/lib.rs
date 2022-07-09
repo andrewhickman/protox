@@ -3,12 +3,13 @@
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/protox/0.1.0/")]
 
+pub mod file;
+
 mod ast;
 mod case;
 mod check;
 mod compile;
 mod error;
-mod files;
 mod lines;
 mod parse;
 
@@ -20,7 +21,6 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
-pub use self::files::{File, FileImportResolver, ImportResolver};
 
 /// Convenience function for compiling a set of protobuf files.
 ///
