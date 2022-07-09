@@ -83,6 +83,28 @@ impl ImportResolver for FileImportResolver {
         to_import_name(path)
     }
 
+    /// Opens a file by its unique name.
+    ///
+    /// Each include path is searched for a file with the given name and the first match is returned.
+    ///
+    /// # Errors
+    ///
+    /// If no matching file is found, an error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::{fs, path::PathBuf};
+    /// # use protox::{FileImportResolver, ImportResolver};
+    /// # let tempdir = assert_fs::TempDir::new().unwrap();
+    /// # std::env::set_current_dir(tempdir).unwrap();
+    /// fs::write("./foo.proto", "content").unwrap();
+    ///
+    /// let resolver = FileImportResolver::new(&["."]).unwrap();
+    /// let file = resolver.open("foo.proto").unwrap();
+    /// assert_eq!(file.path, Some(PathBuf::from("./foo.proto")));
+    /// assert_eq!(file.content, "content");
+    /// ```
     fn open(&self, name: &str) -> Result<File, Error> {
         for include in &self.includes {
             let candidate_path = include.join(name);
