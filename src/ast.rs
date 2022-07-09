@@ -258,7 +258,7 @@ pub(crate) struct ReservedRange {
 pub(crate) enum ReservedRangeEnd {
     None,
     Int(Int),
-    Max,
+    Max(Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -274,7 +274,7 @@ pub(crate) struct Enum {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct EnumValue {
     pub name: Ident,
-    pub value: Int,
+    pub number: Int,
     pub options: std::option::Option<OptionList>,
     pub comments: Comments,
     pub span: Span,
@@ -295,8 +295,8 @@ pub(crate) struct Method {
     pub input_ty: TypeName,
     pub output_ty: TypeName,
     pub options: Vec<Option>,
-    pub is_client_streaming: bool,
-    pub is_server_streaming: bool,
+    pub client_streaming: std::option::Option<Span>,
+    pub server_streaming: std::option::Option<Span>,
     pub comments: Comments,
     pub span: Span,
 }
@@ -417,24 +417,42 @@ impl MessageBody {
         })
     }
 
-    pub fn reserved_ranges(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ ReservedRange)> {
+    pub fn reserved_ranges(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ [ReservedRange])> {
         self.reserved
             .iter()
             .filter_map(|reserved| match &reserved.kind {
-                ReservedKind::Ranges(ranges) => Some((reserved, ranges)),
+                ReservedKind::Ranges(ranges) => Some((reserved, ranges.as_slice())),
                 _ => None,
             })
-            .flat_map(|(reserved, ranges)| ranges.iter().map(move |range| (reserved, range)))
     }
 
-    pub fn reserved_names(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ Ident)> {
+    pub fn reserved_names(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ [Ident])> {
         self.reserved
             .iter()
             .filter_map(|reserved| match &reserved.kind {
-                ReservedKind::Names(names) => Some((reserved, names)),
+                ReservedKind::Names(names) => Some((reserved, names.as_slice())),
                 _ => None,
             })
-            .flat_map(|(reserved, names)| names.iter().map(move |name| (reserved, name)))
+    }
+}
+
+impl Enum {
+    pub fn reserved_ranges(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ [ReservedRange])> {
+        self.reserved
+            .iter()
+            .filter_map(|reserved| match &reserved.kind {
+                ReservedKind::Ranges(ranges) => Some((reserved, ranges.as_slice())),
+                _ => None,
+            })
+    }
+
+    pub fn reserved_names(&self) -> impl Iterator<Item = (&'_ Reserved, &'_ [Ident])> {
+        self.reserved
+            .iter()
+            .filter_map(|reserved| match &reserved.kind {
+                ReservedKind::Names(names) => Some((reserved, names.as_slice())),
+                _ => None,
+            })
     }
 }
 
@@ -447,11 +465,55 @@ impl Field {
                 .find(|o| o.name.parts.len() == 1 && o.name.parts[0].value == "default")
         })
     }
+
+    pub fn is_map(&self) -> bool {
+        matches!(&self.kind, FieldKind::Map { .. })
+    }
+
+    pub fn is_group(&self) -> bool {
+        matches!(&self.kind, FieldKind::Group { .. })
+    }
+
+    pub fn map_message_name(&self) -> std::string::String {
+        to_pascal_case(&self.name.value) + "Entry"
+    }
+
+    pub fn field_name(&self) -> Cow<'_, str> {
+        if self.is_group() {
+            Cow::Owned(self.name.value.to_ascii_lowercase())
+        } else {
+            Cow::Borrowed(self.name.value.as_str())
+        }
+    }
+}
+
+impl Field {
+    pub fn synthetic_oneof_name(&self) -> std::string::String {
+        format!("_{}", &self.name.value)
+    }
 }
 
 impl OptionBody {
     pub fn span(&self) -> Span {
         join_span(self.name.span(), self.value.span())
+    }
+}
+
+impl ReservedRange {
+    pub fn start_span(&self) -> Span {
+        self.start.span.clone()
+    }
+
+    pub fn end_span(&self) -> Span {
+        match &self.end {
+            ReservedRangeEnd::None => self.start.span.clone(),
+            ReservedRangeEnd::Int(end) => end.span.clone(),
+            ReservedRangeEnd::Max(end_span) => end_span.clone(),
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        join_span(self.start_span(), self.end_span())
     }
 }
 
@@ -535,33 +597,5 @@ impl fmt::Display for String {
 impl fmt::Display for Bool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
-    }
-}
-
-impl Field {
-    pub fn is_map(&self) -> bool {
-        matches!(&self.kind, FieldKind::Map { .. })
-    }
-
-    pub fn is_group(&self) -> bool {
-        matches!(&self.kind, FieldKind::Group { .. })
-    }
-
-    pub fn map_message_name(&self) -> std::string::String {
-        to_pascal_case(&self.name.value) + "Entry"
-    }
-
-    pub fn field_name(&self) -> Cow<'_, str> {
-        if self.is_group() {
-            Cow::Owned(self.name.value.to_ascii_lowercase())
-        } else {
-            Cow::Borrowed(self.name.value.as_str())
-        }
-    }
-}
-
-impl Field {
-    pub fn synthetic_oneof_name(&self) -> std::string::String {
-        format!("_{}", &self.name.value)
     }
 }

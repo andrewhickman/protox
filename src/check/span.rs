@@ -14,7 +14,7 @@ impl<'a> ir::File<'a> {
 
         ctx.visit_file(self);
 
-        ctx.locations.sort_by_key(|loc| loc.span.first().copied());
+        ctx.locations.sort_by_key(|loc| (loc.span[0], loc.span[1]));
 
         SourceCodeInfo {
             location: ctx.locations,
@@ -85,7 +85,7 @@ impl Context {
             ctx.visit_extend(extend);
         });
 
-        self.visit_options(OPTIONS, &file.ast.options);
+        self.with_path_item(OPTIONS, |ctx| ctx.visit_options(&file.ast.options));
 
         if let Some(syntax_span) = &file.ast.syntax_span {
             self.with_path_item(SYNTAX, |ctx| {
@@ -127,48 +127,31 @@ impl Context {
         self.with_path_items(FIELD, message.fields.iter(), |ctx, field| {
             ctx.visit_field(field);
         });
-
         self.with_path_items(EXTENSION, body.extends(), |ctx, extend| {
             ctx.visit_extend(extend);
+        });
+        self.with_path_items(ONEOF_DECL, message.oneofs.iter(), |ctx, oneof| {
+            ctx.visit_oneof(oneof);
         });
 
         self.with_path_items(NESTED_TYPE, message.messages.iter(), |ctx, message| {
             ctx.visit_message(message);
         });
-
         self.with_path_items(ENUM_TYPE, body.enums(), |ctx, enu| {
             ctx.visit_enum(enu);
         });
 
-        self.with_path_items(
-            EXTENSION_RANGE,
-            body.extensions.iter(),
-            |ctx, extensions| {
-                ctx.visit_extensions(extensions);
-            },
-        );
+        self.with_path_item(OPTIONS, |ctx| ctx.visit_options(&body.options));
 
-        self.visit_options(OPTIONS, &body.options);
-
-        self.with_path_items(ONEOF_DECL, message.oneofs.iter(), |ctx, oneof| {
-            ctx.visit_oneof(oneof);
+        self.with_path_item(EXTENSION_RANGE, |ctx| {
+            ctx.visit_extensions(body.extensions.iter());
         });
-
-        self.with_path_items(
-            RESERVED_RANGE,
-            body.reserved_ranges(),
-            |ctx, (reserved, range)| {
-                ctx.visit_reserved_range(reserved, range);
-            },
-        );
-
-        self.with_path_items(
-            RESERVED_NAME,
-            body.reserved_names(),
-            |ctx, (reserved, name)| {
-                ctx.visit_reserved_name(reserved, name);
-            },
-        );
+        self.with_path_item(RESERVED_RANGE, |ctx| {
+            ctx.visit_reserved_ranges(body.reserved_ranges());
+        });
+        self.with_path_item(RESERVED_NAME, |ctx| {
+            ctx.visit_reserved_names(body.reserved_names());
+        });
     }
 
     fn visit_field(&mut self, field: &ir::Field) {
@@ -220,21 +203,52 @@ impl Context {
         }
 
         if let Some(options) = &ast.options {
-            self.visit_options_list(OPTIONS, options);
+            self.with_path_item(OPTIONS, |ctx| {
+                ctx.visit_options_list(options);
+            });
         }
     }
 
-    fn visit_extensions(&mut self, _extensions: &ast::Extensions) {
-        todo!()
+    fn visit_extensions<'a>(&mut self, extensions: impl Iterator<Item = &'a ast::Extensions>) {
+        const START: i32 = 1;
+        const END: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        let mut count = 0;
+        for extension in extensions {
+            self.add_location_with_comments(extension.span.clone(), extension.comments.clone());
+
+            for range in &extension.ranges {
+                self.with_path_item(count, |ctx| {
+                    ctx.add_location(range.span());
+                    ctx.with_path_item(START, |ctx| {
+                        ctx.add_location(range.start_span());
+                    });
+                    ctx.with_path_item(END, |ctx| {
+                        ctx.add_location(range.end_span());
+                    });
+                    if let Some(options) = &extension.options {
+                        ctx.with_path_item(OPTIONS, |ctx| {
+                            ctx.visit_options_list(options);
+                        });
+                    }
+                });
+                count += 1;
+            }
+        }
     }
 
     fn visit_oneof(&mut self, oneof: &ir::Oneof) {
         const NAME: i32 = 1;
+        const OPTIONS: i32 = 2;
 
         if let ir::OneofSource::Oneof(oneof) = &oneof.ast {
             self.add_location(oneof.span.clone());
             self.with_path_item(NAME, |ctx| {
                 ctx.add_location(oneof.name.span.clone());
+            });
+            self.with_path_item(OPTIONS, |ctx| {
+                ctx.visit_options(&oneof.options);
             });
         }
     }
@@ -246,15 +260,84 @@ impl Context {
         const RESERVED_RANGE: i32 = 4;
         const RESERVED_NAME: i32 = 5;
 
-        todo!()
+        self.add_location_with_comments(enu.span.clone(), enu.comments.clone());
+        self.with_path_item(NAME, |ctx| {
+            ctx.add_location(enu.name.span.clone());
+        });
+        self.with_path_items(VALUE, enu.values.iter(), |ctx, value| {
+            ctx.visit_enum_value(value);
+        });
+        self.with_path_item(OPTIONS, |ctx| {
+            ctx.visit_options(&enu.options);
+        });
+        self.with_path_item(RESERVED_RANGE, |ctx| {
+            ctx.visit_reserved_ranges(enu.reserved_ranges());
+        });
+        self.with_path_item(RESERVED_NAME, |ctx| {
+            ctx.visit_reserved_names(enu.reserved_names());
+        });
     }
 
-    fn visit_reserved_range(&mut self, reserved: &ast::Reserved, range: &ast::ReservedRange) {
-        todo!()
+    fn visit_enum_value(&mut self, value: &ast::EnumValue) {
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        self.add_location_with_comments(value.span.clone(), value.comments.clone());
+        self.with_path_item(NAME, |ctx| {
+            ctx.add_location(value.span.clone());
+        });
+        self.with_path_item(NUMBER, |ctx| {
+            ctx.add_location(value.number.span.clone());
+        });
+        if let Some(options) = &value.options {
+            self.with_path_item(OPTIONS, |ctx| {
+                ctx.visit_options_list(options);
+            });
+        }
     }
 
-    fn visit_reserved_name(&mut self, reserved: &ast::Reserved, name: &ast::Ident) {
-        todo!()
+    fn visit_reserved_ranges<'a>(
+        &mut self,
+        reserveds: impl Iterator<Item = (&'a ast::Reserved, &'a [ast::ReservedRange])>,
+    ) {
+        const START: i32 = 1;
+        const END: i32 = 2;
+
+        let mut count = 0;
+        for (reserved, ranges) in reserveds {
+            self.add_location_with_comments(reserved.span.clone(), reserved.comments.clone());
+
+            for range in ranges {
+                self.with_path_item(count, |ctx| {
+                    ctx.add_location(range.span());
+                    ctx.with_path_item(START, |ctx| {
+                        ctx.add_location(range.start_span());
+                    });
+                    ctx.with_path_item(END, |ctx| {
+                        ctx.add_location(range.end_span());
+                    });
+                });
+                count += 1;
+            }
+        }
+    }
+
+    fn visit_reserved_names<'a>(
+        &mut self,
+        reserveds: impl Iterator<Item = (&'a ast::Reserved, &'a [ast::Ident])>,
+    ) {
+        let mut count = 0;
+        for (reserved, names) in reserveds {
+            self.add_location_with_comments(reserved.span.clone(), reserved.comments.clone());
+
+            for name in names {
+                self.with_path_item(count, |ctx| {
+                    ctx.add_location(name.span.clone());
+                });
+                count += 1;
+            }
+        }
     }
 
     fn visit_service(&mut self, service: &ast::Service) {
@@ -262,7 +345,49 @@ impl Context {
         const METHOD: i32 = 2;
         const OPTIONS: i32 = 3;
 
-        todo!()
+        self.add_location_with_comments(service.span.clone(), service.comments.clone());
+        self.with_path_item(NAME, |ctx| {
+            ctx.add_location(service.name.span.clone());
+        });
+        self.with_path_items(METHOD, service.methods.iter(), |ctx, method| {
+            ctx.visit_method(method);
+        });
+        self.with_path_item(OPTIONS, |ctx| {
+            ctx.visit_options(&service.options);
+        });
+    }
+
+    fn visit_method(&mut self, method: &ast::Method) {
+        const NAME: i32 = 1;
+        const INPUT_TYPE: i32 = 2;
+        const OUTPUT_TYPE: i32 = 3;
+        const OPTIONS: i32 = 4;
+        const CLIENT_STREAMING: i32 = 5;
+        const SERVER_STREAMING: i32 = 6;
+
+        self.add_location_with_comments(method.span.clone(), method.comments.clone());
+        self.with_path_item(NAME, |ctx| {
+            ctx.add_location(method.name.span.clone());
+        });
+        self.with_path_item(INPUT_TYPE, |ctx| {
+            ctx.add_location(method.input_ty.span());
+        });
+        self.with_path_item(OUTPUT_TYPE, |ctx| {
+            ctx.add_location(method.output_ty.span());
+        });
+        if let Some(span) = &method.client_streaming {
+            self.with_path_item(CLIENT_STREAMING, |ctx| {
+                ctx.add_location(span.clone());
+            });
+        }
+        if let Some(span) = &method.server_streaming {
+            self.with_path_item(SERVER_STREAMING, |ctx| {
+                ctx.add_location(span.clone());
+            });
+        }
+        self.with_path_item(OPTIONS, |ctx| {
+            ctx.visit_options(&method.options);
+        });
     }
 
     fn visit_extend(&mut self, extend: &ast::Extend) {
@@ -272,7 +397,7 @@ impl Context {
         // extendee for all types
     }
 
-    fn visit_options(&mut self, path_item: i32, options: &[ast::Option]) {
+    fn visit_options(&mut self, options: &[ast::Option]) {
         for option in options {
             self.add_location(option.span.clone());
             // self.with_path_item(option.number, f)
@@ -282,84 +407,12 @@ impl Context {
         // });
     }
 
-    fn visit_options_list(&mut self, path_item: i32, options: &ast::OptionList) {
+    fn visit_options_list(&mut self, options: &ast::OptionList) {
         self.add_location(options.span.clone());
         // self.with_path_items(path_item, &options.options, |ctx, option| {
         //     self.add_location(option.span.clone());
         // });
     }
-
-    // impl ast::Visitor for Context {
-    //     fn visit_file(&mut self, file: &ast::File) {
-
-    //         self.add_location(file.span.clone());
-
-    //         if let Some(package) = &file.package {
-    //             self.with_path_item(PACKAGE, |this| {
-    //                 this.add_location_with_comments(package.span.clone(), package.comments.clone())
-    //             });
-    //         }
-
-    //         self.with_path_items(DEPENDENCY, &file.imports, |this, import| {
-    //             this.add_location_with_comments(import.span.clone(), import.comments.clone());
-    //         });
-
-    //         // TODO add public /weak imports
-
-    //         file.visit(self)
-    //     }
-
-    //     fn visit_enum(&mut self, enu: &ast::Enum) {
-
-    //         enu.visit(self)
-    //     }
-
-    //     fn visit_enum_value(&mut self, _: &ast::EnumValue) {
-    //         const NAME: i32 = 1;
-    //         const NUMBER: i32 = 2;
-    //         const OPTIONS: i32 = 3;
-    //     }
-
-    //     fn visit_message(&mut self, message: &ast::Message) {
-    //         message.body.visit(self)
-    //     }
-
-    //     fn visit_message_field(&mut self, field: &ast::MessageField) {
-    //         field.visit(self)
-    //     }
-
-    //     fn visit_field(&mut self, _: &ast::Field) {
-    //     }
-
-    //     fn visit_map(&mut self, _: &ast::Field) {}
-
-    //     fn visit_group(&mut self, group: &ast::Group) {
-    //         group.body.visit(self)
-    //     }
-
-    //     fn visit_oneof(&mut self, oneof: &ast::Oneof) {
-    //         const NAME: i32 = 1;
-    //         const OPTIONS: i32 = 2;
-    //         oneof.visit(self)
-    //     }
-
-    //     fn visit_extend(&mut self, extend: &ast::Extend) {
-    //         extend.visit(self)
-    //     }
-
-    //     fn visit_service(&mut self, service: &ast::Service) {
-    //         service.visit(self)
-    //     }
-
-    //     fn visit_method(&mut self, _: &ast::Method) {
-    //         const NAME: i32 = 1;
-    //         const INPUT_TYPE: i32 = 2;
-    //         const OUTPUT_TYPE: i32 = 3;
-    //         const OPTIONS: i32 = 4;
-    //         const CLIENT_STREAMING: i32 = 5;
-    //         const SERVER_STREAMING: i32 = 6;
-    //     }
-    // }
 
     fn add_location(&mut self, span: Span) {
         let span = self.lines.resolve_span(span);

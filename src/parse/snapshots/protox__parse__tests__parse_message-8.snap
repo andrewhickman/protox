@@ -41,7 +41,9 @@ Ok(
                                 value: 10,
                                 span: 36..38,
                             },
-                            end: Max,
+                            end: Max(
+                                42..45,
+                            ),
                         },
                     ],
                     options: Some(

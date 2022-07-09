@@ -331,7 +331,7 @@ impl<'a> Context<'a> {
         let (ty, type_name) = self.check_field_type(field);
         let options = self.check_field_options(field.options.as_ref());
 
-        let default_value= self.check_field_default_value(field, ty);
+        let default_value = self.check_field_default_value(field, ty);
 
         let json_name = Some(to_camel_case(&field.field_name()));
 
@@ -536,7 +536,11 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_field_default_value(&mut self, field: &ast::Field, ty: Option<field_descriptor_proto::Type>) -> Option<String> {
+    fn check_field_default_value(
+        &mut self,
+        field: &ast::Field,
+        ty: Option<field_descriptor_proto::Type>,
+    ) -> Option<String> {
         // TODO check type
         if let Some(option) = field.default_value() {
             if field.is_map() {
@@ -663,7 +667,7 @@ impl<'a> Context<'a> {
 
     fn check_enum_value(&mut self, value: &ast::EnumValue) -> EnumValueDescriptorProto {
         let name = s(&value.name.value);
-        let number = self.check_enum_number(&value.value);
+        let number = self.check_enum_number(&value.number);
 
         let options = self.check_enum_value_options(value.options.as_ref());
 
@@ -726,8 +730,8 @@ impl<'a> Context<'a> {
             input_type: Some(input_type),
             output_type: Some(output_type),
             options,
-            client_streaming: Some(method.is_client_streaming),
-            server_streaming: Some(method.is_server_streaming),
+            client_streaming: Some(method.client_streaming.is_some()),
+            server_streaming: Some(method.server_streaming.is_some()),
         }
     }
 
@@ -736,7 +740,7 @@ impl<'a> Context<'a> {
         let end = match &range.end {
             ast::ReservedRangeEnd::None => start.map(|n| n + 1),
             ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
-            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
         };
 
         ReservedRange { start, end }
@@ -747,7 +751,7 @@ impl<'a> Context<'a> {
         let end = match &range.end {
             ast::ReservedRangeEnd::None => start.map(|n| n + 1),
             ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
-            ast::ReservedRangeEnd::Max => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
         };
 
         ExtensionRange {
@@ -762,7 +766,7 @@ impl<'a> Context<'a> {
         let end = match &range.end {
             ast::ReservedRangeEnd::None => start,
             ast::ReservedRangeEnd::Int(value) => self.check_enum_number(value),
-            ast::ReservedRangeEnd::Max => Some(i32::MAX),
+            ast::ReservedRangeEnd::Max(_) => Some(i32::MAX),
         };
 
         EnumReservedRange { start, end }
@@ -812,10 +816,7 @@ impl<'a> Context<'a> {
         todo!()
     }
 
-    fn check_field_options(
-        &mut self,
-        options: Option<&ast::OptionList>,
-    ) -> Option<FieldOptions> {
+    fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<FieldOptions> {
         let _options = options?;
 
         todo!()

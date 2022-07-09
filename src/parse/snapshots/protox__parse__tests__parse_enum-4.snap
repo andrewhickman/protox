@@ -15,7 +15,7 @@ Ok(
                     value: "BAR",
                     span: 11..14,
                 },
-                value: Int {
+                number: Int {
                     negative: false,
                     value: 1,
                     span: 17..18,

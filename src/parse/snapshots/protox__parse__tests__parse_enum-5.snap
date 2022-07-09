@@ -41,7 +41,7 @@ Ok(
                     value: "VAL",
                     span: 32..35,
                 },
-                value: Int {
+                number: Int {
                     negative: true,
                     value: 1,
                     span: 38..40,

@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_reserved()
+expression: "match parser.parse_reserved() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Reserved {
@@ -34,7 +34,9 @@ Ok(
                         value: 5,
                         span: 20..21,
                     },
-                    end: Max,
+                    end: Max(
+                        25..28,
+                    ),
                 },
             ],
         ),

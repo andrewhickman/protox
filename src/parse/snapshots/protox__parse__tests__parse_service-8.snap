@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: parser.parse_service()
+expression: "match parser.parse_service() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
 ---
 Ok(
     Service {
@@ -42,8 +42,8 @@ Ok(
                     },
                 },
                 options: [],
-                is_client_streaming: false,
-                is_server_streaming: false,
+                client_streaming: None,
+                server_streaming: None,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

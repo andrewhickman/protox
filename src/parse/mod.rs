@@ -353,10 +353,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     continue;
                 }
-                Some((Token::RightBrace, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::RightBrace, _)) => break self.bump(),
                 _ => self.unexpected_token(
                     "a message field, oneof, reserved range, enum, message, option or '}'",
                 )?,
@@ -544,10 +541,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     continue;
                 }
-                Some((Token::RightBrace, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::RightBrace, _)) => break self.bump(),
                 _ => self.unexpected_token("a message field, '}' or ';'")?,
             }
         };
@@ -585,10 +579,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     continue;
                 }
-                Some((Token::RightBrace, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::RightBrace, _)) => break self.bump(),
                 _ => self.unexpected_token("'rpc', '}', 'option' or ';'")?,
             }
         };
@@ -611,12 +602,9 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::LeftParen)?;
 
-        let is_client_streaming = match self.peek() {
-            Some((Token::Stream, _)) => {
-                self.bump();
-                true
-            }
-            Some((Token::Dot | Token::Ident(_), _)) => false,
+        let client_streaming = match self.peek() {
+            Some((Token::Stream, _)) => Some(self.bump()),
+            Some((Token::Dot | Token::Ident(_), _)) => None,
             _ => self.unexpected_token("'stream' or a type name")?,
         };
 
@@ -626,12 +614,9 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::Returns)?;
         self.expect_eq(Token::LeftParen)?;
 
-        let is_server_streaming = match self.peek() {
-            Some((Token::Stream, _)) => {
-                self.bump();
-                true
-            }
-            Some((Token::Dot | Token::Ident(_), _)) => false,
+        let server_streaming = match self.peek() {
+            Some((Token::Stream, _)) => Some(self.bump()),
+            Some((Token::Dot | Token::Ident(_), _)) => None,
             _ => self.unexpected_token("'stream' or a type name")?,
         };
 
@@ -652,10 +637,7 @@ impl<'a> Parser<'a> {
                         Some((Token::Option, _)) => {
                             options.push(self.parse_option()?);
                         }
-                        Some((Token::RightBrace, span)) => {
-                            self.bump();
-                            break span;
-                        }
+                        Some((Token::RightBrace, span)) => break self.bump(),
                         Some((Token::Semicolon, _)) => {
                             self.bump();
                             continue;
@@ -672,9 +654,9 @@ impl<'a> Parser<'a> {
         Ok(ast::Method {
             name,
             input_ty,
-            is_client_streaming,
+            client_streaming,
             output_ty,
-            is_server_streaming,
+            server_streaming,
             options,
             comments,
             span: join_span(start, end),
@@ -710,10 +692,7 @@ impl<'a> Parser<'a> {
                 Some((Token::Ident(_), _)) => {
                     values.push(self.parse_enum_value()?);
                 }
-                Some((Token::RightBrace, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::RightBrace, _)) => break self.bump(),
                 _ => self.unexpected_token("an identifier, '}', 'reserved' or 'option'")?,
             };
         };
@@ -735,7 +714,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::Equals)?;
 
-        let value = self.parse_int()?;
+        let number = self.parse_int()?;
 
         let options = match self.peek() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
@@ -749,7 +728,7 @@ impl<'a> Parser<'a> {
         Ok(ast::EnumValue {
             span: join_span(name.span.clone(), end),
             name,
-            value,
+            number,
             options,
             comments,
         })
@@ -775,10 +754,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     continue;
                 }
-                Some((Token::RightBrace, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::RightBrace, span)) => break self.bump(),
                 _ => self.unexpected_token("a message field, option or '}'")?,
             }
         };
@@ -883,10 +859,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     names.push(self.parse_ident_string()?);
                 }
-                Some((Token::Semicolon, span)) => {
-                    self.bump();
-                    break span;
-                }
+                Some((Token::Semicolon, span)) => break self.bump(),
                 _ => self.unexpected_token("',' or ';'")?,
             }
         };
@@ -940,9 +913,9 @@ impl<'a> Parser<'a> {
                     Some((Token::IntLiteral(_) | Token::Minus, _)) => {
                         ast::ReservedRangeEnd::Int(self.parse_int()?)
                     }
-                    Some((Token::Max, _)) => {
+                    Some((Token::Max, span)) => {
                         self.bump();
-                        ast::ReservedRangeEnd::Max
+                        ast::ReservedRangeEnd::Max(span)
                     }
                     _ => self.unexpected_token("an integer or 'max'")?,
                 }
@@ -968,9 +941,7 @@ impl<'a> Parser<'a> {
                         ExpectedToken::RIGHT_BRACKET,
                     ])?);
                 }
-                Some((Token::RightBracket, span)) => {
-                    break self.bump();
-                }
+                Some((Token::RightBracket, _)) => break self.bump(),
                 _ => self.unexpected_token("',' or ']'")?,
             }
         };

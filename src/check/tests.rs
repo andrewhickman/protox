@@ -512,3 +512,18 @@ message Foo {
 }
 
 */
+
+/*
+import "google/protobuf/descriptor.proto";
+extend google.protobuf.OneofOptions {
+  optional int32 my_option = 12345;
+}
+
+message Hello {
+  oneof something {
+    int32 bar = 1;
+
+    option (my_option) = 54321;
+  }
+}
+ */
