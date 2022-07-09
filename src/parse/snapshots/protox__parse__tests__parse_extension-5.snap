@@ -31,6 +31,7 @@ Ok(
                 },
                 kind: Normal {
                     ty: Int32,
+                    ty_span: 23..28,
                 },
                 number: Int {
                     negative: false,
@@ -58,6 +59,7 @@ Ok(
                 },
                 kind: Normal {
                     ty: String,
+                    ty_span: 49..55,
                 },
                 number: Int {
                     negative: false,

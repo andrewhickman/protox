@@ -506,7 +506,7 @@ impl<'a> Context<'a> {
                 assert!(def.is_none() || def == Some(DefinitionKind::Message));
                 (Some(field_descriptor_proto::Type::Message), Some(name))
             }
-            ast::FieldKind::Normal { ty } => self.check_type(ty),
+            ast::FieldKind::Normal { ty, .. } => self.check_type(ty),
         }
     }
 

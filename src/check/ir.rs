@@ -194,8 +194,9 @@ fn build_field<'a>(
         ast::FieldKind::Map {
             key_ty,
             key_ty_span,
-            ty,
-            ty_span,
+            value_ty,
+            value_ty_span,
+            ..
         } => {
             messages.push(Message {
                 ast: MessageSource::Map(field),
@@ -206,7 +207,7 @@ fn build_field<'a>(
                         is_synthetic_oneof: false,
                     },
                     Field {
-                        ast: FieldSource::MapValue(ty, ty_span.clone()),
+                        ast: FieldSource::MapValue(value_ty, value_ty_span.clone()),
                         oneof_index: None,
                         is_synthetic_oneof: false,
                     },

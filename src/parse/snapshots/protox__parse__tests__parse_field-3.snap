@@ -10,10 +10,11 @@ Ok(
             span: 17..21,
         },
         kind: Map {
+            ty_span: 3..16,
             key_ty: Int32,
             key_ty_span: 4..9,
-            ty: Bool,
-            ty_span: 11..15,
+            value_ty: Bool,
+            value_ty_span: 11..15,
         },
         number: Int {
             negative: false,

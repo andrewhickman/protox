@@ -10,9 +10,10 @@ Ok(
             span: 21..29,
         },
         kind: Map {
+            ty_span: 3..20,
             key_ty: String,
             key_ty_span: 4..10,
-            ty: Named(
+            value_ty: Named(
                 TypeName {
                     leading_dot: None,
                     name: FullIdent {
@@ -25,7 +26,7 @@ Ok(
                     },
                 },
             ),
-            ty_span: 12..19,
+            value_ty_span: 12..19,
         },
         number: Int {
             negative: false,

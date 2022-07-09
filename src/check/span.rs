@@ -185,6 +185,42 @@ impl Context {
         const OPTIONS: i32 = 8;
         const PROTO3_OPTIONAL: i32 = 17;
 
+        let ast = match &field.ast {
+            ir::FieldSource::Field(ast) => ast,
+            ir::FieldSource::MapKey(..) | ir::FieldSource::MapValue(..) => return,
+        };
+
+        self.add_location_with_comments(ast.span.clone(), ast.comments.clone());
+
+        self.with_path_item(NAME, |ctx| ctx.add_location(ast.name.span.clone()));
+        self.with_path_item(NUMBER, |ctx| ctx.add_location(ast.number.span.clone()));
+
+        if let Some((_, label_span)) = &ast.label {
+            self.with_path_item(LABEL, |ctx| ctx.add_location(label_span.clone()));
+        }
+
+        match &ast.kind {
+            ast::FieldKind::Normal {
+                ty: ast::Ty::Named(name),
+                ..
+            } => {
+                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(name.span()));
+            }
+            ast::FieldKind::Normal { ty_span, .. } => {
+                self.with_path_item(TYPE, |ctx| ctx.add_location(ty_span.clone()));
+            }
+            ast::FieldKind::Group { ty_span, .. } => {
+                self.with_path_item(TYPE, |ctx| ctx.add_location(ty_span.clone()));
+                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(ast.name.span.clone()));
+            }
+            ast::FieldKind::Map { ty_span, .. } => {
+                self.with_path_item(TYPE_NAME, |ctx| ctx.add_location(ty_span.clone()));
+            }
+        }
+
+        // ty == message =>  type_name span
+        // else type
+        // group => type = 'group' keyword , type_name = field_name span
         todo!()
     }
 

@@ -409,11 +409,12 @@ impl<'a> Parser<'a> {
     ) -> Result<ast::Field, ()> {
         self.expect_eq(Token::Map)?;
 
-        self.expect_eq(Token::LeftAngleBracket)?;
+        let ty_start = self.expect_eq(Token::LeftAngleBracket)?;
         let (key_ty, key_ty_span) = self.parse_field_type(&[ExpectedToken::COMMA])?;
         self.expect_eq(Token::Comma)?;
-        let (ty, ty_span) = self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
-        self.expect_eq(Token::RightAngleBracket)?;
+        let (value_ty, value_ty_span) =
+            self.parse_field_type(&[ExpectedToken::RIGHT_ANGLE_BRACKET])?;
+        let ty_end = self.expect_eq(Token::RightAngleBracket)?;
 
         let name = self.parse_ident()?;
 
@@ -433,10 +434,11 @@ impl<'a> Parser<'a> {
         Ok(ast::Field {
             label,
             kind: ast::FieldKind::Map {
+                ty_span: join_span(ty_start, ty_end),
                 key_ty,
                 key_ty_span,
-                ty,
-                ty_span,
+                value_ty,
+                value_ty_span,
             },
             name,
             number,
@@ -452,7 +454,7 @@ impl<'a> Parser<'a> {
         start: Span,
         label: Option<(FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
-        self.expect_eq(Token::Group)?;
+        let ty_span = self.expect_eq(Token::Group)?;
 
         let name = self.parse_ident()?;
         if !is_valid_group_name(&name.value) {
@@ -482,7 +484,7 @@ impl<'a> Parser<'a> {
             options,
             name,
             number,
-            kind: ast::FieldKind::Group { body },
+            kind: ast::FieldKind::Group { ty_span, body },
             comments,
             span: join_span(start, end),
         })
@@ -494,7 +496,7 @@ impl<'a> Parser<'a> {
         start: Span,
         label: Option<(FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
-        let (ty, _) = self.parse_field_type(&[ExpectedToken::Ident])?;
+        let (ty, ty_span) = self.parse_field_type(&[ExpectedToken::Ident])?;
 
         let name = self.parse_ident()?;
 
@@ -513,7 +515,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Field {
             label,
-            kind: ast::FieldKind::Normal { ty },
+            kind: ast::FieldKind::Normal { ty, ty_span },
             name,
             number,
             options,

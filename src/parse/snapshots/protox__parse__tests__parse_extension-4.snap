@@ -33,6 +33,7 @@ Ok(
                 },
                 kind: Normal {
                     ty: Int32,
+                    ty_span: 26..31,
                 },
                 number: Int {
                     negative: false,

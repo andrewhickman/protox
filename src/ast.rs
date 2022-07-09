@@ -169,15 +169,18 @@ pub(crate) enum MessageItem {
 pub(crate) enum FieldKind {
     Normal {
         ty: Ty,
+        ty_span: Span,
     },
     Group {
+        ty_span: Span,
         body: MessageBody,
     },
     Map {
+        ty_span: Span,
         key_ty: Ty,
         key_ty_span: Span,
-        ty: Ty,
-        ty_span: Span,
+        value_ty: Ty,
+        value_ty_span: Span,
     },
 }
 

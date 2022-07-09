@@ -19,6 +19,7 @@ Ok(
                         },
                         kind: Normal {
                             ty: Fixed32,
+                            ty_span: 26..33,
                         },
                         number: Int {
                             negative: false,
@@ -47,10 +48,11 @@ Ok(
                             span: 79..80,
                         },
                         kind: Map {
+                            ty_span: 65..78,
                             key_ty: Int32,
                             key_ty_span: 66..71,
-                            ty: Bool,
-                            ty_span: 73..77,
+                            value_ty: Bool,
+                            value_ty_span: 73..77,
                         },
                         number: Int {
                             negative: false,
@@ -79,6 +81,7 @@ Ok(
                             span: 114..115,
                         },
                         kind: Group {
+                            ty_span: 108..113,
                             body: MessageBody {
                                 items: [
                                     Field(
@@ -95,6 +98,7 @@ Ok(
                                             },
                                             kind: Normal {
                                                 ty: Float,
+                                                ty_span: 147..152,
                                             },
                                             number: Int {
                                                 negative: false,
@@ -146,6 +150,7 @@ Ok(
                                 },
                                 kind: Normal {
                                     ty: String,
+                                    ty_span: 213..219,
                                 },
                                 number: Int {
                                     negative: false,

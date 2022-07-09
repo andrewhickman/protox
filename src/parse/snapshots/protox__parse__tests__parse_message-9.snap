@@ -23,10 +23,11 @@ Ok(
                             span: 44..45,
                         },
                         kind: Map {
+                            ty_span: 26..43,
                             key_ty: Sint32,
                             key_ty_span: 27..33,
-                            ty: Fixed64,
-                            ty_span: 35..42,
+                            value_ty: Fixed64,
+                            value_ty_span: 35..42,
                         },
                         number: Int {
                             negative: false,

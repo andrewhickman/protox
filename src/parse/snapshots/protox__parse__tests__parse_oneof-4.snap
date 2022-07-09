@@ -18,6 +18,7 @@ Ok(
                 },
                 kind: Normal {
                     ty: Int32,
+                    ty_span: 12..17,
                 },
                 number: Int {
                     negative: false,

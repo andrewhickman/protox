@@ -10,6 +10,7 @@ Ok(
             span: 20..27,
         },
         kind: Map {
+            ty_span: 3..19,
             key_ty: Named(
                 TypeName {
                     leading_dot: Some(
@@ -30,8 +31,8 @@ Ok(
                 },
             ),
             key_ty_span: 4..12,
-            ty: Bool,
-            ty_span: 14..18,
+            value_ty: Bool,
+            value_ty_span: 14..18,
         },
         number: Int {
             negative: true,

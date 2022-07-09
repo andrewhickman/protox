@@ -15,6 +15,7 @@ Ok(
             span: 15..16,
         },
         kind: Group {
+            ty_span: 9..14,
             body: MessageBody {
                 items: [],
                 extensions: [],

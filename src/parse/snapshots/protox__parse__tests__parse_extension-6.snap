@@ -28,6 +28,7 @@ Ok(
                     span: 28..29,
                 },
                 kind: Group {
+                    ty_span: 22..27,
                     body: MessageBody {
                         items: [
                             Field(
@@ -44,6 +45,7 @@ Ok(
                                     },
                                     kind: Normal {
                                         ty: String,
+                                        ty_span: 45..51,
                                     },
                                     number: Int {
                                         negative: false,

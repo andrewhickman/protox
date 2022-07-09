@@ -36,6 +36,7 @@ Ok(
                                     },
                                 },
                             ),
+                            ty_span: 23..26,
                         },
                         number: Int {
                             negative: false,
