@@ -97,7 +97,7 @@ impl ImportResolver for FileImportResolver {
     /// # use std::{fs, path::PathBuf};
     /// # use protox::{FileImportResolver, ImportResolver};
     /// # let tempdir = assert_fs::TempDir::new().unwrap();
-    /// # std::env::set_current_dir(tempdir).unwrap();
+    /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("./foo.proto", "content").unwrap();
     ///
     /// let resolver = FileImportResolver::new(&["."]).unwrap();

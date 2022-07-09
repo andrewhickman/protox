@@ -51,7 +51,7 @@ pub use self::files::{File, FileImportResolver, ImportResolver};
 /// # };
 /// # use protox::compile;
 /// # let tempdir = assert_fs::TempDir::new().unwrap();
-/// # std::env::set_current_dir(tempdir).unwrap();
+/// # std::env::set_current_dir(&tempdir).unwrap();
 /// #
 /// fs::write("bar.proto", "
 ///     message Bar { }
