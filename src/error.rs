@@ -127,21 +127,30 @@ impl Error {
         Error::from_kind(ErrorKind::Custom(error.into()))
     }
 
+    /// Create an instance of [`struct@Error`] indicating that an imported file could not be found.
+    ///
+    /// This error should be returned by [`FileResolver`](crate::file::FileResolver) instances if a file is not found.
+    pub fn file_not_found(name: &str) -> Self {
+        Error::from_kind(ErrorKind::ImportNotFound {
+            name: name.to_owned(),
+            src: DynSourceCode::default(),
+            span: None,
+        })
+    }
+
     pub(crate) fn from_kind(kind: ErrorKind) -> Self {
         Error {
             kind: Box::new(kind),
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn kind(&self) -> &ErrorKind {
         &self.kind
     }
 
     pub(crate) fn is_file_not_found(&self) -> bool {
-        match &*self.kind {
-            ErrorKind::OpenFile { err, .. } => err.kind() == io::ErrorKind::NotFound,
-            _ => false,
-        }
+        matches!(&*self.kind, ErrorKind::ImportNotFound { .. })
     }
 
     pub(crate) fn parse_errors(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {

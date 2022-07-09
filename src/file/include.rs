@@ -1,6 +1,6 @@
 use std::{
     fs,
-    io::Read,
+    io::{self, Read},
     path::{self, Path, PathBuf},
 };
 
@@ -9,34 +9,18 @@ use crate::{
     Error, MAX_FILE_LEN,
 };
 
-use super::{to_import_name, File, FileResolver};
+use super::{File, FileResolver};
 
 /// An implementation of [`FileResolver`] which searches an include path.
 #[derive(Debug)]
 pub struct IncludeFileResolver {
-    includes: Vec<PathBuf>,
+    include: PathBuf,
 }
 
 impl IncludeFileResolver {
-    /// Constructs a `IncludeFileResolver` from the set of include paths.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the set of include paths is empty.
-    pub fn new<I>(includes: I) -> Result<Self, Error>
-    where
-        I: IntoIterator,
-        I::Item: AsRef<Path>,
-    {
-        let includes: Vec<_> = includes
-            .into_iter()
-            .map(|p| p.as_ref().to_owned())
-            .collect();
-        if includes.is_empty() {
-            return Err(Error::from_kind(ErrorKind::NoIncludePaths));
-        }
-
-        Ok(IncludeFileResolver { includes })
+    /// Constructs a `IncludeFileResolver` that searches the given include path.
+    pub fn new(include: PathBuf) -> Self {
+        IncludeFileResolver { include }
     }
 }
 
@@ -46,23 +30,20 @@ impl FileResolver for IncludeFileResolver {
     /// # Examples
     ///
     /// ```
-    /// # use std::path::Path;
+    /// # use std::path::{Path, PathBuf};
     /// # use protox::file::{IncludeFileResolver, FileResolver};
-    /// let resolver = IncludeFileResolver::new(&["/path/to/include"]).unwrap();
+    /// let resolver = IncludeFileResolver::new(PathBuf::from("/path/to/include"));
     /// assert_eq!(resolver.resolve_path(Path::new("/path/to/include/dir/foo.proto")), Some("dir/foo.proto".to_owned()));
-    /// assert_eq!(resolver.resolve_path(Path::new("dir/foo.proto")), Some("dir/foo.proto".to_owned()));
-    /// assert_eq!(resolver.resolve_path(Path::new("../foo.proto")), None);
+    /// assert_eq!(resolver.resolve_path(Path::new("notincluded.proto")), None);
     /// ```
     fn resolve_path(&self, path: &Path) -> Option<String> {
-        for include in &self.includes {
-            if let Some(relative_path) = strip_prefix(path, include) {
-                if let Some(name) = to_import_name(relative_path) {
-                    return Some(name);
-                }
+        if let Some(relative_path) = strip_prefix(path, &self.include) {
+            if let Some(name) = path_to_file_name(relative_path) {
+                return Some(name);
             }
         }
 
-        to_import_name(path)
+        None
     }
 
     /// Opens a file by its unique name.
@@ -82,59 +63,67 @@ impl FileResolver for IncludeFileResolver {
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("./foo.proto", "content").unwrap();
     ///
-    /// let resolver = IncludeFileResolver::new(&["."]).unwrap();
+    /// let resolver = IncludeFileResolver::new(PathBuf::from("."));
     /// let file = resolver.open("foo.proto").unwrap();
     /// assert_eq!(file.path, Some(PathBuf::from("./foo.proto")));
     /// assert_eq!(file.content, "content");
     /// ```
     fn open(&self, name: &str) -> Result<File, Error> {
-        for include in &self.includes {
-            let candidate_path = include.join(name);
-            match read_file(&candidate_path) {
-                Ok(content) => {
-                    return Ok(File {
-                        path: Some(candidate_path),
-                        content,
-                    })
-                }
-                Err(err) if err.is_file_not_found() => continue,
-                Err(err) => return Err(err),
+        let path = self.include.join(name);
+
+        let map_io_err = |err: io::Error| -> Error {
+            if err.kind() == io::ErrorKind::NotFound {
+                Error::file_not_found(name)
+            } else {
+                Error::from_kind(ErrorKind::OpenFile {
+                    path: path.to_owned(),
+                    err,
+                    src: DynSourceCode::default(),
+                    span: None,
+                })
             }
+        };
+
+        let file = fs::File::open(&path).map_err(map_io_err)?;
+        let metadata = file.metadata().map_err(map_io_err)?;
+
+        if metadata.len() > MAX_FILE_LEN {
+            return Err(Error::from_kind(ErrorKind::FileTooLarge {
+                src: DynSourceCode::default(),
+                span: None,
+            }));
         }
 
-        Err(Error::from_kind(ErrorKind::ImportNotFound {
-            name: name.to_owned(),
-            src: DynSourceCode::default(),
-            span: None,
-        }))
+        let mut buf = String::with_capacity(metadata.len() as usize);
+        file.take(MAX_FILE_LEN)
+            .read_to_string(&mut buf)
+            .map_err(map_io_err)?;
+        Ok(File {
+            content: buf,
+            path: Some(path),
+        })
     }
 }
 
-fn read_file(path: &Path) -> Result<String, Error> {
-    let map_err = |err| {
-        Error::from_kind(ErrorKind::OpenFile {
-            path: path.to_owned(),
-            err,
-            src: DynSourceCode::default(),
-            span: None,
-        })
-    };
-
-    let file = fs::File::open(path).map_err(map_err)?;
-    let metadata = file.metadata().map_err(map_err)?;
-
-    if metadata.len() > MAX_FILE_LEN {
-        return Err(Error::from_kind(ErrorKind::FileTooLarge {
-            src: DynSourceCode::default(),
-            span: None,
-        }));
+pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
+    let mut name = String::new();
+    for component in path.components() {
+        match component {
+            path::Component::Normal(component) => {
+                if let Some(component) = component.to_str() {
+                    if !name.is_empty() {
+                        name.push('/');
+                    }
+                    name.push_str(component);
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
     }
 
-    let mut buf = String::with_capacity(metadata.len() as usize);
-    file.take(MAX_FILE_LEN)
-        .read_to_string(&mut buf)
-        .map_err(map_err)?;
-    Ok(buf)
+    Some(name)
 }
 
 pub(crate) fn check_shadow(

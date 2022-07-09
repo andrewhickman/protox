@@ -12,7 +12,7 @@ use crate::{
     ast,
     check::{check_with_names, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
-    file::{check_shadow, FileResolver, IncludeFileResolver},
+    file::{check_shadow, path_to_file_name, ChainFileResolver, FileResolver, IncludeFileResolver},
     parse, MAX_FILE_LEN,
 };
 
@@ -45,7 +45,18 @@ pub(crate) struct ParsedFileMap {
 impl Compiler {
     /// Create a new [`Compiler`] with default options and the given non-empty set of include paths.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
-        let resolver = IncludeFileResolver::new(includes)?;
+        let mut resolver = ChainFileResolver::new();
+
+        let mut any_includes = false;
+        for include in includes {
+            resolver.add(IncludeFileResolver::new(include.as_ref().to_owned()));
+            any_includes = true;
+        }
+
+        if !any_includes {
+            return Err(Error::from_kind(ErrorKind::NoIncludePaths));
+        }
+
         Ok(Compiler::with_import_resolver(resolver))
     }
 
@@ -81,7 +92,11 @@ impl Compiler {
     /// `import` statements.
     pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<&mut Self, Error> {
         let relative_path = relative_path.as_ref();
-        let name = match self.resolver.resolve_path(relative_path) {
+        let name = match self
+            .resolver
+            .resolve_path(relative_path)
+            .or_else(|| path_to_file_name(relative_path))
+        {
             Some(name) => name,
             None => {
                 return Err(Error::from_kind(ErrorKind::FileNotIncluded {
@@ -96,11 +111,14 @@ impl Compiler {
             return Ok(self);
         }
 
-        let file = self.resolver.open(&name).map_err(|err| match err.kind() {
-            ErrorKind::ImportNotFound { .. } => Error::from_kind(ErrorKind::FileNotIncluded {
-                path: relative_path.to_owned(),
-            }),
-            _ => err,
+        let file = self.resolver.open(&name).map_err(|err| {
+            if err.is_file_not_found() {
+                Error::from_kind(ErrorKind::FileNotIncluded {
+                    path: relative_path.to_owned(),
+                })
+            } else {
+                err
+            }
         })?;
         check_shadow(&file.path, relative_path)?;
 
