@@ -10,7 +10,7 @@ use crate::{check::CheckError, parse::ParseError};
 #[error(transparent)]
 #[diagnostic(transparent)]
 pub struct Error {
-    kind: ErrorKind,
+    kind: Box<ErrorKind>,
 }
 
 #[derive(Debug, Diagnostic, Error)]
@@ -128,7 +128,9 @@ impl Error {
     }
 
     pub(crate) fn from_kind(kind: ErrorKind) -> Self {
-        Error { kind }
+        Error {
+            kind: Box::new(kind),
+        }
     }
 
     pub(crate) fn kind(&self) -> &ErrorKind {
@@ -136,7 +138,7 @@ impl Error {
     }
 
     pub(crate) fn is_file_not_found(&self) -> bool {
-        match &self.kind {
+        match &*self.kind {
             ErrorKind::OpenFile { err, .. } => err.kind() == io::ErrorKind::NotFound,
             _ => false,
         }
@@ -165,7 +167,7 @@ impl Error {
         import_src: impl Into<DynSourceCode>,
         import_span: impl Into<SourceSpan>,
     ) -> Self {
-        match &mut self.kind {
+        match &mut *self.kind {
             ErrorKind::OpenFile { src, span, .. } => {
                 *src = import_src.into();
                 *span = Some(import_span.into());
