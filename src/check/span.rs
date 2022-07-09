@@ -355,7 +355,7 @@ impl Context {
     }
 
     fn visit_extend(&mut self, _extend: &ast::Extend) {
-        todo!();
+        // todo!();
 
         const _FIELD_EXTENDEE: i32 = 2;
         // extendee for all types
