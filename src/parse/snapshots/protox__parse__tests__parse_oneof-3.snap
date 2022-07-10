@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
     Oneof {
@@ -18,8 +18,10 @@ Ok(
             leading_comment: Some(
                 "leading\n",
             ),
-            trailing_comment: None,
+            trailing_comment: Some(
+                "trailing",
+            ),
         },
-        span: 36..68,
+        span: 36..65,
     },
 )

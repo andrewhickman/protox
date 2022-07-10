@@ -220,6 +220,14 @@ pub fn parse_message() {
     ));
     case!(parse_message("message Foo { group Baz = 1 {} }"));
     case!(parse_message("message Foo { , }"));
+    case!(parse_message(
+        "message Foo {
+        message Foo {
+            optional int32 start = 1;  // trail1
+            optional int32 end = 2;    // trail2
+        }
+    }"
+    ));
 }
 
 #[test]
@@ -227,7 +235,7 @@ pub fn parse_oneof() {
     case!(parse_oneof("oneof Foo {}"));
     case!(parse_oneof("oneof Foo { ; ; }"));
     case!(parse_oneof(
-        "/*detached1*///detached2\n\n//leading\noneof Foo {/*nottrailing*/ ; ; }"
+        "/*detached1*///detached2\n\n//leading\noneof Foo {/*trailing*/ ; ; }"
     ));
     case!(parse_oneof("oneof Foo { int32 bar = 1; }"));
     case!(parse_oneof("oneof Foo { optional group Bar = 1 {} }"));

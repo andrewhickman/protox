@@ -963,9 +963,9 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::Option)?;
 
-        let body = dbg!(self.parse_option_body(&[ExpectedToken::SEMICOLON]))?;
+        let body = self.parse_option_body(&[ExpectedToken::SEMICOLON])?;
 
-        let end = dbg!(self.expect_eq(Token::Semicolon))?;
+        let end = self.expect_eq(Token::Semicolon)?;
         let comments = self.parse_trailing_comment(leading_comments);
 
         Ok(ast::Option {
@@ -1160,14 +1160,16 @@ impl<'a> Parser<'a> {
         &mut self,
         (leading_detached_comments, leading_comment): (Vec<String>, std::option::Option<String>),
     ) -> ast::Comments {
+        let mut on_new_line = false;
         if let Some((Token::Newline, _)) = self.peek_comments() {
             self.bump_comment();
+            on_new_line = true;
         }
 
         let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
             self.bump_comment();
 
-            if matches!(
+            if !on_new_line || matches!(
                 self.peek_comments(),
                 Some((Token::Newline | Token::RightBrace, _)) | None
             ) {

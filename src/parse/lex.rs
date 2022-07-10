@@ -775,10 +775,7 @@ mod tests {
         let source = "foo /* /* bar\n */ */ quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("  bar\n".into())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
-        assert_eq!(lexer.next(), None);
+        for _ in &mut lexer {}
 
         debug_assert_eq!(
             lexer.extras.errors,
@@ -791,10 +788,7 @@ mod tests {
         let source = "foo /* /* bar\n */ quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("  bar\nquz".into())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz".into())));
-        assert_eq!(lexer.next(), None);
+        for _ in &mut lexer {}
 
         debug_assert_eq!(
             lexer.extras.errors,
@@ -807,9 +801,7 @@ mod tests {
         let source = "foo /* bar\n quz";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar\nquz".into())));
-        assert_eq!(lexer.next(), None);
+        for _ in &mut lexer {}
 
         debug_assert_eq!(
             lexer.extras.errors,
