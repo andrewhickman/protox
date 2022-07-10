@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_enum() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
     Enum {
@@ -24,15 +24,14 @@ Ok(
                     OptionList {
                         options: [
                             OptionBody {
-                                name: FullIdent {
-                                    parts: [
+                                name: [
+                                    Ident(
                                         Ident {
                                             value: "opt",
                                             span: 20..23,
                                         },
-                                    ],
-                                },
-                                field_name: None,
+                                    ),
+                                ],
                                 value: Float(
                                     Float {
                                         value: 0.5,

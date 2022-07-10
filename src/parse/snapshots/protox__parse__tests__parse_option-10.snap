@@ -5,9 +5,9 @@ expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwra
 Err(
     [
         UnexpectedToken {
-            expected: "an identifier or '('",
-            found: Semicolon,
-            span: 7..8,
+            expected: "';'",
+            found: RightParen,
+            span: 15..16,
         },
     ],
 )

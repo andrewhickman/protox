@@ -116,9 +116,14 @@ pub(crate) struct Option {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub(crate) enum OptionNamePart {
+    Ident(Ident),
+    Extension(FullIdent, Span),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct OptionBody {
-    pub name: FullIdent,
-    pub field_name: std::option::Option<FullIdent>,
+    pub name: Vec<OptionNamePart>,
     pub value: Constant,
 }
 
@@ -472,7 +477,7 @@ impl Field {
             options
                 .options
                 .iter()
-                .find(|o| o.name.parts.len() == 1 && o.name.parts[0].value == "default")
+                .find(|o| matches!(o.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == "default"))
         })
     }
 
@@ -507,9 +512,23 @@ impl Field {
     }
 }
 
-impl OptionBody {
+impl OptionNamePart {
     pub fn span(&self) -> Span {
-        join_span(self.name.span(), self.value.span())
+        match self {
+            OptionNamePart::Ident(ident) => ident.span.clone(),
+            OptionNamePart::Extension(_, span) => span.clone(),
+        }
+    }
+}
+
+impl OptionBody {
+    pub fn name_span(&self) -> Span {
+        debug_assert!(!self.name.is_empty());
+        join_span(self.name.first().unwrap().span(), self.name.last().unwrap().span())
+    }
+
+    pub fn span(&self) -> Span {
+        join_span(self.name_span(), self.value.span())
     }
 }
 

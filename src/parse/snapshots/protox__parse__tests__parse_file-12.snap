@@ -12,15 +12,14 @@ Ok(
         options: [
             Option {
                 body: OptionBody {
-                    name: FullIdent {
-                        parts: [
+                    name: [
+                        Ident(
                             Ident {
                                 value: "optimize_for",
                                 span: 42..54,
                             },
-                        ],
-                    },
-                    field_name: None,
+                        ),
+                    ],
                     value: FullIdent(
                         FullIdent {
                             parts: [

@@ -16,7 +16,7 @@ mod tests;
 use self::comments::Comments;
 use self::lex::Token;
 use crate::{
-    ast::{self, FieldLabel, FullIdent},
+    ast::{self, FieldLabel},
     join_span,
 };
 
@@ -976,37 +976,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_option_body(&mut self, terminators: &[ExpectedToken]) -> Result<ast::OptionBody, ()> {
-        let name = match self.peek() {
-            Some((Token::LeftParen, _)) => {
-                self.bump();
-                let full_ident = self.parse_full_ident(&[ExpectedToken::RIGHT_PAREN])?;
-                self.expect_eq(Token::RightParen)?;
-                full_ident
-            }
-            Some((Token::Ident(value), span)) => {
-                self.bump();
-                ast::FullIdent::from(ast::Ident {
-                    value: value.into_owned(),
-                    span,
-                })
-            }
-            _ => self.unexpected_token("an identifier or '('")?,
-        };
+        let mut name = vec![self.parse_option_name_part()?];
 
-        let mut field_name: Option<Vec<ast::Ident>> = None;
         loop {
             match self.peek() {
                 Some((Token::Dot, _)) => {
                     self.bump();
-                }
+                    name.push(self.parse_option_name_part()?);
+                },
                 Some((Token::Equals, _)) => {
                     self.bump();
                     break;
-                }
-                _ => self.unexpected_token("'.' or '='")?,
+                },
+                _ => self.unexpected_token("'=' or '.'")?,
             }
-
-            field_name.get_or_insert(vec![]).push(self.parse_ident()?);
         }
 
         let value = match self.peek() {
@@ -1040,9 +1023,23 @@ impl<'a> Parser<'a> {
 
         Ok(ast::OptionBody {
             name,
-            field_name: field_name.map(FullIdent::from),
             value,
         })
+    }
+
+    fn parse_option_name_part(&mut self) -> Result<ast::OptionNamePart, ()> {
+        match self.peek() {
+            Some((Token::Ident(_), _)) => {
+                Ok(ast::OptionNamePart::Ident(self.parse_ident()?))
+            },
+            Some((Token::LeftParen, start)) => {
+                self.bump();
+                let ident = self.parse_full_ident(&[ExpectedToken::RIGHT_PAREN])?;
+                let end = self.expect_eq(Token::RightParen)?;
+                Ok(ast::OptionNamePart::Extension(ident, join_span(start, end)))
+            },
+            _ => self.unexpected_token("an identifier or '('"),
+        }
     }
 
     fn parse_int_or_float(&mut self, negate: bool) -> Result<ast::Constant, ()> {

@@ -22,6 +22,7 @@ pub fn parse_option() {
     ));
     case!(parse_option("option (foo.bar) = \"hello\";"));
     case!(parse_option("option (foo).bar = true;"));
+    case!(parse_option("option foo.(bar.baz).qux = ident;"));
     case!(parse_option("option ;"));
     case!(parse_option("option foo ("));
     case!(parse_option("option foo.]"));

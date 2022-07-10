@@ -1,13 +1,13 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_option() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Err(
     [
         UnexpectedToken {
-            expected: "';'",
-            found: RightParen,
-            span: 15..16,
+            expected: "a constant",
+            found: Equals,
+            span: 13..14,
         },
     ],
 )

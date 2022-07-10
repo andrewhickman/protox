@@ -1,23 +1,27 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_option() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
     Option {
         body: OptionBody {
-            name: FullIdent {
-                parts: [
-                    Ident {
-                        value: "foo",
-                        span: 8..11,
+            name: [
+                Extension(
+                    FullIdent {
+                        parts: [
+                            Ident {
+                                value: "foo",
+                                span: 8..11,
+                            },
+                            Ident {
+                                value: "bar",
+                                span: 12..15,
+                            },
+                        ],
                     },
-                    Ident {
-                        value: "bar",
-                        span: 12..15,
-                    },
-                ],
-            },
-            field_name: None,
+                    7..16,
+                ),
+            ],
             value: String(
                 String {
                     value: "hello",

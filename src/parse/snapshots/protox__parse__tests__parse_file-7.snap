@@ -10,7 +10,7 @@ Err(
             span: 42..43,
         },
         UnexpectedToken {
-            expected: "'.' or '='",
+            expected: "'=' or '.'",
             found: IntLiteral(
                 1,
             ),
