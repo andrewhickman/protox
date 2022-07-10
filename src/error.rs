@@ -96,16 +96,6 @@ impl SourceCode for DynSourceCode {
     }
 }
 
-impl From<(Option<PathBuf>, Arc<str>)> for DynSourceCode {
-    fn from((path, source): (Option<PathBuf>, Arc<str>)) -> Self {
-        if let Some(path) = path {
-            DynSourceCode::from(NamedSource::new(path.display().to_string(), source))
-        } else {
-            DynSourceCode::from(source)
-        }
-    }
-}
-
 impl From<Arc<str>> for DynSourceCode {
     fn from(source: Arc<str>) -> Self {
         DynSourceCode(Some(Box::new(source)))

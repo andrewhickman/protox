@@ -6,13 +6,17 @@ use std::{
     sync::Arc,
 };
 
+use miette::NamedSource;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
     check::{check_with_names, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
-    file::{check_shadow, path_to_file_name, ChainFileResolver, FileResolver, IncludeFileResolver},
+    file::{
+        check_shadow, path_to_file_name, ChainFileResolver, FileResolver, GoogleFileResolver,
+        IncludeFileResolver,
+    },
     parse, MAX_FILE_LEN,
 };
 
@@ -52,6 +56,8 @@ impl Compiler {
             resolver.add(IncludeFileResolver::new(include.as_ref().to_owned()));
             any_includes = true;
         }
+
+        resolver.add(GoogleFileResolver::new());
 
         if !any_includes {
             return Err(Error::from_kind(ErrorKind::NoIncludePaths));
@@ -135,7 +141,7 @@ impl Compiler {
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    DynSourceCode::from((file.path, source.clone())),
+                    make_source(&name, &file.path, source),
                 ));
             }
         };
@@ -145,7 +151,7 @@ impl Compiler {
             self.add_import(
                 import,
                 &mut import_stack,
-                DynSourceCode::from((file.path.clone(), source.clone())),
+                make_source(&name, &file.path, source.clone()),
             )?;
         }
 
@@ -220,7 +226,7 @@ impl Compiler {
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    DynSourceCode::from((file.path, source)),
+                    make_source(&import.value.value, &file.path, source),
                 ));
             }
         };
@@ -230,7 +236,7 @@ impl Compiler {
             self.add_import(
                 import,
                 import_stack,
-                DynSourceCode::from((file.path.clone(), source.clone())),
+                make_source(&import.value.value, &file.path, source.clone()),
             )?;
         }
         import_stack.pop();
@@ -262,7 +268,7 @@ impl Compiler {
         };
 
         check_with_names(ast, Some(name), source_info, &self.file_map)
-            .map_err(|errors| Error::check_errors(errors, (path.clone(), source)))
+            .map_err(|errors| Error::check_errors(errors, make_source(name, path, source)))
     }
 }
 
@@ -310,4 +316,13 @@ impl<'a> IndexMut<&'a str> for ParsedFileMap {
     fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
         &mut self.files[self.file_names[index]]
     }
+}
+
+fn make_source(name: &str, path: &Option<PathBuf>, source: Arc<str>) -> DynSourceCode {
+    let name = match path {
+        Some(path) => path.display().to_string(),
+        None => name.to_owned(),
+    };
+
+    NamedSource::new(name, source).into()
 }
