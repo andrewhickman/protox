@@ -1,10 +1,10 @@
-use std::{env, fs, path::PathBuf, process::Command};
+use std::{env, fs, path::PathBuf, process::{Command, Stdio}};
 
 use assert_fs::TempDir;
 use prost::Message;
 use prost_reflect::{ReflectMessage, SerializeOptions};
 use prost_types::FileDescriptorSet;
-use similar_asserts::assert_str_eq;
+use similar_asserts::assert_serde_eq;
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
@@ -14,24 +14,28 @@ fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
 
-    assert_str_eq!(actual, expected);
+    assert_serde_eq!(actual, expected);
 }
 
 fn protoc(name: &str) -> String {
     let tempdir = TempDir::new().unwrap();
     let result = tempdir.join("desc.bin");
-    let status = Command::new(prost_build::protoc())
+    let output = Command::new(prost_build::protoc())
         .arg("--proto_path")
         .arg(test_data_dir())
-        // .arg("--proto_path")
-        // .arg(prost_build::protoc_include())
         .arg("--include_imports")
         .arg("--include_source_info")
         .arg(format!("--descriptor_set_out={}", result.display()))
         .arg(format!("{}.proto", name))
-        .status()
+        .stderr(Stdio::piped())
+        .output()
         .unwrap();
-    assert!(status.success());
+    if !output.status.success() {
+        panic!(
+            "protoc did not succeed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     let bytes = fs::read(result).unwrap();
 
     let descriptor = FileDescriptorSet::decode(bytes.as_ref()).unwrap();
@@ -82,3 +86,9 @@ compare!(generate_synthetic_oneof_ordering);
 compare!(generate_synthetic_oneof);
 compare!(generated_message_ordering);
 compare!(multiple_extends);
+
+// TODO this isn't passing quite yet
+// compare!(import_google);
+// - unverified_lazy
+// - comments on options
+// - leading/trailing comments on fields
