@@ -10,7 +10,7 @@ Ok(
             span: 17..21,
         },
         kind: Map {
-            ty_span: 3..16,
+            ty_span: 0..16,
             key_ty: Int32,
             key_ty_span: 4..9,
             value_ty: Bool,

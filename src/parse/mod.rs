@@ -408,9 +408,9 @@ impl<'a> Parser<'a> {
         start: Span,
         label: Option<(FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
-        self.expect_eq(Token::Map)?;
+        let ty_start = self.expect_eq(Token::Map)?;
 
-        let ty_start = self.expect_eq(Token::LeftAngleBracket)?;
+        self.expect_eq(Token::LeftAngleBracket)?;
         let (key_ty, key_ty_span) = self.parse_field_type(&[ExpectedToken::COMMA])?;
         self.expect_eq(Token::Comma)?;
         let (value_ty, value_ty_span) =

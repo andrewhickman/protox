@@ -101,15 +101,15 @@ pub use self::error::Error;
 ///             source_code_info: Some(SourceCodeInfo {
 ///                 /* ... */
 /// #               location: vec![
+/// #                   Location { path: vec![], span: vec![1, 4, 5, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #                   Location { path: vec![3, 0], span: vec![1, 4, 23], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #                   Location { path: vec![4, 0], span: vec![3, 4, 5, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #                   Location { path: vec![4, 0, 1], span: vec![3, 12, 15], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #                   Location { path: vec![], span: vec![4, 4, 5, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #                   Location { path: vec![4, 0], span: vec![4, 4, 5, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #                   Location { path: vec![4, 0, 2, 0], span: vec![4, 8, 29], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #                   Location { path: vec![4, 0, 2, 0, 4], span: vec![4, 8, 16], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #                   Location { path: vec![4, 0, 2, 0, 6], span: vec![4, 17, 20], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #                   Location { path: vec![4, 0, 2, 0, 1], span: vec![4, 21, 24], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #                   Location { path: vec![4, 0, 2, 0, 3], span: vec![4, 27, 28], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #                   Location { path: vec![4, 0, 2, 0, 4], span: vec![4, 8, 16], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #                   Location { path: vec![4, 0, 2, 0, 6], span: vec![4, 17, 20], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #               ],
 ///             }),
 ///             ..Default::default()
@@ -172,15 +172,15 @@ pub fn compile(
 ///     source_code_info: Some(SourceCodeInfo {
 ///         /* ... */
 /// #       location: vec![
-/// #            Location { path: vec![12], span: vec![1, 4, 22], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #            Location { path: vec![], span: vec![1, 4, 6, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![3, 0], span: vec![2, 4, 23], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #            Location { path: vec![], span: vec![4, 4, 6, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![4, 0], span: vec![4, 4, 6, 5], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![4, 0, 1], span: vec![4, 12, 15], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![4, 0, 2, 0], span: vec![5, 8, 20], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
-/// #            Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![4, 0, 2, 0, 1], span: vec![5, 12, 15], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #            Location { path: vec![4, 0, 2, 0, 3], span: vec![5, 18, 19], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #            Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
+/// #            Location { path: vec![12], span: vec![1, 4, 22], leading_comments: None, trailing_comments: None, leading_detached_comments: vec![] },
 /// #       ],
 ///     }),
 ///     ..Default::default()

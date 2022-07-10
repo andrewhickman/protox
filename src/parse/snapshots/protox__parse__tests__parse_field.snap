@@ -10,7 +10,7 @@ Ok(
             span: 21..29,
         },
         kind: Map {
-            ty_span: 3..20,
+            ty_span: 0..20,
             key_ty: String,
             key_ty_span: 4..10,
             value_ty: Named(

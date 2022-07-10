@@ -46,6 +46,16 @@ expression: "check_with_imports(vec![(\"dep.proto\", \"package foo;\"),\n       
           },
           {
             "path": [
+              2
+            ],
+            "span": [
+              0,
+              20,
+              32
+            ]
+          },
+          {
+            "path": [
               3,
               0
             ],
@@ -53,16 +63,6 @@ expression: "check_with_imports(vec![(\"dep.proto\", \"package foo;\"),\n       
               0,
               0,
               19
-            ]
-          },
-          {
-            "path": [
-              2
-            ],
-            "span": [
-              0,
-              20,
-              32
             ]
           }
         ]

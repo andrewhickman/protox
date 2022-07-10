@@ -14,8 +14,6 @@ impl<'a> ir::File<'a> {
 
         ctx.visit_file(self);
 
-        ctx.locations.sort_by_key(|loc| (loc.span[0], loc.span[1]));
-
         SourceCodeInfo {
             location: ctx.locations,
         }
@@ -81,8 +79,8 @@ impl Context {
             ctx.visit_service(service);
         });
 
-        self.with_path_items(EXTENSION, file.ast.extends(), |ctx, extend| {
-            ctx.visit_extend(extend);
+        self.with_path_item(EXTENSION, |ctx| {
+            ctx.visit_extends(file.ast.extends());
         });
 
         self.with_path_item(OPTIONS, |ctx| ctx.visit_options(&file.ast.options));
@@ -126,8 +124,8 @@ impl Context {
                 ir::FieldSource::MapKey(..) | ir::FieldSource::MapValue(..) => (),
             };
         });
-        self.with_path_items(EXTENSION, body.extends(), |ctx, extend| {
-            ctx.visit_extend(extend);
+        self.with_path_item(EXTENSION, |ctx| {
+            ctx.visit_extends(body.extends());
         });
         self.with_path_items(ONEOF_DECL, message.oneofs.iter(), |ctx, oneof| {
             ctx.visit_oneof(oneof);
@@ -352,15 +350,20 @@ impl Context {
         });
     }
 
-    fn visit_extend(&mut self, extend: &ast::Extend) {
+    fn visit_extends<'a>(&mut self, extends: impl Iterator<Item = &'a ast::Extend>) {
         const FIELD_EXTENDEE: i32 = 2;
 
-        self.add_location_with_comments(extend.span.clone(), extend.comments.clone());
-        for (index, field) in extend.fields.iter().enumerate() {
-            self.with_path_item(index_to_i32(index), |ctx| {
-                ctx.visit_field(field);
-                ctx.add_location_for(FIELD_EXTENDEE, extend.extendee.span());
-            });
+        let mut count = 0;
+        for extend in extends {
+            self.add_location_with_comments(extend.span.clone(), extend.comments.clone());
+
+            for field in &extend.fields {
+                self.with_path_item(count, |ctx| {
+                    ctx.visit_field(field);
+                    ctx.add_location_for(FIELD_EXTENDEE, extend.extendee.span());
+                });
+                count += 1;
+            }
         }
     }
 

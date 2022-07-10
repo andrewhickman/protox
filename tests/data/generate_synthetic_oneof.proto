@@ -1,0 +1,9 @@
+syntax = 'proto3';
+
+message Foo {
+    optional fixed64 val = 1;
+}
+
+message Bar {
+    optional sfixed64 _val = 1;
+}

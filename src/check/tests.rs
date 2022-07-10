@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, env};
 
 use insta::assert_json_snapshot;
 use prost_reflect::{DynamicMessage, ReflectMessage};
@@ -224,16 +224,6 @@ fn invalid_message_number() {
 }
 
 #[test]
-fn generate_map_entry_message() {
-    assert_json_snapshot!(check_ok(
-        "\
-        message Foo {
-            map<int32, string> bar = 1;
-        }"
-    ));
-}
-
-#[test]
 fn generate_map_entry_message_name_conflict() {
     assert_eq!(
         check_err(
@@ -251,16 +241,6 @@ fn generate_map_entry_message_name_conflict() {
             second: 63..71,
         }]
     );
-}
-
-#[test]
-fn generate_group_message() {
-    assert_json_snapshot!(check_ok(
-        "\
-        message Foo {
-            optional group Bar = 1 {};
-        }"
-    ));
 }
 
 #[test]
@@ -285,44 +265,6 @@ fn generate_group_message_name_conflict() {
 }
 
 #[test]
-fn generated_message_ordering() {
-    assert_json_snapshot!(check_ok(
-        "\
-        extend Bar { optional group Baz = 1 {} }
-
-        message Bar {
-            extensions 1;
-
-            map<int32, string> x = 5;
-
-            oneof foo {
-                group Quz = 3 {}
-            }
-
-            message Nest {}
-        }"
-    ));
-}
-
-#[test]
-fn generate_synthetic_oneof() {
-    assert_json_snapshot!(check_ok("\
-        syntax = 'proto3';
-
-        message Foo {
-            optional fixed64 val = 1;
-        }
-    "));
-    assert_json_snapshot!(check_ok("\
-        syntax = 'proto3';
-
-        message Foo {
-            optional fixed64 _val = 1;
-        }
-    "));
-}
-
-#[test]
 fn generate_synthetic_oneof_name_conflict() {
     assert_eq!(
         check_err(
@@ -341,25 +283,6 @@ fn generate_synthetic_oneof_name_conflict() {
             second: 113..117,
         }],
     );
-}
-
-#[test]
-fn generate_synthetic_oneof_ordering() {
-    assert_json_snapshot!(check_ok("\
-        syntax = 'proto3';
-
-        message Foo {
-            oneof o1 {
-                float a = 1;
-            }
-
-            optional bool o3 = 2;
-
-            oneof o2 {
-                string b = 3;
-            }
-        }
-    "));
 }
 
 #[test]
@@ -390,7 +313,9 @@ fn message_field_default_value() {
 }
 
 #[test]
-fn message_field_json_name() {}
+fn message_field_json_name() {
+    // custom json name with option
+}
 
 #[test]
 fn map_field_with_label() {}

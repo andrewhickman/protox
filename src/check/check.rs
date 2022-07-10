@@ -16,7 +16,7 @@ use prost_types::{
 
 use crate::{
     ast,
-    case::{to_camel_case, to_lower_without_underscores},
+    case::{to_json_name, to_lower_without_underscores},
     s, MAX_MESSAGE_FIELD_NUMBER,
 };
 
@@ -333,7 +333,7 @@ impl<'a> Context<'a> {
 
         let default_value = self.check_field_default_value(field, ty);
 
-        let json_name = Some(to_camel_case(&field.field_name()));
+        let json_name = Some(to_json_name(&field.field_name()));
 
         let proto3_optional = if self.in_synthetic_oneof() {
             Some(true)

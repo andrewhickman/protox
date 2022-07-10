@@ -1,0 +1,13 @@
+syntax = 'proto3';
+
+message Foo {
+    oneof o1 {
+        float a = 1;
+    }
+
+    optional bool o3 = 2;
+
+    oneof o2 {
+        string b = 3;
+    }
+}

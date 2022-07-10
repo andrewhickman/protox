@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+message Foo {
+    extensions 1, 2;
+}
+
+extend Foo {
+    optional int32 a = 1;
+}
+
+extend Foo {
+    optional int32 b = 2;
+}

@@ -609,10 +609,7 @@ mod tests {
             lexer.next().unwrap(),
             Token::StringLiteral("hello 😀".into())
         );
-        assert_eq!(
-            lexer.next().unwrap(),
-            Token::Ident("_foo".into())
-        );
+        assert_eq!(lexer.next().unwrap(), Token::Ident("_foo".into()));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);

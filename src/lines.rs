@@ -35,7 +35,7 @@ impl LineResolver {
             ]
         } else {
             vec![
-                index_to_i32(start_col),
+                index_to_i32(start_line),
                 index_to_i32(start_col),
                 index_to_i32(end_line),
                 index_to_i32(end_col),

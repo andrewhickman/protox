@@ -48,7 +48,7 @@ Ok(
                             span: 79..80,
                         },
                         kind: Map {
-                            ty_span: 65..78,
+                            ty_span: 62..78,
                             key_ty: Int32,
                             key_ty_span: 66..71,
                             value_ty: Bool,
