@@ -1,9 +1,11 @@
+use std::ops::Range;
+
 use logos::Span;
 use miette::Diagnostic;
 use prost_types::FileDescriptorProto;
 use thiserror::Error;
 
-use crate::{ast, compile::ParsedFileMap, MAX_MESSAGE_FIELD_NUMBER};
+use crate::{ast, compile::ParsedFileMap};
 
 #[allow(clippy::module_inception)]
 mod check;
@@ -12,6 +14,9 @@ mod names;
 mod span;
 #[cfg(test)]
 mod tests;
+
+const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
+const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
 pub(crate) use self::names::NameMap;
 
@@ -117,6 +122,11 @@ pub(crate) enum CheckError {
     },
     #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
     InvalidMessageNumber {
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("message numbers between {} and {} are reserved", RESERVED_MESSAGE_FIELD_NUMBERS.start, RESERVED_MESSAGE_FIELD_NUMBERS.end)]
+    ReservedMessageNumber {
         #[label("defined here")]
         span: Span,
     },

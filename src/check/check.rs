@@ -17,10 +17,13 @@ use prost_types::{
 use crate::{
     ast,
     case::{to_json_name, to_lower_without_underscores},
-    s, MAX_MESSAGE_FIELD_NUMBER,
+    s,
 };
 
-use super::{ir, names::DefinitionKind, CheckError, NameMap};
+use super::{
+    ir, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
+    RESERVED_MESSAGE_FIELD_NUMBERS,
+};
 
 impl<'a> ir::File<'a> {
     pub fn check(
@@ -778,7 +781,15 @@ impl<'a> Context<'a> {
 
     fn check_field_number(&mut self, int: &ast::Int) -> Option<i32> {
         match (int.negative, i32::try_from(int.value)) {
-            (false, Ok(number @ 1..=MAX_MESSAGE_FIELD_NUMBER)) => Some(number),
+            (false, Ok(number @ 1..=MAX_MESSAGE_FIELD_NUMBER)) => {
+                if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
+                    self.errors.push(CheckError::ReservedMessageNumber {
+                        span: int.span.clone(),
+                    });
+                }
+
+                Some(number)
+            }
             _ => {
                 self.errors.push(CheckError::InvalidMessageNumber {
                     span: int.span.clone(),

@@ -524,7 +524,10 @@ impl OptionNamePart {
 impl OptionBody {
     pub fn name_span(&self) -> Span {
         debug_assert!(!self.name.is_empty());
-        join_span(self.name.first().unwrap().span(), self.name.last().unwrap().span())
+        join_span(
+            self.name.first().unwrap().span(),
+            self.name.last().unwrap().span(),
+        )
     }
 
     pub fn span(&self) -> Span {

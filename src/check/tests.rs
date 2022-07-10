@@ -219,8 +219,18 @@ fn invalid_message_number() {
         check_err("message Foo { optional int32 i = 536870912; }"),
         vec![InvalidMessageNumber { span: 33..42 }]
     );
+    assert_eq!(
+        check_err("message Foo { optional int32 i = 19000; }"),
+        vec![ReservedMessageNumber { span: 33..38 }]
+    );
+    assert_eq!(
+        check_err("message Foo { optional int32 i = 19999; }"),
+        vec![ReservedMessageNumber { span: 33..38 }]
+    );
     assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
     assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
+    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 18999; }"));
+    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 20000; }"));
 }
 
 #[test]

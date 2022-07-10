@@ -983,11 +983,11 @@ impl<'a> Parser<'a> {
                 Some((Token::Dot, _)) => {
                     self.bump();
                     name.push(self.parse_option_name_part()?);
-                },
+                }
                 Some((Token::Equals, _)) => {
                     self.bump();
                     break;
-                },
+                }
                 _ => self.unexpected_token("'=' or '.'")?,
             }
         }
@@ -1021,23 +1021,18 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("a constant")?,
         };
 
-        Ok(ast::OptionBody {
-            name,
-            value,
-        })
+        Ok(ast::OptionBody { name, value })
     }
 
     fn parse_option_name_part(&mut self) -> Result<ast::OptionNamePart, ()> {
         match self.peek() {
-            Some((Token::Ident(_), _)) => {
-                Ok(ast::OptionNamePart::Ident(self.parse_ident()?))
-            },
+            Some((Token::Ident(_), _)) => Ok(ast::OptionNamePart::Ident(self.parse_ident()?)),
             Some((Token::LeftParen, start)) => {
                 self.bump();
                 let ident = self.parse_full_ident(&[ExpectedToken::RIGHT_PAREN])?;
                 let end = self.expect_eq(Token::RightParen)?;
                 Ok(ast::OptionNamePart::Extension(ident, join_span(start, end)))
-            },
+            }
             _ => self.unexpected_token("an identifier or '('"),
         }
     }
@@ -1166,10 +1161,12 @@ impl<'a> Parser<'a> {
         let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
             self.bump_comment();
 
-            if !on_new_line || matches!(
-                self.peek_comments(),
-                Some((Token::Newline | Token::RightBrace, _)) | None
-            ) {
+            if !on_new_line
+                || matches!(
+                    self.peek_comments(),
+                    Some((Token::Newline | Token::RightBrace, _)) | None
+                )
+            {
                 Some(comment.into())
             } else {
                 self.comments.comment(comment.into());

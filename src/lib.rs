@@ -193,7 +193,6 @@ pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
         .map_err(|errors| Error::check_errors(errors, Arc::from(source)))
 }
 
-const MAX_MESSAGE_FIELD_NUMBER: i32 = 536870911;
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 fn index_to_i32(index: usize) -> i32 {
