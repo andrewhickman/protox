@@ -11,7 +11,7 @@ use crate::{
 
 use super::{File, FileResolver};
 
-/// An implementation of [`FileResolver`] which searches an include path.
+/// An implementation of [`FileResolver`] which searches an include path on the file system.
 #[derive(Debug)]
 pub struct IncludeFileResolver {
     include: PathBuf,

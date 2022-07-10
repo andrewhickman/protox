@@ -1,9 +1,11 @@
 //! Handling of protobuf source files
 
 mod chain;
+mod google;
 mod include;
 
 pub use chain::ChainFileResolver;
+pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
 
 pub(crate) use include::{check_shadow, path_to_file_name};
