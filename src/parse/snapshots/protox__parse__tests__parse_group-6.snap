@@ -1,39 +1,11 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
-Ok(
-    Field {
-        label: Some(
-            (
-                Optional,
-                0..8,
-            ),
-        ),
-        name: Ident {
-            value: "a",
+Err(
+    [
+        InvalidGroupName {
             span: 15..16,
         },
-        kind: Group {
-            ty_span: 9..14,
-            body: MessageBody {
-                items: [],
-                extensions: [],
-                options: [],
-                reserved: [],
-            },
-        },
-        number: Int {
-            negative: false,
-            value: 1,
-            span: 19..20,
-        },
-        options: None,
-        comments: Comments {
-            leading_detached_comments: [],
-            leading_comment: None,
-            trailing_comment: None,
-        },
-        span: 0..24,
-    },
+    ],
 )

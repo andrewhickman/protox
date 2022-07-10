@@ -5,9 +5,11 @@ use super::*;
 macro_rules! case {
     ($method:ident($source:expr)) => {{
         let mut parser = Parser::new($source);
-        assert_debug_snapshot!(match parser.$method() {
-            Ok(value) => Ok(value),
-            Err(()) => Err(parser.lexer.extras.errors),
+        let result = parser.$method();
+        assert_debug_snapshot!(if parser.lexer.extras.errors.is_empty() {
+            Ok(result.unwrap())
+        } else {
+            Err(parser.lexer.extras.errors)
         });
     }};
 }
@@ -293,5 +295,12 @@ pub fn parse_file() {
     case!(parse_file("syntax = 'proto3'"));
     case!(parse_file(
         "/* leading detached */\n// leading\n syntax = 'proto3'; /* trailing */"
+    ));
+    case!(parse_file("option invalid = :"));
+    case!(parse_file(
+        "
+        // code goes brrr
+        option optimize_for = SPEED;
+    "
     ));
 }

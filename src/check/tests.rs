@@ -503,3 +503,31 @@ message Hello {
   }
 }
  */
+
+/*
+
+syntax = 'proto2';
+
+import 'google/protobuf/descriptor.proto';
+
+package exttest;
+
+message Message {
+    optional int32 a = 1;
+    optional Message b = 3;
+
+    extensions 5 to 6;
+}
+
+extend Message {
+    optional int32 c = 5;
+    optional Message d = 6;
+}
+
+extend google.protobuf.FileOptions {
+    optional Message foo = 50000;
+}
+
+option (exttest.foo).(exttest.d).a = 1;
+
+*/

@@ -1,0 +1,47 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    File {
+        span: 35..63,
+        syntax: Proto2,
+        syntax_span: None,
+        package: None,
+        imports: [],
+        options: [
+            Option {
+                body: OptionBody {
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "optimize_for",
+                                span: 42..54,
+                            },
+                        ],
+                    },
+                    field_name: None,
+                    value: FullIdent(
+                        FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "SPEED",
+                                    span: 57..62,
+                                },
+                            ],
+                        },
+                    ),
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: Some(
+                        " code goes brrr\n",
+                    ),
+                    trailing_comment: None,
+                },
+                span: 35..63,
+            },
+        ],
+        items: [],
+    },
+)

@@ -1,4 +1,8 @@
-use std::{env, fs, path::PathBuf, process::{Command, Stdio}};
+use std::{
+    env, fs,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use assert_fs::TempDir;
 use prost::Message;

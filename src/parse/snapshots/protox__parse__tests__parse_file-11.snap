@@ -4,9 +4,8 @@ expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwra
 ---
 Err(
     [
-        DuplicatePackage {
-            first: 0..19,
-            second: 28..48,
+        InvalidToken {
+            span: 17..18,
         },
     ],
 )

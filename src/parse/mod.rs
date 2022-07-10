@@ -182,15 +182,18 @@ impl<'a> Parser<'a> {
                     }
                 }
                 Ok(None) => break,
-                Err(()) => self.skip_until(&[
-                    Token::Enum,
-                    Token::Extend,
-                    Token::Import,
-                    Token::Message,
-                    Token::Option,
-                    Token::Service,
-                    Token::Package,
-                ]),
+                Err(()) => {
+                    debug_assert!(!self.lexer.extras.errors.is_empty());
+                    self.skip_until(&[
+                        Token::Enum,
+                        Token::Extend,
+                        Token::Import,
+                        Token::Message,
+                        Token::Option,
+                        Token::Service,
+                        Token::Package,
+                    ])
+                }
             }
         }
 
@@ -960,9 +963,9 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::Option)?;
 
-        let body = self.parse_option_body(&[ExpectedToken::SEMICOLON])?;
+        let body = dbg!(self.parse_option_body(&[ExpectedToken::SEMICOLON]))?;
 
-        let end = self.expect_eq(Token::Semicolon)?;
+        let end = dbg!(self.expect_eq(Token::Semicolon))?;
         let comments = self.parse_trailing_comment(leading_comments);
 
         Ok(ast::Option {
@@ -1250,10 +1253,7 @@ impl<'a> Parser<'a> {
     fn peek(&mut self) -> Option<(Token<'a>, Span)> {
         loop {
             match self.peek_comments() {
-                Some((Token::Comment(_), _)) => {
-                    self.bump();
-                }
-                Some((Token::Newline, _)) => {
+                Some((Token::Comment(_) | Token::Newline, _)) => {
                     self.bump();
                 }
                 tok => {

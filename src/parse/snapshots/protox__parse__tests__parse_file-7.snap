@@ -1,42 +1,20 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
-Ok(
-    File {
-        span: 0..68,
-        syntax: Proto2,
-        syntax_span: Some(
-            (
-                0..18,
-                Comments {
-                    leading_detached_comments: [],
-                    leading_comment: None,
-                    trailing_comment: None,
-                },
+Err(
+    [
+        UnexpectedToken {
+            expected: "a message field, oneof, reserved range, enum, message, option or '}'",
+            found: Comma,
+            span: 42..43,
+        },
+        UnexpectedToken {
+            expected: "'.' or '='",
+            found: IntLiteral(
+                1,
             ),
-        ),
-        package: None,
-        imports: [],
-        options: [],
-        items: [
-            Enum(
-                Enum {
-                    name: Ident {
-                        value: "Bar",
-                        span: 59..62,
-                    },
-                    options: [],
-                    values: [],
-                    reserved: [],
-                    comments: Comments {
-                        leading_detached_comments: [],
-                        leading_comment: None,
-                        trailing_comment: None,
-                    },
-                    span: 54..68,
-                },
-            ),
-        ],
-    },
+            span: 88..89,
+        },
+    ],
 )
