@@ -14,6 +14,10 @@ fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
 }
 
+fn google_proto_dir() -> PathBuf {
+    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("protobuf/src/google/protobuf")
+}
+
 fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
@@ -27,6 +31,8 @@ fn protoc(name: &str) -> String {
     let output = Command::new(prost_build::protoc())
         .arg("--proto_path")
         .arg(test_data_dir())
+        .arg("--proto_path")
+        .arg(google_proto_dir())
         .arg("--include_imports")
         .arg("--include_source_info")
         .arg(format!("--descriptor_set_out={}", result.display()))
