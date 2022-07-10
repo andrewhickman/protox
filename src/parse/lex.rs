@@ -1,4 +1,4 @@
-use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
+use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind, ascii};
 
 use logos::{skip, Lexer, Logos};
 
@@ -21,7 +21,7 @@ pub(crate) enum Token<'a> {
     #[regex("false|true", bool)]
     BoolLiteral(bool),
     #[regex(r#"'|""#, string)]
-    StringLiteral(Cow<'a, str>),
+    StringLiteral(Cow<'a, [u8]>),
     #[token("syntax")]
     Syntax,
     #[token("package")]
@@ -259,8 +259,11 @@ impl<'a> fmt::Display for Token<'a> {
             Token::IntLiteral(value) => write!(f, "{}", value),
             Token::FloatLiteral(value) => write!(f, "{}", value),
             Token::BoolLiteral(value) => write!(f, "{}", value),
-            Token::StringLiteral(string) => {
-                write!(f, "\"{}\"", string.escape_default())
+            Token::StringLiteral(bytes) => {
+                for &ch in bytes.as_ref() {
+                    write!(f, "\"{}\"", ascii::escape_default(ch))?;
+                }
+                Ok(())
             }
             Token::Syntax => write!(f, "syntax"),
             Token::Import => write!(f, "import"),
@@ -359,64 +362,64 @@ fn bool<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
     lex.slice().parse().expect("faield to parse bool")
 }
 
-fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
+fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
     #[derive(Logos)]
     enum Component<'a> {
         #[regex(r#"[^\x00\n\\'"]+"#)]
         Unescaped(&'a str),
         #[regex(r#"['"]"#, terminator)]
-        Terminator(char),
+        Terminator(u8),
         #[regex(r#"\\[xX][0-9A-Fa-f][0-9A-Fa-f]"#, hex_escape)]
         #[regex(r#"\\[0-7][0-7][0-7]"#, oct_escape)]
         #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
-        Char(char),
+        Char(u8),
         #[error]
         Error,
     }
 
-    fn terminator<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
-        debug_assert_eq!(lex.slice().chars().count(), 1);
-        lex.slice().chars().next().unwrap()
+    fn terminator<'a>(lex: &mut Lexer<'a, Component<'a>>) -> u8 {
+        debug_assert_eq!(lex.slice().len(), 1);
+        lex.slice().bytes().next().unwrap()
     }
 
-    fn hex_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
+    fn hex_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> u8 {
         u32::from_str_radix(&lex.slice()[2..], 16)
             .expect("expected valid hex escape")
             .try_into()
-            .expect("two-digit hex escape should be valid char")
+            .expect("two-digit hex escape should be valid byte")
     }
 
-    fn oct_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
+    fn oct_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> Result<u8, ()> {
         u32::from_str_radix(&lex.slice()[1..], 8)
             .expect("expected valid oct escape")
-            .try_into()
-            .expect("three-digit oct escape should be valid char")
+        .try_into()
+            .map_err(drop)
     }
 
-    fn char_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> char {
+    fn char_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> u8 {
         match lex.slice().as_bytes()[1] {
-            b'a' => '\x07',
-            b'b' => '\x08',
-            b'f' => '\x0c',
-            b'n' => '\n',
-            b'r' => '\r',
-            b't' => '\t',
-            b'v' => '\x0b',
-            b'\\' => '\\',
-            b'\'' => '\'',
-            b'"' => '"',
+            b'a' => b'\x07',
+            b'b' => b'\x08',
+            b'f' => b'\x0c',
+            b'n' => b'\n',
+            b'r' => b'\r',
+            b't' => b'\t',
+            b'v' => b'\x0b',
+            b'\\' => b'\\',
+            b'\'' => b'\'',
+            b'"' => b'"',
             _ => panic!("failed to parse char escape"),
         }
     }
 
-    let mut result: Option<Cow<'a, str>> = None;
+    let mut result: Option<Cow<'a, [u8]>> = None;
 
     let mut char_lexer = Component::lexer(lex.remainder());
-    let terminator = lex.slice().chars().next().expect("expected char");
+    let terminator = lex.slice().as_bytes()[0];
 
     loop {
         match char_lexer.next() {
-            Some(Component::Unescaped(s)) => cow_push_str(&mut result, s),
+            Some(Component::Unescaped(s)) => cow_push_bytes(&mut result, s.as_bytes()),
             Some(Component::Terminator(t)) if t == terminator => {
                 break;
             }
@@ -581,6 +584,17 @@ fn cow_push_str<'a>(cow: &mut Option<Cow<'a, str>>, s: &'a str) {
     }
 }
 
+fn cow_push_bytes<'a>(cow: &mut Option<Cow<'a, [u8]>>, s: &'a [u8]) {
+    if s.is_empty() {
+        return;
+    }
+
+    match cow {
+        Some(cow) => cow.to_mut().extend_from_slice(s),
+        None => *cow = Some(Cow::Borrowed(s)),
+    }
+}
+
 fn normalize_newlines(s: Cow<str>) -> Cow<str> {
     if s.contains("\r\n") {
         Cow::Owned(s.replace("\r\n", "\n"))
@@ -615,11 +629,11 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
         assert_eq!(
             lexer.next().unwrap(),
-            Token::StringLiteral("hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".into())
+            Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".as_ref().into())
         );
         assert_eq!(
             lexer.next().unwrap(),
-            Token::StringLiteral("hello 😀".into())
+            Token::StringLiteral(b"hello \xF0\x9F\x98\x80".as_ref().into())
         );
         assert_eq!(lexer.next().unwrap(), Token::Ident("_foo".into()));
         assert_eq!(lexer.next(), None);
@@ -676,7 +690,7 @@ mod tests {
         let source = "\"hello \n foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral("hello ".into())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"hello ".as_ref().into())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
@@ -691,7 +705,7 @@ mod tests {
         let source = r#""\m" foo"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral("m".into())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"m".as_ref().into())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
@@ -702,11 +716,20 @@ mod tests {
     }
 
     #[test]
+    fn string_escape_invalid_utf8() {
+        let source = r#""\xFF""#;
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::StringLiteral([0xff].as_ref().into())));
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
     fn merge_string_errors() {
         let source = "\"\\\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral("".into())));
+        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"".as_ref().into())));
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 

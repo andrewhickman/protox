@@ -1,6 +1,6 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
     File {
@@ -20,10 +20,8 @@ Ok(
         imports: [
             Import {
                 kind: None,
-                value: String {
-                    value: "foo.proto",
-                    span: 35..46,
-                },
+                value: "foo.proto",
+                value_span: 35..46,
                 comments: Comments {
                     leading_detached_comments: [],
                     leading_comment: None,

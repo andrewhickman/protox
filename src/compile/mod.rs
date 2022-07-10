@@ -195,25 +195,25 @@ impl Compiler {
         import_stack: &mut Vec<String>,
         import_src: DynSourceCode,
     ) -> Result<(), Error> {
-        if import_stack.contains(&import.value.value) {
+        if import_stack.contains(&import.value) {
             let mut cycle = String::new();
             for import in import_stack {
                 write!(&mut cycle, "{} -> ", import).unwrap();
             }
-            write!(&mut cycle, "{}", import.value.value).unwrap();
+            write!(&mut cycle, "{}", import.value).unwrap();
 
             return Err(Error::from_kind(ErrorKind::CircularImport { cycle }));
         }
 
-        if self.file_map.file_names.contains_key(&import.value.value) {
+        if self.file_map.file_names.contains_key(&import.value) {
             return Ok(());
         }
 
-        let file = match self.resolver.open(&import.value.value) {
+        let file = match self.resolver.open(&import.value) {
             Ok(file) if file.content.len() > (MAX_FILE_LEN as usize) => {
                 return Err(Error::from_kind(ErrorKind::FileTooLarge {
                     src: import_src,
-                    span: Some(import.value.span.clone().into()),
+                    span: Some(import.value_span.clone().into()),
                 }));
             }
             Ok(file) => file,
@@ -226,28 +226,28 @@ impl Compiler {
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    make_source(&import.value.value, &file.path, source),
+                    make_source(&import.value, &file.path, source),
                 ));
             }
         };
 
-        import_stack.push(import.value.value.clone());
+        import_stack.push(import.value.clone());
         for import in &ast.imports {
             self.add_import(
                 import,
                 import_stack,
-                make_source(&import.value.value, &file.path, source.clone()),
+                make_source(&import.value, &file.path, source.clone()),
             )?;
         }
         import_stack.pop();
 
         let (descriptor, name_map) =
-            self.check_file(&import.value.value, &ast, source, &file.path)?;
+            self.check_file(&import.value, &ast, source, &file.path)?;
 
         self.file_map.add(ParsedFile {
             descriptor,
             name_map,
-            name: import.value.value.clone(),
+            name: import.value.clone(),
             path: file.path,
             is_root: false,
         });

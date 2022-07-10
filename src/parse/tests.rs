@@ -113,6 +113,7 @@ pub fn parse_import() {
     case!(parse_import("import 'foo//bar';"));
     case!(parse_import("import 'foo/./bar';"));
     case!(parse_import("import 'foo/../bar';"));
+    case!(parse_import("import '\\xFF';"));
 }
 
 #[test]
@@ -138,6 +139,7 @@ pub fn parse_reserved() {
     case!(parse_reserved("reserved 'foo', 'bar';"));
     case!(parse_reserved("reserved ;"));
     case!(parse_reserved("reserved '0foo';"));
+    case!(parse_reserved("reserved '\\xFF';"));
 }
 
 #[test]

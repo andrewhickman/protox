@@ -176,7 +176,7 @@ impl NamePass {
 
     fn add_file(&mut self, file: &ir::File, file_map: &ParsedFileMap) {
         for import in &file.ast.imports {
-            let file = &file_map[import.value.value.as_str()];
+            let file = &file_map[import.value.as_str()];
             self.merge_names(
                 file,
                 matches!(import.kind, Some((ast::ImportKind::Public, _))),

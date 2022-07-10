@@ -47,6 +47,11 @@ pub(crate) enum ParseError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("string is not valid utf-8")]
+    InvalidUtf8String {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("nested block comments are not supported")]
     NestedBlockComment {
         #[label("defined here")]
@@ -216,11 +221,11 @@ impl<'a> Parser<'a> {
 
         let syntax = match self.peek() {
             Some((Token::StringLiteral(syntax), span)) => match &*syntax {
-                "proto2" => {
+                b"proto2" => {
                     self.bump();
                     ast::Syntax::Proto2
                 }
-                "proto3" => {
+                b"proto3" => {
                     self.bump();
                     ast::Syntax::Proto3
                 }
@@ -295,10 +300,10 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("a string literal, 'public' or 'weak'")?,
         };
 
-        let value = self.parse_string()?;
-        if !is_valid_import(&value.value) {
+        let (value, value_span) = self.parse_utf8_string()?;
+        if !is_valid_import(&value) {
             self.add_error(ParseError::InvalidImport {
-                span: value.span.clone(),
+                span: value_span.clone(),
             });
         }
 
@@ -309,6 +314,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Import {
             kind,
             value,
+            value_span,
             comments,
             span: join_span(start, end),
         })
@@ -875,15 +881,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_string(&mut self) -> Result<ast::Ident, ()> {
-        let string = self.parse_string()?;
-        if !is_valid_ident(&string.value) {
+        let (value, span) = self.parse_utf8_string()?;
+        if !is_valid_ident(&value) {
             self.add_error(ParseError::InvalidIdentifier {
-                span: string.span.clone(),
+                span: span.clone(),
             })
         }
         Ok(ast::Ident {
-            value: string.value,
-            span: string.span,
+            value,
+            span,
         })
     }
 
@@ -1128,8 +1134,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_string(&mut self) -> Result<ast::String, ()> {
-        match self.peek() {
+    fn parse_utf8_string(&mut self) -> Result<(String, Span), ()> {
+        let bytes = match self.peek() {
             Some((Token::StringLiteral(value), span)) => {
                 self.bump();
                 Ok(ast::String {
@@ -1137,7 +1143,15 @@ impl<'a> Parser<'a> {
                     span,
                 })
             }
-            _ => self.unexpected_token("a string literal"),
+            _ => self.unexpected_token("a string literal")?,
+        }?;
+
+        match String::from_utf8(bytes.value) {
+            Ok(string) => Ok((string, bytes.span)),
+            Err(err) => {
+                self.add_error(ParseError::InvalidUtf8String { span: bytes.span.clone() });
+                Ok((String::from_utf8_lossy(err.as_bytes()).into_owned(), bytes.span))
+            },
         }
     }
 

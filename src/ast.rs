@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt, ops::Range, vec};
+use std::{borrow::Cow, fmt::{self, Write}, ops::Range, vec};
 
 use logos::Span;
 
@@ -72,9 +72,9 @@ pub(crate) struct Bool {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) struct String {
-    pub value: std::string::String,
+    pub value: Vec<u8>,
     pub span: Span,
 }
 
@@ -90,7 +90,8 @@ pub(crate) enum Constant {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Import {
     pub kind: std::option::Option<(ImportKind, Span)>,
-    pub value: String,
+    pub value: std::string::String,
+    pub value_span: Span,
     pub comments: Comments,
     pub span: Span,
 }
@@ -624,9 +625,34 @@ impl fmt::Display for Float {
     }
 }
 
+impl fmt::Debug for String {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = self.to_string();
+        f.debug_struct("String")
+            .field("value", &value)
+            .field("span", &self.span)
+            .finish()
+    }
+}
+
 impl fmt::Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
+        for &ch in &self.value {
+            match ch {
+                b'\t' => f.write_str("\\t")?,
+                b'\r' => f.write_str("\\r")?,
+                b'\n' => f.write_str("\\n")?,
+                b'\\' => f.write_str("\\\\")?,
+                b'\'' => f.write_str("\\'")?,
+                b'"' => f.write_str("\\\"")?,
+                b'\x20'..=b'\x7e' => f.write_char(ch as char)?,
+                _ => {
+                    write!(f, "\\{:o}", ch)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
