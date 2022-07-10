@@ -160,7 +160,7 @@ impl NamePass {
 
     fn full_name<'a>(&self, name: impl Into<Cow<'a, str>>) -> String {
         let name = name.into();
-        match self.scope.first() {
+        match self.scope.last() {
             Some(namespace) => format!("{}.{}", namespace, name.as_ref()),
             None => name.into_owned(),
         }
