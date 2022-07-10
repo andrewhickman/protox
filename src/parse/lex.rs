@@ -126,7 +126,7 @@ pub(crate) enum Token<'a> {
     Equals,
     #[token(";")]
     Semicolon,
-    #[regex(r#"//[^\n]*\n?"#, line_comment)]
+    #[regex(r#"//[^\n]*"#, line_comment)]
     #[token(r#"/*"#, block_comment)]
     Comment(Cow<'a, str>),
     #[token("\n")]
@@ -474,7 +474,12 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 
 fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     fn strip_line_comment(s: &str) -> Option<&str> {
-        s.trim_start().strip_prefix("//")
+        let s = s.trim_start();
+        if s.is_empty() {
+            Some("")
+        } else {
+            s.strip_prefix("//")
+        }
     }
 
     let mut is_trailing = false;
@@ -489,18 +494,26 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     }
 
     let mut result = Cow::Borrowed(strip_line_comment(lex.slice()).expect("expected comment"));
+
+    if !lex.remainder().is_empty() {
+        debug_assert!(lex.remainder().starts_with('\n'));
+        result.to_mut().push('\n');
+
     if !is_trailing {
+            let remainder = &lex.remainder()[1..];
+
         // Merge comments on subsequent lines
         let mut start = 0;
-        for (end, _) in lex.remainder().match_indices('\n') {
-            if let Some(comment) = strip_line_comment(&lex.remainder()[start..=end]) {
+            for (end, _) in remainder.match_indices('\n') {
+                if let Some(comment) = strip_line_comment(&remainder[start..=end]) {
                 result.to_mut().push_str(comment);
                 start = end + 1;
             } else {
                 break;
             }
         }
-        lex.bump(start);
+            lex.bump(start + 1);
+        }
     }
 
     normalize_newlines(result)
@@ -509,8 +522,7 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     #[derive(Logos)]
     enum Component {
-        // Optionally include a trailing newline for consistency with line comments
-        #[regex(r#"\*/[\t\v\f\r ]*\n?"#)]
+        #[token("*/")]
         EndComment,
         #[token("/*")]
         StartComment,
