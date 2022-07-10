@@ -2,71 +2,42 @@
 source: src/check/tests.rs
 expression: "check_with_imports(vec![(\"dep.proto\", \"package foo;\"),\n                (\"root.proto\",\n                r#\"import \"dep.proto\"; package foo;\"#),]).unwrap().transcode_to_dynamic()"
 ---
-{
-  "file": [
-    {
-      "name": "dep.proto",
-      "package": "foo",
-      "sourceCodeInfo": {
-        "location": [
-          {
-            "span": [
-              0,
-              0,
-              12
-            ]
-          },
-          {
-            "path": [
-              2
-            ],
-            "span": [
-              0,
-              0,
-              12
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "name": "root.proto",
-      "package": "foo",
-      "dependency": [
-        "dep.proto"
-      ],
-      "sourceCodeInfo": {
-        "location": [
-          {
-            "span": [
-              0,
-              0,
-              32
-            ]
-          },
-          {
-            "path": [
-              2
-            ],
-            "span": [
-              0,
-              20,
-              32
-            ]
-          },
-          {
-            "path": [
-              3,
-              0
-            ],
-            "span": [
-              0,
-              0,
-              19
-            ]
-          }
-        ]
-      }
-    }
-  ]
-}
+file:
+  - name: dep.proto
+    package: foo
+    sourceCodeInfo:
+      location:
+        - span:
+            - 0
+            - 0
+            - 12
+        - path:
+            - 2
+          span:
+            - 0
+            - 0
+            - 12
+  - name: root.proto
+    package: foo
+    dependency:
+      - dep.proto
+    sourceCodeInfo:
+      location:
+        - span:
+            - 0
+            - 0
+            - 32
+        - path:
+            - 2
+          span:
+            - 0
+            - 20
+            - 32
+        - path:
+            - 3
+            - 0
+          span:
+            - 0
+            - 0
+            - 19
+

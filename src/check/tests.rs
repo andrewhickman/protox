@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env};
 
-use insta::assert_json_snapshot;
+use insta::assert_yaml_snapshot;
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -125,7 +125,7 @@ fn name_conflict_package() {
             second: 28..31,
         }]
     );
-    assert_json_snapshot!(check_with_imports(vec![
+    assert_yaml_snapshot!(check_with_imports(vec![
         ("dep.proto", "package foo;"),
         ("root.proto", r#"import "dep.proto"; package foo;"#),
     ])
@@ -219,8 +219,8 @@ fn invalid_message_number() {
         check_err("message Foo { optional int32 i = 536870912; }"),
         vec![InvalidMessageNumber { span: 33..42 }]
     );
-    assert_json_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
-    assert_json_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
+    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
+    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
 }
 
 #[test]
