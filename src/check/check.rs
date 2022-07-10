@@ -153,9 +153,11 @@ impl<'a> Context<'a> {
 
     fn check_file(&mut self, file: &ir::File) -> FileDescriptorProto {
         if let Some(package) = &file.ast.package {
-            self.enter(Scope::Package {
-                full_name: package.name.to_string(),
-            });
+            for part in &package.name.parts {
+                self.enter(Scope::Package {
+                    full_name: self.full_name(part),
+                });
+            }
         }
 
         let package = file.ast.package.as_ref().map(|p| p.name.to_string());
@@ -196,8 +198,10 @@ impl<'a> Context<'a> {
             Some(self.syntax.to_string())
         };
 
-        if file.ast.package.is_some() {
-            self.exit();
+        if let Some(package) = &file.ast.package {
+            for _ in &package.name.parts {
+                self.exit();
+            }
         }
 
         FileDescriptorProto {
@@ -805,7 +809,8 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_message_options(&mut self, options: &[ast::Option]) -> Option<MessageOptions> {
@@ -813,13 +818,15 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<FieldOptions> {
         let _options = options?;
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_extension_range_options(
@@ -828,7 +835,8 @@ impl<'a> Context<'a> {
     ) -> Option<ExtensionRangeOptions> {
         let _options = options?;
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_oneof_options(&self, options: &[ast::Option]) -> Option<OneofOptions> {
@@ -836,7 +844,8 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_enum_options(&self, options: &[ast::Option]) -> Option<EnumOptions> {
@@ -844,7 +853,8 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_enum_value_options(
@@ -853,7 +863,8 @@ impl<'a> Context<'a> {
     ) -> Option<EnumValueOptions> {
         let _options = options?;
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_service_options(&self, options: &[ast::Option]) -> Option<ServiceOptions> {
@@ -861,7 +872,8 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 
     fn check_method_options(&self, options: &[ast::Option]) -> Option<MethodOptions> {
@@ -869,6 +881,7 @@ impl<'a> Context<'a> {
             return None;
         }
 
-        todo!()
+        // todo!()
+        None
     }
 }
