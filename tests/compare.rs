@@ -96,9 +96,5 @@ compare!(generate_synthetic_oneof_ordering);
 compare!(generate_synthetic_oneof);
 compare!(generated_message_ordering);
 compare!(multiple_extends);
-
-// TODO this isn't passing quite yet
+// TODO need to get protoc to use the exact same versions of these files
 // compare!(import_google);
-// - unverified_lazy
-// - comments on options
-// - leading/trailing comments on fields
