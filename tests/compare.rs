@@ -29,8 +29,8 @@ fn protoc(name: &str) -> String {
         .arg("--include_source_info")
         .arg(format!("--descriptor_set_out={}", result.display()))
         .arg(format!("{}.proto", name))
-    .status()
-    .unwrap();
+        .status()
+        .unwrap();
     assert!(status.success());
     let bytes = fs::read(result).unwrap();
 
@@ -48,7 +48,9 @@ fn file_descriptor_to_yaml(mut descriptor: FileDescriptorSet) -> String {
     for file in &mut descriptor.file {
         // Normalize ordering of spans
         if let Some(source_code_info) = &mut file.source_code_info {
-            source_code_info.location.sort_by(|l, r| l.span.cmp(&r.span).then_with(|| l.path.cmp(&r.path)));
+            source_code_info
+                .location
+                .sort_by(|l, r| l.span.cmp(&r.span).then_with(|| l.path.cmp(&r.path)));
         }
     }
 

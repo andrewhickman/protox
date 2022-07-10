@@ -151,7 +151,14 @@ fn build_message_body(
             ast::MessageItem::Extend(extend) => build_extend(syntax, extend, &mut messages),
             ast::MessageItem::Oneof(oneof) => {
                 for field in &oneof.fields {
-                    build_field(syntax, field, &mut fields, &mut messages, &mut oneofs, Some(real_oneof_index))
+                    build_field(
+                        syntax,
+                        field,
+                        &mut fields,
+                        &mut messages,
+                        &mut oneofs,
+                        Some(real_oneof_index),
+                    )
                 }
                 real_oneof_index += 1;
             }
