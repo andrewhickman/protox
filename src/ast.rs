@@ -1,4 +1,9 @@
-use std::{borrow::Cow, fmt::{self, Write}, ops::Range, vec};
+use std::{
+    borrow::Cow,
+    fmt::{self, Write},
+    ops::Range,
+    vec,
+};
 
 use logos::Span;
 

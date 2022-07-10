@@ -1,4 +1,4 @@
-use std::{borrow::Cow, convert::TryInto, fmt, num::IntErrorKind, ascii};
+use std::{ascii, borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
 use logos::{skip, Lexer, Logos};
 
@@ -392,7 +392,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
     fn oct_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> Result<u8, ()> {
         u32::from_str_radix(&lex.slice()[1..], 8)
             .expect("expected valid oct escape")
-        .try_into()
+            .try_into()
             .map_err(drop)
     }
 
@@ -690,7 +690,10 @@ mod tests {
         let source = "\"hello \n foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"hello ".as_ref().into())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral(b"hello ".as_ref().into()))
+        );
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
@@ -705,7 +708,10 @@ mod tests {
         let source = r#""\m" foo"#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"m".as_ref().into())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral(b"m".as_ref().into()))
+        );
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 
@@ -720,7 +726,10 @@ mod tests {
         let source = r#""\xFF""#;
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral([0xff].as_ref().into())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral([0xff].as_ref().into()))
+        );
         assert_eq!(lexer.next(), None);
     }
 
@@ -729,7 +738,10 @@ mod tests {
         let source = "\"\\\x00\" foo";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::StringLiteral(b"".as_ref().into())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral(b"".as_ref().into()))
+        );
         assert_eq!(lexer.next(), Some(Token::Ident("foo".into())));
         assert_eq!(lexer.next(), None);
 

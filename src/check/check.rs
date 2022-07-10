@@ -165,12 +165,7 @@ impl<'a> Context<'a> {
 
         let package = file.ast.package.as_ref().map(|p| p.name.to_string());
 
-        let dependency = file
-            .ast
-            .imports
-            .iter()
-            .map(|i| i.value.clone())
-            .collect();
+        let dependency = file.ast.imports.iter().map(|i| i.value.clone()).collect();
         let public_dependency = file.ast.public_imports().map(|(index, _)| index).collect();
         let weak_dependency = file.ast.weak_imports().map(|(index, _)| index).collect();
 

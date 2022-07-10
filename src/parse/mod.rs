@@ -883,14 +883,9 @@ impl<'a> Parser<'a> {
     fn parse_ident_string(&mut self) -> Result<ast::Ident, ()> {
         let (value, span) = self.parse_utf8_string()?;
         if !is_valid_ident(&value) {
-            self.add_error(ParseError::InvalidIdentifier {
-                span: span.clone(),
-            })
+            self.add_error(ParseError::InvalidIdentifier { span: span.clone() })
         }
-        Ok(ast::Ident {
-            value,
-            span,
-        })
+        Ok(ast::Ident { value, span })
     }
 
     fn parse_reserved_ranges(
@@ -1149,9 +1144,14 @@ impl<'a> Parser<'a> {
         match String::from_utf8(bytes.value) {
             Ok(string) => Ok((string, bytes.span)),
             Err(err) => {
-                self.add_error(ParseError::InvalidUtf8String { span: bytes.span.clone() });
-                Ok((String::from_utf8_lossy(err.as_bytes()).into_owned(), bytes.span))
-            },
+                self.add_error(ParseError::InvalidUtf8String {
+                    span: bytes.span.clone(),
+                });
+                Ok((
+                    String::from_utf8_lossy(err.as_bytes()).into_owned(),
+                    bytes.span,
+                ))
+            }
         }
     }
 
