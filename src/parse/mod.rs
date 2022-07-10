@@ -1160,49 +1160,30 @@ impl<'a> Parser<'a> {
         &mut self,
         (leading_detached_comments, leading_comment): (Vec<String>, std::option::Option<String>),
     ) -> ast::Comments {
-        // let on_new_line = self.eat_newline();
+        if let Some((Token::Newline, _)) = self.peek_comments() {
+            self.bump_comment();
+        }
 
-        // let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
-        //     self.bump_comment();
+        let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
+            self.bump_comment();
 
-        //     self.comments.comment(comment.into());
-        //     if self.eat_newline() {
-        //         self.comments.newline();
-        //     }
-
-        //     if on_new_line &&
-
-        //     if !self.eat_newline() {
-        //         self.comments.comment(comment.into());
-        //     } else {
-        //         if matches!(
-        //             self.peek_comments(),
-        //             Some((Token::Newline | Token::RightBrace, _)) | None
-        //         ) {
-        //             Some(comment.into())
-        //         } else {
-        //             self.comments.comment(comment.into());
-        //             None
-        //         }
-        //     }
-
-        // } else {
-        //     None
-        // };
+            if matches!(
+                self.peek_comments(),
+                Some((Token::Newline | Token::RightBrace, _)) | None
+            ) {
+                Some(comment.into())
+            } else {
+                self.comments.comment(comment.into());
+                None
+            }
+        } else {
+            None
+        };
 
         ast::Comments {
             leading_detached_comments,
             leading_comment,
             trailing_comment,
-        }
-    }
-
-    fn eat_newline(&mut self) -> bool {
-        if let Some((Token::Newline, _)) = self.peek_comments() {
-            self.bump_comment();
-            true
-        } else {
-            false
         }
     }
 
