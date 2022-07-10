@@ -503,7 +503,7 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
         lex.bump(start);
     }
 
-    result
+    normalize_newlines(result)
 }
 
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
@@ -567,13 +567,25 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     };
 
     lex.bump(len);
-    result.unwrap_or_default()
+    normalize_newlines(result.unwrap_or_default())
 }
 
 fn cow_push_str<'a>(cow: &mut Option<Cow<'a, str>>, s: &'a str) {
+    if s.is_empty() {
+        return;
+    }
+
     match cow {
         Some(cow) => cow.to_mut().push_str(s),
         None => *cow = Some(Cow::Borrowed(s)),
+    }
+}
+
+fn normalize_newlines(s: Cow<str>) -> Cow<str> {
+    if s.contains("\r\n") {
+        Cow::Owned(s.replace("\r\n", "\n"))
+    } else {
+        s
     }
 }
 

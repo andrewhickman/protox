@@ -298,6 +298,8 @@ fn name_resolution() {
     // local vs global scope
     // leading dot
     // package vs no package
+
+    // parent package e.g. resolving google.protobuf.FileDescriptorProto in google.protobuf.compiler
 }
 
 #[test]
