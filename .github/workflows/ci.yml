@@ -16,6 +16,8 @@ jobs:
         rust: [beta, stable, 1.60.0]
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -34,6 +36,8 @@ jobs:
           - stable
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -57,6 +61,8 @@ jobs:
       options: --security-opt seccomp=unconfined
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Get latest CMake and ninja
         uses: lukka/get-cmake@latest
       - name: Generate code coverage
