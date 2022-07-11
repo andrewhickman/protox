@@ -14,7 +14,10 @@ use std::path::{Path, PathBuf};
 
 use crate::Error;
 
-/// A strategy for locating protobuf source files. The default implementation is [`IncludeFileResolver`] which uses the file system.
+/// A strategy for locating protobuf source files. 
+/// 
+/// The main implementation is [`IncludeFileResolver`] which uses the file system, but 
+/// this trait allows sourcing files from other places as well.
 pub trait FileResolver {
     /// Converts a file system path to a unique file name.
     fn resolve_path(&self, _path: &Path) -> Option<String> {
@@ -29,7 +32,7 @@ pub trait FileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error>;
 }
 
-/// An opened protobuf source file, returned by [`FileResolver::open`].
+/// An opened protobuf source file, returned by [`FileResolver::open_file`].
 #[derive(Debug, Clone)]
 pub struct File {
     /// If this is a physical file on the filesystem, the path to the file.

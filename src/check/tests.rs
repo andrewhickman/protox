@@ -40,7 +40,7 @@ fn check_with_imports(files: Vec<(&str, &str)>) -> Result<FileDescriptorSet, Vec
             .collect(),
     };
 
-    let mut compiler = Compiler::with_import_resolver(resolver);
+    let mut compiler = Compiler::with_file_resolver(resolver);
     compiler.include_imports(true);
     compiler.include_source_info(true);
     match compiler.add_file(&root) {

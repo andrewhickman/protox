@@ -63,11 +63,11 @@ impl Compiler {
             return Err(Error::from_kind(ErrorKind::NoIncludePaths));
         }
 
-        Ok(Compiler::with_import_resolver(resolver))
+        Ok(Compiler::with_file_resolver(resolver))
     }
 
     /// Create a new [`Compiler`] with a custom [`FileResolver`] for looking up imported files.
-    pub fn with_import_resolver<R>(resolver: R) -> Self
+    pub fn with_file_resolver<R>(resolver: R) -> Self
     where
         R: FileResolver + 'static,
     {
