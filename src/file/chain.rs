@@ -39,9 +39,9 @@ impl FileResolver for ChainFileResolver {
         None
     }
 
-    fn open(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str) -> Result<File, Error> {
         for resolver in &self.resolvers {
-            match resolver.open(name) {
+            match resolver.open_file(name) {
                 Ok(file) => return Ok(file),
                 Err(err) if err.is_file_not_found() => continue,
                 Err(err) => return Err(err),

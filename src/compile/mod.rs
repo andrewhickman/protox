@@ -117,7 +117,7 @@ impl Compiler {
             return Ok(self);
         }
 
-        let file = self.resolver.open(&name).map_err(|err| {
+        let file = self.resolver.open_file(&name).map_err(|err| {
             if err.is_file_not_found() {
                 Error::from_kind(ErrorKind::FileNotIncluded {
                     path: relative_path.to_owned(),
@@ -209,7 +209,7 @@ impl Compiler {
             return Ok(());
         }
 
-        let file = match self.resolver.open(&import.value) {
+        let file = match self.resolver.open_file(&import.value) {
             Ok(file) if file.content.len() > (MAX_FILE_LEN as usize) => {
                 return Err(Error::from_kind(ErrorKind::FileTooLarge {
                     src: import_src,

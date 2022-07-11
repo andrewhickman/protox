@@ -38,7 +38,7 @@ pub(crate) const WRAPPERS: &str = include_proto!("wrappers.proto");
 pub(crate) const COMPILER_PLUGIN: &str = include_proto!("compiler/plugin.proto");
 
 impl FileResolver for GoogleFileResolver {
-    fn open(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str) -> Result<File, Error> {
         let content = match name {
             "google/protobuf/any.proto" => ANY,
             "google/protobuf/api.proto" => API,

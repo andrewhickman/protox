@@ -26,7 +26,7 @@ pub trait FileResolver {
     /// # Errors
     ///
     /// If the file is not found, the implementation should return [`Error::file_not_found`].
-    fn open(&self, name: &str) -> Result<File, Error>;
+    fn open_file(&self, name: &str) -> Result<File, Error>;
 }
 
 /// An opened protobuf source file, returned by [`FileResolver::open`].
@@ -46,7 +46,7 @@ where
         (**self).resolve_path(path)
     }
 
-    fn open(&self, name: &str) -> Result<File, Error> {
-        (**self).open(name)
+    fn open_file(&self, name: &str) -> Result<File, Error> {
+        (**self).open_file(name)
     }
 }

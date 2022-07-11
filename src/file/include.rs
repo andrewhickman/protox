@@ -64,11 +64,11 @@ impl FileResolver for IncludeFileResolver {
     /// fs::write("./foo.proto", "content").unwrap();
     ///
     /// let resolver = IncludeFileResolver::new(PathBuf::from("."));
-    /// let file = resolver.open("foo.proto").unwrap();
+    /// let file = resolver.open_file("foo.proto").unwrap();
     /// assert_eq!(file.path, Some(PathBuf::from("./foo.proto")));
     /// assert_eq!(file.content, "content");
     /// ```
-    fn open(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str) -> Result<File, Error> {
         let path = self.include.join(name);
 
         let map_io_err = |err: io::Error| -> Error {
