@@ -79,13 +79,19 @@ impl Compiler {
         }
     }
 
-    /// Set whether the output `FileDescriptorSet` should have source info such as source locations and comments included.
+    /// Set whether the output `FileDescriptorSet` should include source info.
+    ///
+    /// If set, the file descriptors returned by [`file_descriptor_set`](Compiler::file_descriptor_set) will have
+    /// the [`FileDescriptorProto::source_code_info`] field populated with source locations and comments.
     pub fn include_source_info(&mut self, yes: bool) -> &mut Self {
         self.include_source_info = yes;
         self
     }
 
-    /// Set whether the output `FileDescriptorSet` should include dependency files.
+    /// Set whether the output `FileDescriptorSet` should include imported files.
+    ///
+    /// By default, only files explicitly added with [`add_file`](Compiler::add_file) are returned by [`file_descriptor_set`](Compiler::file_descriptor_set).
+    /// If this option is set, imported files are included too.
     pub fn include_imports(&mut self, yes: bool) -> &mut Self {
         self.include_imports = yes;
         self
