@@ -652,7 +652,7 @@ impl fmt::Display for String {
                 b'"' => f.write_str("\\\"")?,
                 b'\x20'..=b'\x7e' => f.write_char(ch as char)?,
                 _ => {
-                    write!(f, "\\{:o}", ch)?;
+                    write!(f, "\\{:03o}", ch)?;
                 }
             }
         }
