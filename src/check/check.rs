@@ -21,19 +21,20 @@ use crate::{
 
 use super::{
     ir, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
-    RESERVED_MESSAGE_FIELD_NUMBERS,
+    RESERVED_MESSAGE_FIELD_NUMBERS, OptionSet,
 };
 
 impl<'a> ir::File<'a> {
     pub fn check(
         &self,
         name_map: Option<&NameMap>,
-    ) -> Result<FileDescriptorProto, Vec<CheckError>> {
+    ) -> Result<(FileDescriptorProto, OptionSet), Vec<CheckError>> {
         let mut context = Context {
             syntax: self.ast.syntax,
             name_map,
             scope: Vec::new(),
             errors: Vec::new(),
+            options: OptionSet::new(),
         };
 
         let file = context.check_file(self);
@@ -41,7 +42,7 @@ impl<'a> ir::File<'a> {
         debug_assert!(context.scope.is_empty());
 
         if context.errors.is_empty() {
-            Ok(file)
+            Ok((file, context.options))
         } else {
             Err(context.errors)
         }
@@ -53,6 +54,7 @@ struct Context<'a> {
     name_map: Option<&'a NameMap>,
     scope: Vec<Scope>,
     errors: Vec<CheckError>,
+    options: OptionSet,
 }
 
 enum Scope {
@@ -781,6 +783,12 @@ impl<'a> Context<'a> {
             return None;
         }
 
+        #[allow(clippy::all)]
+        if self.name_map.is_some() {
+            // build options set
+        } else {
+            // set uninterpreted option
+        }
         // todo!()
         None
     }

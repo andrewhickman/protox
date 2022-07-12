@@ -602,3 +602,25 @@ message Foo {
 }
 
 */
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    key: 1,
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo.A a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional int32 key = 1;
+    };
+}
+
+*/

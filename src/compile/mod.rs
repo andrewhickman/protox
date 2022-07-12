@@ -11,7 +11,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
-    check::{check_with_names, NameMap},
+    check::{check_with_names, NameMap, OptionSet},
     error::{DynSourceCode, Error, ErrorKind},
     file::{
         check_shadow, path_to_file_name, ChainFileResolver, FileResolver, GoogleFileResolver,
@@ -34,6 +34,7 @@ pub struct Compiler {
 #[derive(Debug)]
 pub(crate) struct ParsedFile {
     pub descriptor: FileDescriptorProto,
+    pub options: OptionSet,
     pub name_map: NameMap,
     pub path: Option<PathBuf>,
     pub name: String,
@@ -161,10 +162,11 @@ impl Compiler {
             )?;
         }
 
-        let (descriptor, name_map) = self.check_file(&name, &ast, source, &file.path)?;
+        let (descriptor, options, name_map) = self.check_file(&name, &ast, source, &file.path)?;
 
         self.file_map.add(ParsedFile {
             descriptor,
+            options,
             name_map,
             name,
             path: file.path,
@@ -247,10 +249,11 @@ impl Compiler {
         }
         import_stack.pop();
 
-        let (descriptor, name_map) = self.check_file(&import.value, &ast, source, &file.path)?;
+        let (descriptor, options, name_map) = self.check_file(&import.value, &ast, source, &file.path)?;
 
         self.file_map.add(ParsedFile {
             descriptor,
+            options,
             name_map,
             name: import.value.clone(),
             path: file.path,
@@ -265,7 +268,7 @@ impl Compiler {
         ast: &ast::File,
         source: Arc<str>,
         path: &Option<PathBuf>,
-    ) -> Result<(FileDescriptorProto, NameMap), Error> {
+    ) -> Result<(FileDescriptorProto, OptionSet, NameMap), Error> {
         let source_info = if self.include_source_info {
             Some(source.as_ref())
         } else {
