@@ -610,7 +610,7 @@ syntax = "proto2";
 import "google/protobuf/descriptor.proto";
 
 option (a) = {
-    key: 1,
+    key: 1, // should fail with numeric keys
 };
 
 extend google.protobuf.FileOptions {
@@ -621,6 +621,26 @@ message Foo {
     optional group A = 1 {
         optional int32 key = 1;
     };
+}
+
+*/
+
+/*
+
+syntax = "proto3";
+
+import "google/protobuf/descriptor.proto";
+
+package demo;
+
+extend google.protobuf.EnumValueOptions {
+  optional uint32 len = 50000;
+}
+
+enum Foo {
+  None = 0 [(len) = 0];
+  One = 1 [(len) = 1];
+  Two = 2 [(len) = 2];
 }
 
 */

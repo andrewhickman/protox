@@ -1,9 +1,9 @@
 use std::{
     borrow::Cow,
+    convert::TryFrom,
     fmt::{self, Write},
     ops::Range,
     vec,
-    convert::TryFrom,
 };
 
 use logos::Span;
@@ -91,6 +91,14 @@ pub(crate) enum Constant {
     Float(Float),
     String(String),
     Bool(Bool),
+    // Aggregate(Vec<AggregateEntry>),
+}
+
+// TODO https://developers.google.com/protocol-buffers/docs/text-format-spec
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct AggregateEntry {
+    name: Ident,
+    value: Constant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -530,16 +538,16 @@ impl Field {
 
     pub fn ty(&self) -> Ty {
         match &self.kind {
-                FieldKind::Normal { ty, .. } => ty.clone(),
-                FieldKind::Group { .. } => Ty::Named(TypeName {
-                    leading_dot: None,
-                    name: FullIdent::from(self.name.clone()),
-                }),
-                FieldKind::Map { .. } => Ty::Named(TypeName {
-                    leading_dot: None,
-                    name: FullIdent::from(Ident::new(self.map_message_name(), self.name.span.clone())),
-                }),
-            }
+            FieldKind::Normal { ty, .. } => ty.clone(),
+            FieldKind::Group { .. } => Ty::Named(TypeName {
+                leading_dot: None,
+                name: FullIdent::from(self.name.clone()),
+            }),
+            FieldKind::Map { .. } => Ty::Named(TypeName {
+                leading_dot: None,
+                name: FullIdent::from(Ident::new(self.map_message_name(), self.name.span.clone())),
+            }),
+        }
     }
 }
 

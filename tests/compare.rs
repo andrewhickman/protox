@@ -102,3 +102,5 @@ compare!(generated_message_ordering);
 compare!(multiple_extends);
 // TODO need to get protoc to use the exact same versions of these files
 // compare!(import_google);
+
+// TODO borrow some test protos from protobuf repository
