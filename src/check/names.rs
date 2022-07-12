@@ -26,15 +26,26 @@ struct Entry {
     file: Option<String>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum DefinitionKind {
     Package,
     Message,
     Group,
     Enum,
-    EnumValue,
+    EnumValue {
+        number: i32,
+    },
     Oneof,
-    Field,
+    Field {
+        number: i32,
+        ty: ast::Ty,
+        label: Option<ast::FieldLabel>,
+    },
+    Extension {
+        number: i32,
+        ty: ast::Ty,
+        label: Option<ast::FieldLabel>,
+    },
     Service,
     Method,
 }
@@ -64,7 +75,7 @@ impl NameMap {
                 });
                 Ok(())
             }
-            hash_map::Entry::Occupied(entry) => match (kind, entry.get().kind) {
+            hash_map::Entry::Occupied(entry) => match (kind, &entry.get().kind) {
                 (DefinitionKind::Package, DefinitionKind::Package) => Ok(()),
                 _ => Err({
                     let name = entry.key().clone();
@@ -99,7 +110,7 @@ impl NameMap {
             if entry.public {
                 self.add(
                     name.clone(),
-                    entry.kind,
+                    entry.kind.clone(),
                     entry.span.clone(),
                     Some(&file),
                     public,
@@ -109,8 +120,8 @@ impl NameMap {
         Ok(())
     }
 
-    pub(super) fn get(&self, name: &str) -> Option<DefinitionKind> {
-        self.map.get(name).map(|e| e.kind)
+    pub(super) fn get(&self, name: &str) -> Option<&DefinitionKind> {
+        self.map.get(name).map(|e| &e.kind)
     }
 }
 
@@ -220,7 +231,11 @@ impl NamePass {
         for field in &message.fields {
             self.add_name(
                 field.ast.name(),
-                DefinitionKind::Field,
+                DefinitionKind::Field {
+                    ty: field.ast.ty(),
+                    number: field.ast.number().as_i32().unwrap_or(0),
+                    label: field.ast.label(),
+                },
                 field.ast.name_span(),
             );
         }
@@ -265,16 +280,16 @@ impl NamePass {
 
     fn add_extend(&mut self, extend: &ast::Extend) {
         for field in &extend.fields {
-            self.add_field(field);
+            self.add_name(
+                field.field_name(),
+                DefinitionKind::Extension {
+                    ty: field.ty(),
+                    number: field.number.as_i32().unwrap_or(0),
+                    label: field.label.clone().map(|(l, _)| l),
+                },
+                field.name.span.clone(),
+            );
         }
-    }
-
-    fn add_field(&mut self, field: &ast::Field) {
-        self.add_name(
-            field.field_name(),
-            DefinitionKind::Field,
-            field.name.span.clone(),
-        );
     }
 
     fn add_enum(&mut self, enu: &ast::Enum) {
@@ -283,7 +298,9 @@ impl NamePass {
         for value in &enu.values {
             self.add_name(
                 &value.name.value,
-                DefinitionKind::EnumValue,
+                DefinitionKind::EnumValue {
+                    number: value.number.as_i32().unwrap_or(0),
+                },
                 value.name.span.clone(),
             )
         }

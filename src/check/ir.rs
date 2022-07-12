@@ -114,6 +114,47 @@ impl<'a> FieldSource<'a> {
             FieldSource::MapValue(_, value_span) => value_span.clone(),
         }
     }
+
+    pub fn number(&self) -> ast::Int {
+        match self {
+            FieldSource::Field(field) => field.number.clone(),
+            FieldSource::MapKey(_, key_span) => ast::Int {
+                negative: false,
+                value: 1,
+                span: key_span.clone()
+            },
+            FieldSource::MapValue(_, value_span) => ast::Int {
+                negative: false,
+                value: 2,
+                span: value_span.clone(),
+            },
+        }
+    }
+
+    pub fn ty(&self) -> ast::Ty {
+        match self {
+            FieldSource::Field(field) => match &field.kind {
+                ast::FieldKind::Normal { ty, .. } => ty.clone(),
+                ast::FieldKind::Group { .. } => ast::Ty::Named(ast::TypeName {
+                    leading_dot: None,
+                    name: ast::FullIdent::from(field.name.clone()),
+                }),
+                ast::FieldKind::Map { .. } => ast::Ty::Named(ast::TypeName {
+                    leading_dot: None,
+                    name: ast::FullIdent::from(ast::Ident::new(field.map_message_name(), field.name.span.clone())),
+                }),
+            },
+            FieldSource::MapKey(ty, _) => (*ty).clone(),
+            FieldSource::MapValue(ty, _) => (*ty).clone(),
+        }
+    }
+
+    pub fn label(&self) -> Option<ast::FieldLabel> {
+        match self {
+            FieldSource::Field(field) => field.label.clone().map(|(l, _)| l),
+            FieldSource::MapKey(_, _) | FieldSource::MapValue(_, _) => Some(ast::FieldLabel::Optional),
+        }
+    }
 }
 
 fn build_message<'a>(syntax: ast::Syntax, ast: &'a ast::Message, messages: &mut Vec<Message<'a>>) {

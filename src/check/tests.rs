@@ -541,3 +541,64 @@ extend google.protobuf.FileOptions {
 option (exttest.foo).(exttest.d).a = 1;
 
 */
+
+
+/*
+
+message Foo {
+    optional bytes foo = 20000 [default = "\777"];
+}
+
+*/
+
+/*
+message Foo {
+    optional bytes foo = 20000 [default = "\xFF"];
+}
+*/
+
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a).key = 1;
+
+extend google.protobuf.FileOptions {
+    optional Foo.BarEntry a = 1001;
+}
+
+message Foo {
+    map<int32, string> bar = 1;
+    /*optional group A = 1 {
+
+    };*/
+}
+
+foo.proto:8:14: map_entry should not be set explicitly. Use map<KeyType, ValueType> instead.
+
+
+*/
+
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a).key = 1;
+
+extend google.protobuf.FileOptions {
+    optional Foo.A a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional int32 key = 1;
+    };
+}
+
+*/

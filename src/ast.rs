@@ -3,6 +3,7 @@ use std::{
     fmt::{self, Write},
     ops::Range,
     vec,
+    convert::TryFrom,
 };
 
 use logos::Span;
@@ -318,6 +319,16 @@ impl Default for Syntax {
     }
 }
 
+impl Int {
+    pub fn as_i32(&self) -> std::option::Option<i32> {
+        if self.negative {
+            self.value.checked_neg().and_then(|n| i32::try_from(n).ok())
+        } else {
+            i32::try_from(self.value).ok()
+        }
+    }
+}
+
 impl Ident {
     pub fn new(value: impl Into<std::string::String>, span: Range<usize>) -> Self {
         Ident {
@@ -515,6 +526,20 @@ impl Field {
         } else {
             format!("_{}", &self.name.value)
         }
+    }
+
+    pub fn ty(&self) -> Ty {
+        match &self.kind {
+                FieldKind::Normal { ty, .. } => ty.clone(),
+                FieldKind::Group { .. } => Ty::Named(TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(self.name.clone()),
+                }),
+                FieldKind::Map { .. } => Ty::Named(TypeName {
+                    leading_dot: None,
+                    name: FullIdent::from(Ident::new(self.map_message_name(), self.name.span.clone())),
+                }),
+            }
     }
 }
 

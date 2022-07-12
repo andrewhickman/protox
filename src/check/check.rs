@@ -1,6 +1,5 @@
 use std::{
     collections::{hash_map, HashMap},
-    convert::TryFrom,
     fmt::Display,
 };
 
@@ -88,7 +87,7 @@ impl<'a> Context<'a> {
     fn resolve_ast_type_name(
         &mut self,
         type_name: &ast::TypeName,
-    ) -> (String, Option<DefinitionKind>) {
+    ) -> (String, Option<&DefinitionKind>) {
         self.resolve_type_name(
             type_name.leading_dot.is_some(),
             type_name.name.to_string(),
@@ -101,7 +100,7 @@ impl<'a> Context<'a> {
         absolute: bool,
         name: String,
         span: Span,
-    ) -> (String, Option<DefinitionKind>) {
+    ) -> (String, Option<&DefinitionKind>) {
         if let Some(name_map) = &self.name_map {
             if absolute {
                 if let Some(def) = name_map.get(&name) {
@@ -304,6 +303,11 @@ impl<'a> Context<'a> {
     }
 
     fn check_message_field(&mut self, field: &ir::Field) -> FieldDescriptorProto {
+        let name = field.ast.name();
+        let json_name = Some(to_json_name(&name));
+        let number = self.check_field_number(&field.ast.number());
+        let (ty, type_name) = self.check_type(&field.ast.ty());
+
         let oneof_index = field.oneof_index;
 
         if oneof_index.is_some() {
@@ -312,30 +316,31 @@ impl<'a> Context<'a> {
             });
         }
         let descriptor = match &field.ast {
-            ir::FieldSource::Field(ast) => self.check_field(ast),
+            ir::FieldSource::Field(ast) => self.check_field(ast, ty),
             ir::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
-            ir::FieldSource::MapValue(ty, _) => self.check_map_value(ty),
+            ir::FieldSource::MapValue(..) => self.check_map_value(),
         };
         if oneof_index.is_some() {
             self.exit();
         }
 
         FieldDescriptorProto {
+            name: Some(name.into_owned()),
+            json_name,
+            number,
+            r#type: ty.map(|ty| ty as i32),
+            type_name,
             oneof_index: field.oneof_index,
             ..descriptor
         }
     }
 
-    fn check_field(&mut self, field: &ast::Field) -> FieldDescriptorProto {
-        let name = s(&field.field_name());
-        let number = self.check_field_number(&field.number);
+    fn check_field(&mut self, field: &ast::Field, ty: Option<field_descriptor_proto::Type>) -> FieldDescriptorProto {
         let label = self.check_field_label(field);
-        let (ty, type_name) = self.check_field_type(field);
+
         let options = self.check_field_options(field.options.as_ref());
 
         let default_value = self.check_field_default_value(field, ty);
-
-        let json_name = Some(to_json_name(&field.field_name()));
 
         let proto3_optional = if self.in_synthetic_oneof() {
             Some(true)
@@ -344,13 +349,8 @@ impl<'a> Context<'a> {
         };
 
         FieldDescriptorProto {
-            name,
-            number,
             label: label.map(|l| l as i32),
-            r#type: ty.map(|t| t as i32),
-            type_name,
             default_value,
-            json_name,
             options,
             proto3_optional,
             ..Default::default()
@@ -423,7 +423,7 @@ impl<'a> Context<'a> {
     }
 
     fn check_map_key(&mut self, ty: &ast::Ty, span: Span) -> FieldDescriptorProto {
-        let ty = match ty {
+        match ty {
             ast::Ty::Double => Some(field_descriptor_proto::Type::Double),
             ast::Ty::Float => Some(field_descriptor_proto::Type::Float),
             ast::Ty::Int32 => Some(field_descriptor_proto::Type::Int32),
@@ -446,53 +446,15 @@ impl<'a> Context<'a> {
         };
 
         FieldDescriptorProto {
-            name: s("key"),
-            number: Some(1),
             label: Some(field_descriptor_proto::Label::Optional as i32),
-            r#type: ty.map(|t| t as i32),
-            json_name: s("key"),
             ..Default::default()
         }
     }
 
-    fn check_map_value(&mut self, ty: &ast::Ty) -> FieldDescriptorProto {
-        let (ty, type_name) = self.check_type(ty);
-
+    fn check_map_value(&mut self) -> FieldDescriptorProto {
         FieldDescriptorProto {
-            name: s("value"),
-            number: Some(2),
             label: Some(field_descriptor_proto::Label::Optional as i32),
-            r#type: ty.map(|t| t as i32),
-            type_name,
-            json_name: s("value"),
             ..Default::default()
-        }
-    }
-
-    fn check_field_type(
-        &mut self,
-        field: &ast::Field,
-    ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
-        match &field.kind {
-            ast::FieldKind::Group { .. } => {
-                let (name, def) = self.resolve_type_name(
-                    false,
-                    field.name.value.clone(),
-                    field.name.span.clone(),
-                );
-                assert!(def.is_none() || def == Some(DefinitionKind::Group));
-                (Some(field_descriptor_proto::Type::Group), Some(name))
-            }
-            ast::FieldKind::Map { .. } => {
-                let (name, def) = self.resolve_type_name(
-                    false,
-                    field.map_message_name(),
-                    field.name.span.clone(),
-                );
-                assert!(def.is_none() || def == Some(DefinitionKind::Message));
-                (Some(field_descriptor_proto::Type::Message), Some(name))
-            }
-            ast::FieldKind::Normal { ty, .. } => self.check_type(ty),
         }
     }
 
@@ -614,7 +576,7 @@ impl<'a> Context<'a> {
 
     fn check_extend(&mut self, extend: &ast::Extend, result: &mut Vec<FieldDescriptorProto>) {
         let (extendee, def) = self.resolve_ast_type_name(&extend.extendee);
-        if def.is_some() && def != Some(DefinitionKind::Message) {
+        if def.is_some() && def != Some(&DefinitionKind::Message) {
             self.errors.push(CheckError::InvalidExtendeeTypeName {
                 name: extend.extendee.to_string(),
                 span: extend.extendee.span(),
@@ -623,10 +585,18 @@ impl<'a> Context<'a> {
 
         self.enter(Scope::Extend);
         result.extend(extend.fields.iter().map(|field| {
-            let descriptor = self.check_field(field);
+            let name = field.field_name();
+            let json_name = Some(to_json_name(&name));
+            let number = self.check_field_number(&field.number);
+            let (ty, type_name) = self.check_type(&field.ty());
             FieldDescriptorProto {
+                name: Some(name.into_owned()),
+                json_name,
+                number,
+                r#type: ty.map(|ty| ty as i32),
+                type_name,
                 extendee: Some(extendee.clone()),
-                ..descriptor
+                ..self.check_field(field, ty)
             }
         }));
         self.exit();
@@ -775,8 +745,8 @@ impl<'a> Context<'a> {
     }
 
     fn check_field_number(&mut self, int: &ast::Int) -> Option<i32> {
-        match (int.negative, i32::try_from(int.value)) {
-            (false, Ok(number @ 1..=MAX_MESSAGE_FIELD_NUMBER)) => {
+        match int.as_i32() {
+            Some(number @ 1..=MAX_MESSAGE_FIELD_NUMBER) => {
                 if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
                     self.errors.push(CheckError::ReservedMessageNumber {
                         span: int.span.clone(),
@@ -795,19 +765,15 @@ impl<'a> Context<'a> {
     }
 
     fn check_enum_number(&mut self, int: &ast::Int) -> Option<i32> {
-        let as_i32 = if int.negative {
-            int.value.checked_neg().and_then(|n| i32::try_from(n).ok())
-        } else {
-            i32::try_from(int.value).ok()
-        };
-
-        if as_i32.is_none() {
-            self.errors.push(CheckError::InvalidEnumNumber {
-                span: int.span.clone(),
-            });
+        match int.as_i32() {
+            Some(number) => Some(number),
+            None => {
+                self.errors.push(CheckError::InvalidEnumNumber {
+                    span: int.span.clone(),
+                });
+                None
+            },
         }
-
-        as_i32
     }
 
     fn check_file_options(&mut self, options: &[ast::Option]) -> Option<FileOptions> {
