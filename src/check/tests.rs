@@ -715,3 +715,111 @@ message Foo {
 }
 
 */
+
+/*
+
+syntax = "proto" "2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    key : -inf;
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo.A a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional float key = 1;
+    };
+}
+
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    [type.googleapis.com/Foo] { foo: "bar" }
+};
+
+extend google.protobuf.FileOptions {
+    repeated google.protobuf.Any a = 1001;
+}
+
+message Foo {
+    optional string foo = 1;
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo: <
+    >
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    optional Foo foo = 1;
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo: [1, 2, 3]
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    repeated int32 foo = 1;
+}
+
+*/
+
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo: 1
+    foo: 2
+    foo: 3
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    repeated int32 foo = 1;
+}
+
+*/

@@ -1132,14 +1132,14 @@ impl<'a> Parser<'a> {
     fn parse_utf8_string(&mut self) -> Result<(String, Span), ()> {
         let bytes = self.parse_string()?;
 
-        match String::from_utf8(bytes.value) {
-            Ok(string) => Ok((string, bytes.span)),
-            Err(err) => {
+        match bytes.into_utf8() {
+            Ok(string) => Ok(string),
+            Err(bytes) => {
                 self.add_error(ParseError::InvalidUtf8String {
                     span: bytes.span.clone(),
                 });
                 Ok((
-                    String::from_utf8_lossy(err.as_bytes()).into_owned(),
+                    String::from_utf8_lossy(&bytes.value).into_owned(),
                     bytes.span,
                 ))
             }

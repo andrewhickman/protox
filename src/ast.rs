@@ -337,6 +337,18 @@ impl Int {
     }
 }
 
+impl String {
+    pub fn into_utf8(self) -> Result<(std::string::String, Span), Self> {
+        match std::string::String::from_utf8(self.value) {
+            Ok(string) => Ok((string, self.span)),
+            Err(err) => Err(String {
+                value: err.into_bytes(),
+                span: self.span,
+            }),
+        }
+    }
+}
+
 impl Ident {
     pub fn new(value: impl Into<std::string::String>, span: Range<usize>) -> Self {
         Ident {
