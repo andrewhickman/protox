@@ -225,20 +225,19 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::Equals)?;
 
         let syntax = match self.peek() {
-            Some((Token::StringLiteral(syntax), span)) => match &*syntax {
-                b"proto2" => {
-                    self.bump();
-                    ast::Syntax::Proto2
+            Some((Token::StringLiteral(_), _)) => {
+                let value = self.parse_string()?;
+                match value.value.as_slice() {
+                    b"proto2" => ast::Syntax::Proto2,
+                    b"proto3" => ast::Syntax::Proto3,
+                    _ => {
+                        self.add_error(ParseError::UnknownSyntax {
+                            span: value.span.clone(),
+                        });
+                        return Err(());
+                    }
                 }
-                b"proto3" => {
-                    self.bump();
-                    ast::Syntax::Proto3
-                }
-                _ => {
-                    self.add_error(ParseError::UnknownSyntax { span });
-                    return Err(());
-                }
-            },
+            }
             _ => self.unexpected_token("an identifier or '('")?,
         };
 
@@ -1013,12 +1012,8 @@ impl<'a> Parser<'a> {
             Some((Token::IntLiteral(_) | Token::FloatLiteral(_), _)) => {
                 self.parse_int_or_float(false)?
             }
-            Some((Token::StringLiteral(value), span)) => {
-                self.bump();
-                ast::Constant::String(ast::String {
-                    value: value.into_owned(),
-                    span,
-                })
+            Some((Token::StringLiteral(_), _)) => {
+                ast::Constant::String(self.parse_string()?)
             }
             Some((Token::BoolLiteral(value), span)) => {
                 self.bump();
@@ -1135,16 +1130,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_utf8_string(&mut self) -> Result<(String, Span), ()> {
-        let bytes = match self.peek() {
-            Some((Token::StringLiteral(value), span)) => {
-                self.bump();
-                Ok(ast::String {
-                    value: value.into_owned(),
-                    span,
-                })
-            }
-            _ => self.unexpected_token("a string literal")?,
-        }?;
+        let bytes = self.parse_string()?;
 
         match String::from_utf8(bytes.value) {
             Ok(string) => Ok((string, bytes.span)),
@@ -1158,6 +1144,27 @@ impl<'a> Parser<'a> {
                 ))
             }
         }
+    }
+
+    fn parse_string(&mut self) -> Result<ast::String, ()> {
+        let mut result = match self.peek() {
+            Some((Token::StringLiteral(value), span)) => {
+                self.bump();
+                Ok(ast::String {
+                    value: value.into_owned(),
+                    span,
+                })
+            }
+            _ => self.unexpected_token("a string literal")?,
+        }?;
+
+        while let Some((Token::StringLiteral(value), span)) = self.peek() {
+            self.bump();
+            result.value.extend(value.as_ref());
+            result.span = join_span(result.span.clone(), span);
+        }
+
+        Ok(result)
     }
 
     fn parse_leading_comments(&mut self) -> (Vec<String>, Option<String>) {

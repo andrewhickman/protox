@@ -114,6 +114,7 @@ pub fn parse_import() {
     case!(parse_import("import 'foo/./bar';"));
     case!(parse_import("import 'foo/../bar';"));
     case!(parse_import("import '\\xFF';"));
+    case!(parse_import("import 'foo' \"bar\";"));
 }
 
 #[test]
@@ -314,4 +315,5 @@ pub fn parse_file() {
         option optimize_for = SPEED;
     "
     ));
+    case!(parse_file("syntax = \"pro\" \n\n 'to3';"));
 }

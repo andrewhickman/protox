@@ -491,7 +491,9 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     }
 
     if !lex.extras.allow_hash_comments && lex.slice().starts_with('#') {
-        lex.extras.errors.push(ParseError::HashCommentOutsideTextFormat { span: lex.span() });
+        lex.extras
+            .errors
+            .push(ParseError::HashCommentOutsideTextFormat { span: lex.span() });
     }
 
     let mut is_trailing = false;
@@ -879,9 +881,10 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![ParseError::HashCommentOutsideTextFormat {
-            span: 0..5,
-        }]);
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![ParseError::HashCommentOutsideTextFormat { span: 0..5 }]
+        );
 
         let mut lexer = Token::lexer(source);
         lexer.extras.allow_hash_comments = true;
