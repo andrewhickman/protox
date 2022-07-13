@@ -761,6 +761,26 @@ message Foo {
 */
 
 /*
+syntax = "proto2";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    [type.googleapis.com/Foo]: { foo: "bar" }
+};
+
+extend google.protobuf.FileOptions {
+    repeated google.protobuf.Any a = 1001;
+}
+
+message Foo {
+    optional string foo = 1;
+}
+
+*/
+
+/*
 
 syntax = "proto2";
 
@@ -768,6 +788,27 @@ import "google/protobuf/descriptor.proto";
 
 option (a) = {
     foo: <
+    >
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    optional Foo foo = 1;
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo <
     >
 };
 
@@ -820,6 +861,48 @@ extend google.protobuf.FileOptions {
 
 message Foo {
     repeated int32 foo = 1;
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    Foo {
+    }
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    optional group Foo = 1 {};
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    Foo : {
+    }
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    optional group Foo = 1 {};
 }
 
 */
