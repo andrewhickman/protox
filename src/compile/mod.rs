@@ -249,7 +249,8 @@ impl Compiler {
         }
         import_stack.pop();
 
-        let (descriptor, options, name_map) = self.check_file(&import.value, &ast, source, &file.path)?;
+        let (descriptor, options, name_map) =
+            self.check_file(&import.value, &ast, source, &file.path)?;
 
         self.file_map.add(ParsedFile {
             descriptor,

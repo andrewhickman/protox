@@ -124,9 +124,11 @@ pub(crate) enum Token<'a> {
     Comma,
     #[token("=")]
     Equals,
+    #[token(":")]
+    Colon,
     #[token(";")]
     Semicolon,
-    #[regex(r#"//[^\n]*\n?"#, line_comment)]
+    #[regex(r#"(//|#)[^\n]*\n?"#, line_comment)]
     #[token(r#"/*"#, block_comment)]
     Comment(Cow<'a, str>),
     #[token("\n")]
@@ -244,6 +246,7 @@ impl<'a> Token<'a> {
             Token::RightAngleBracket => Token::RightAngleBracket,
             Token::Comma => Token::Comma,
             Token::Equals => Token::Equals,
+            Token::Colon => Token::Colon,
             Token::Semicolon => Token::Semicolon,
             Token::Comment(value) => Token::Comment(Cow::Owned(value.clone().into_owned())),
             Token::Newline => Token::Newline,
@@ -316,6 +319,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Comma => write!(f, ","),
             Token::Plus => write!(f, "+"),
             Token::Equals => write!(f, "="),
+            Token::Colon => write!(f, ":"),
             Token::Semicolon => write!(f, ";"),
             Token::Comment(value) => write!(f, "/*{}*/", value),
             Token::Newline => writeln!(f),
@@ -327,20 +331,25 @@ impl<'a> fmt::Display for Token<'a> {
 #[derive(Default)]
 pub(crate) struct TokenExtras {
     pub errors: Vec<ParseError>,
+    pub allow_hash_comments: bool,
 }
 
 fn ident<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     Cow::Borrowed(lex.slice())
 }
 
-fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> u64 {
+fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> Result<u64, ()> {
     if radix == 8 && lex.slice() == "0" {
-        return 0;
+        return Ok(0);
+    }
+    debug_assert!(lex.slice().len() > prefix_len);
+
+    if matches!(lex.remainder().chars().next(), Some(ch) if ch.is_ascii_alphabetic()) {
+        return Err(());
     }
 
-    debug_assert!(lex.slice().len() > prefix_len);
     match u64::from_str_radix(&lex.slice()[prefix_len..], radix) {
-        Ok(value) => value,
+        Ok(value) => Ok(value),
         Err(err) => {
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
             let start = lex.span().start + prefix_len;
@@ -349,7 +358,7 @@ fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> u64
                 .errors
                 .push(ParseError::IntegerOutOfRange { span: start..end });
             // Return a dummy value so we can continue parsing
-            Default::default()
+            Ok(Default::default())
         }
     }
 }
@@ -477,7 +486,12 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
 
 fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     fn strip_line_comment(s: &str) -> Option<&str> {
-        s.trim_start().strip_prefix("//")
+        let s = s.trim_start();
+        s.strip_prefix("//").or_else(|| s.strip_prefix('#'))
+    }
+
+    if !lex.extras.allow_hash_comments && lex.slice().starts_with('#') {
+        lex.extras.errors.push(ParseError::HashCommentOutsideTextFormat { span: lex.span() });
     }
 
     let mut is_trailing = false;
@@ -855,6 +869,122 @@ mod tests {
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn hash_comment() {
+        let source = "# bar";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![ParseError::HashCommentOutsideTextFormat {
+            span: 0..5,
+        }]);
+
+        let mut lexer = Token::lexer(source);
+        lexer.extras.allow_hash_comments = true;
+
+        assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn whitespace() {
+        assert_eq!(
+            Token::lexer("value: -2.0").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("value".into()),
+                Token::Colon,
+                Token::Minus,
+                Token::FloatLiteral(2.0),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("value: - 2.0").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("value".into()),
+                Token::Colon,
+                Token::Minus,
+                Token::FloatLiteral(2.0),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("value: -\n  #comment\n  2.0").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("value".into()),
+                Token::Colon,
+                Token::Minus,
+                Token::Newline,
+                Token::Comment("comment\n".into()),
+                Token::FloatLiteral(2.0),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("value: 2 . 0").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("value".into()),
+                Token::Colon,
+                Token::IntLiteral(2),
+                Token::Dot,
+                Token::IntLiteral(0),
+            ]
+        );
+
+        assert_eq!(
+            Token::lexer("foo: 10 bar: 20").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("foo".into()),
+                Token::Colon,
+                Token::IntLiteral(10),
+                Token::Ident("bar".into()),
+                Token::Colon,
+                Token::IntLiteral(20),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("foo: 10,bar: 20").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("foo".into()),
+                Token::Colon,
+                Token::IntLiteral(10),
+                Token::Comma,
+                Token::Ident("bar".into()),
+                Token::Colon,
+                Token::IntLiteral(20),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("foo: 10[com.foo.ext]: 20").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("foo".into()),
+                Token::Colon,
+                Token::IntLiteral(10),
+                Token::LeftBracket,
+                Token::Ident("com".into()),
+                Token::Dot,
+                Token::Ident("foo".into()),
+                Token::Dot,
+                Token::Ident("ext".into()),
+                Token::RightBracket,
+                Token::Colon,
+                Token::IntLiteral(20),
+            ]
+        );
+        assert_eq!(
+            Token::lexer("foo: 10bar: 20").collect::<Vec<_>>(),
+            vec![
+                Token::Ident("foo".into()),
+                Token::Colon,
+                Token::Error,
+                Token::Ident("bar".into()),
+                Token::Colon,
+                Token::IntLiteral(20),
+            ]
+        );
     }
 
     // TODO Disabled for now due to logos bug: https://github.com/maciejhirsz/logos/issues/255

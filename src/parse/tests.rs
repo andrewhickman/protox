@@ -179,7 +179,7 @@ pub fn parse_field() {
     case!(parse_field("map<string, Foo> ;"));
     case!(parse_field("map<string, Foo> foo ]"));
     case!(parse_field("map<string, Foo> foo = x"));
-    case!(parse_field("map<string, Foo> foo = 1service"));
+    case!(parse_field("map<string, Foo> foo = 1 service"));
     case!(parse_field("map<foo;"));
 }
 
@@ -307,7 +307,7 @@ pub fn parse_file() {
     case!(parse_file(
         "/* leading detached */\n// leading\n syntax = 'proto3'; /* trailing */"
     ));
-    case!(parse_file("option invalid = :"));
+    case!(parse_file("option invalid = /"));
     case!(parse_file(
         "
         // code goes brrr

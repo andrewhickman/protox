@@ -121,7 +121,7 @@ impl<'a> FieldSource<'a> {
             FieldSource::MapKey(_, key_span) => ast::Int {
                 negative: false,
                 value: 1,
-                span: key_span.clone()
+                span: key_span.clone(),
             },
             FieldSource::MapValue(_, value_span) => ast::Int {
                 negative: false,
@@ -141,7 +141,10 @@ impl<'a> FieldSource<'a> {
                 }),
                 ast::FieldKind::Map { .. } => ast::Ty::Named(ast::TypeName {
                     leading_dot: None,
-                    name: ast::FullIdent::from(ast::Ident::new(field.map_message_name(), field.name.span.clone())),
+                    name: ast::FullIdent::from(ast::Ident::new(
+                        field.map_message_name(),
+                        field.name.span.clone(),
+                    )),
                 }),
             },
             FieldSource::MapKey(ty, _) => (*ty).clone(),
@@ -152,7 +155,9 @@ impl<'a> FieldSource<'a> {
     pub fn label(&self) -> Option<ast::FieldLabel> {
         match self {
             FieldSource::Field(field) => field.label.clone().map(|(l, _)| l),
-            FieldSource::MapKey(_, _) | FieldSource::MapValue(_, _) => Some(ast::FieldLabel::Optional),
+            FieldSource::MapKey(_, _) | FieldSource::MapValue(_, _) => {
+                Some(ast::FieldLabel::Optional)
+            }
         }
     }
 }

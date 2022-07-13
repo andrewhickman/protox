@@ -11,10 +11,10 @@ use crate::{ast, compile::ParsedFileMap};
 mod check;
 mod ir;
 mod names;
+mod options;
 mod span;
 #[cfg(test)]
 mod tests;
-mod options;
 
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;

@@ -89,6 +89,11 @@ pub(crate) enum ParseError {
         #[label("…and again here")]
         second: Span,
     },
+    #[error("'#' comments are not supported")]
+    HashCommentOutsideTextFormat {
+        #[label("found here")]
+        span: Span,
+    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,

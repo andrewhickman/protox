@@ -14,9 +14,9 @@ use std::path::{Path, PathBuf};
 
 use crate::Error;
 
-/// A strategy for locating protobuf source files. 
-/// 
-/// The main implementation is [`IncludeFileResolver`] which uses the file system, but 
+/// A strategy for locating protobuf source files.
+///
+/// The main implementation is [`IncludeFileResolver`] which uses the file system, but
 /// this trait allows sourcing files from other places as well.
 pub trait FileResolver {
     /// Converts a file system path to a unique file name.

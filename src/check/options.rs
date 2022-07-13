@@ -76,22 +76,54 @@ impl Message for OptionSet {
                 Value::String(value) => prost::encoding::string::encode(tag, value, buf),
                 Value::Bytes(value) => prost::encoding::bytes::encode(tag, value, buf),
                 Value::Message(value) => prost::encoding::message::encode(tag, value, buf),
-                Value::RepeatedFloat(values) => prost::encoding::float::encode_repeated(tag, values, buf),
-                Value::RepeatedDouble(values) => prost::encoding::double::encode_repeated(tag, values, buf),
-                Value::RepeatedBool(values) => prost::encoding::bool::encode_repeated(tag, values, buf),
-                Value::RepeatedInt32(values) => prost::encoding::int32::encode_repeated(tag, values, buf),
-                Value::RepeatedInt64(values) => prost::encoding::int64::encode_repeated(tag, values, buf),
-                Value::RepeatedUint32(values) => prost::encoding::uint32::encode_repeated(tag, values, buf),
-                Value::RepeatedUint64(values) => prost::encoding::uint64::encode_repeated(tag, values, buf),
-                Value::RepeatedFixed32(values) => prost::encoding::fixed32::encode_repeated(tag, values, buf),
-                Value::RepeatedFixed64(values) => prost::encoding::fixed64::encode_repeated(tag, values, buf),
-                Value::RepeatedSint32(values) => prost::encoding::sint32::encode_repeated(tag, values, buf),
-                Value::RepeatedSint64(values) => prost::encoding::sint64::encode_repeated(tag, values, buf),
-                Value::RepeatedSfixed32(values) => prost::encoding::sfixed32::encode_repeated(tag, values, buf),
-                Value::RepeatedSfixed64(values) => prost::encoding::sfixed64::encode_repeated(tag, values, buf),
-                Value::RepeatedString(values) => prost::encoding::string::encode_repeated(tag, values, buf),
-                Value::RepeatedBytes(values) => prost::encoding::bytes::encode_repeated(tag, values, buf),
-                Value::RepeatedMessage(values) => prost::encoding::message::encode_repeated(tag, values, buf),
+                Value::RepeatedFloat(values) => {
+                    prost::encoding::float::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedDouble(values) => {
+                    prost::encoding::double::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedBool(values) => {
+                    prost::encoding::bool::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedInt32(values) => {
+                    prost::encoding::int32::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedInt64(values) => {
+                    prost::encoding::int64::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedUint32(values) => {
+                    prost::encoding::uint32::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedUint64(values) => {
+                    prost::encoding::uint64::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedFixed32(values) => {
+                    prost::encoding::fixed32::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedFixed64(values) => {
+                    prost::encoding::fixed64::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedSint32(values) => {
+                    prost::encoding::sint32::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedSint64(values) => {
+                    prost::encoding::sint64::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedSfixed32(values) => {
+                    prost::encoding::sfixed32::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedSfixed64(values) => {
+                    prost::encoding::sfixed64::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedString(values) => {
+                    prost::encoding::string::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedBytes(values) => {
+                    prost::encoding::bytes::encode_repeated(tag, values, buf)
+                }
+                Value::RepeatedMessage(values) => {
+                    prost::encoding::message::encode_repeated(tag, values, buf)
+                }
             }
         }
     }
@@ -116,22 +148,54 @@ impl Message for OptionSet {
                 Value::String(value) => len += prost::encoding::string::encoded_len(tag, value),
                 Value::Bytes(value) => len += prost::encoding::bytes::encoded_len(tag, value),
                 Value::Message(value) => len += prost::encoding::message::encoded_len(tag, value),
-                Value::RepeatedFloat(values) => len += prost::encoding::float::encoded_len_repeated(tag, values),
-                Value::RepeatedDouble(values) => len += prost::encoding::double::encoded_len_repeated(tag, values),
-                Value::RepeatedBool(values) => len += prost::encoding::bool::encoded_len_repeated(tag, values),
-                Value::RepeatedInt32(values) => len += prost::encoding::int32::encoded_len_repeated(tag, values),
-                Value::RepeatedInt64(values) => len += prost::encoding::int64::encoded_len_repeated(tag, values),
-                Value::RepeatedUint32(values) => len += prost::encoding::uint32::encoded_len_repeated(tag, values),
-                Value::RepeatedUint64(values) => len += prost::encoding::uint64::encoded_len_repeated(tag, values),
-                Value::RepeatedFixed32(values) => len += prost::encoding::fixed32::encoded_len_repeated(tag, values),
-                Value::RepeatedFixed64(values) => len += prost::encoding::fixed64::encoded_len_repeated(tag, values),
-                Value::RepeatedSint32(values) => len += prost::encoding::sint32::encoded_len_repeated(tag, values),
-                Value::RepeatedSint64(values) => len += prost::encoding::sint64::encoded_len_repeated(tag, values),
-                Value::RepeatedSfixed32(values) => len += prost::encoding::sfixed32::encoded_len_repeated(tag, values),
-                Value::RepeatedSfixed64(values) => len += prost::encoding::sfixed64::encoded_len_repeated(tag, values),
-                Value::RepeatedString(values) => len += prost::encoding::string::encoded_len_repeated(tag, values),
-                Value::RepeatedBytes(values) => len += prost::encoding::bytes::encoded_len_repeated(tag, values),
-                Value::RepeatedMessage(values) => len += prost::encoding::message::encoded_len_repeated(tag, values),
+                Value::RepeatedFloat(values) => {
+                    len += prost::encoding::float::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedDouble(values) => {
+                    len += prost::encoding::double::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedBool(values) => {
+                    len += prost::encoding::bool::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedInt32(values) => {
+                    len += prost::encoding::int32::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedInt64(values) => {
+                    len += prost::encoding::int64::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedUint32(values) => {
+                    len += prost::encoding::uint32::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedUint64(values) => {
+                    len += prost::encoding::uint64::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedFixed32(values) => {
+                    len += prost::encoding::fixed32::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedFixed64(values) => {
+                    len += prost::encoding::fixed64::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedSint32(values) => {
+                    len += prost::encoding::sint32::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedSint64(values) => {
+                    len += prost::encoding::sint64::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedSfixed32(values) => {
+                    len += prost::encoding::sfixed32::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedSfixed64(values) => {
+                    len += prost::encoding::sfixed64::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedString(values) => {
+                    len += prost::encoding::string::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedBytes(values) => {
+                    len += prost::encoding::bytes::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedMessage(values) => {
+                    len += prost::encoding::message::encoded_len_repeated(tag, values)
+                }
             }
         }
         len

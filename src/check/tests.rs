@@ -542,7 +542,6 @@ option (exttest.foo).(exttest.d).a = 1;
 
 */
 
-
 /*
 
 message Foo {
@@ -556,7 +555,6 @@ message Foo {
     optional bytes foo = 20000 [default = "\xFF"];
 }
 */
-
 
 /*
 
@@ -581,7 +579,6 @@ foo.proto:8:14: map_entry should not be set explicitly. Use map<KeyType, ValueTy
 
 
 */
-
 
 /*
 
@@ -641,6 +638,81 @@ enum Foo {
   None = 0 [(len) = 0];
   One = 1 [(len) = 1];
   Two = 2 [(len) = 2];
+}
+
+*/
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    /* block */
+    # hash
+    key: 1.0
+    // line
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo.A a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional float key = 1;
+    };
+}
+
+*/
+
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    key:
+        "hello"
+        "gdfg"
+};
+
+extend google.protobuf.FileOptions {
+    repeated Foo.A a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional string key = 1;
+    };
+}
+
+*/
+
+/*
+
+syntax =
+    "proto"
+    "2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) =
+    "hello"
+    "gdfg"
+;
+
+extend google.protobuf.FileOptions {
+    repeated string a = 1001;
+}
+
+message Foo {
+    optional group A = 1 {
+        optional string key = 1;
+    };
 }
 
 */

@@ -20,8 +20,8 @@ use crate::{
 };
 
 use super::{
-    ir, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
-    RESERVED_MESSAGE_FIELD_NUMBERS, OptionSet,
+    ir, names::DefinitionKind, CheckError, NameMap, OptionSet, MAX_MESSAGE_FIELD_NUMBER,
+    RESERVED_MESSAGE_FIELD_NUMBERS,
 };
 
 impl<'a> ir::File<'a> {
@@ -337,7 +337,11 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_field(&mut self, field: &ast::Field, ty: Option<field_descriptor_proto::Type>) -> FieldDescriptorProto {
+    fn check_field(
+        &mut self,
+        field: &ast::Field,
+        ty: Option<field_descriptor_proto::Type>,
+    ) -> FieldDescriptorProto {
         let label = self.check_field_label(field);
 
         let options = self.check_field_options(field.options.as_ref());
@@ -774,7 +778,7 @@ impl<'a> Context<'a> {
                     span: int.span.clone(),
                 });
                 None
-            },
+            }
         }
     }
 
