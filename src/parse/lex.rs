@@ -373,15 +373,19 @@ fn bool<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
 
 fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
     #[derive(Logos)]
+    #[logos(subpattern hex = r"[0-9A-Fa-f]")]
     enum Component<'a> {
         #[regex(r#"[^\x00\n\\'"]+"#)]
         Unescaped(&'a str),
         #[regex(r#"['"]"#, terminator)]
         Terminator(u8),
-        #[regex(r#"\\[xX][0-9A-Fa-f][0-9A-Fa-f]"#, hex_escape)]
-        #[regex(r#"\\[0-7][0-7][0-7]"#, oct_escape)]
+        #[regex(r#"\\[xX](?&hex)(?&hex)?"#, hex_escape)]
+        #[regex(r#"\\[0-7][0-7]?[0-7]?"#, oct_escape)]
         #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
-        Char(u8),
+        Byte(u8),
+        #[regex(r#"\\u(?&hex)(?&hex)(?&hex)(?&hex)"#, unicode_escape)]
+        #[regex(r#"\\U(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)"#, unicode_escape)]
+        Char(char),
         #[error]
         Error,
     }
@@ -421,6 +425,12 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
         }
     }
 
+    fn unicode_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> Option<char> {
+        let value = u32::from_str_radix(&lex.slice()[2..], 16)
+            .expect("expected valid hex escape");
+        char::from_u32(value)
+    }
+
     let mut result: Option<Cow<'a, [u8]>> = None;
 
     let mut char_lexer = Component::lexer(lex.remainder());
@@ -432,8 +442,13 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
             Some(Component::Terminator(t)) if t == terminator => {
                 break;
             }
-            Some(Component::Terminator(ch) | Component::Char(ch)) => {
+            Some(Component::Terminator(ch) | Component::Byte(ch)) => {
                 result.get_or_insert_with(Cow::default).to_mut().push(ch)
+            }
+            Some(Component::Char(ch)) => {
+                let mut buf = [0; 4];
+                let ch = ch.encode_utf8(&mut buf);
+                result.get_or_insert_with(Cow::default).to_mut().extend_from_slice(ch.as_bytes())
             }
             Some(Component::Error) => {
                 let start = lex.span().end + char_lexer.span().start;
@@ -764,6 +779,30 @@ mod tests {
         debug_assert_eq!(
             lexer.extras.errors,
             vec![ParseError::InvalidStringEscape { span: 1..3 }]
+        );
+    }
+
+    #[test]
+    fn string_unicode_escape() {
+        let source = r#"'\u0068\u0065\u006c\u006c\u006f\u0020\U0001f600'"#;
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(
+            lexer.next(),
+            Some(Token::StringLiteral(b"hello \xF0\x9F\x98\x80".as_ref().into()))
+        );
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
+    fn string_invalid_unicode_escape() {
+        let mut lexer = Token::lexer(r#"'\Uffffffff'"#);
+        lexer.by_ref().for_each(drop);
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![ParseError::InvalidStringEscape { span: 1..11 }]
         );
     }
 
