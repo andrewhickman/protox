@@ -1,6 +1,6 @@
 use std::{ascii, borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
-use logos::{skip, Lexer, Logos};
+use logos::{skip, Lexer, Logos, Span};
 
 use super::ParseError;
 
@@ -10,13 +10,16 @@ use super::ParseError;
 pub(crate) enum Token<'a> {
     #[regex("[A-Za-z_][A-Za-z0-9_]*", ident)]
     Ident(Cow<'a, str>),
-    #[regex("0[0-7]*", |lex| int(lex, 8, 1))]
+    #[regex("0", |_| 0)]
+    #[regex("0[0-7]+", |lex| int(lex, 8, 1))]
     #[regex("[1-9][0-9]*", |lex| int(lex, 10, 0))]
     #[regex("0[xX][0-9A-Fa-f]+", |lex| int(lex, 16, 2))]
     IntLiteral(u64),
-    #[regex(r#"[0-9]+\.[0-9]*(?&exponent)?"#, float)]
-    #[regex(r#"[0-9]+(?&exponent)"#, float)]
-    #[regex(r#"\.[0-9]+(?&exponent)?"#, float)]
+    #[regex("0[fF]", float)]
+    #[regex("[1-9][0-9]*[fF]", float)]
+    #[regex(r#"[0-9]+\.[0-9]*(?&exponent)?[fF]?"#, float)]
+    #[regex(r#"[0-9]+(?&exponent)[fF]?"#, float)]
+    #[regex(r#"\.[0-9]+(?&exponent)?[fF]?"#, float)]
     FloatLiteral(f64),
     #[regex("false|true", bool)]
     BoolLiteral(bool),
@@ -331,7 +334,7 @@ impl<'a> fmt::Display for Token<'a> {
 #[derive(Default)]
 pub(crate) struct TokenExtras {
     pub errors: Vec<ParseError>,
-    pub allow_hash_comments: bool,
+    pub text_format_mode: bool,
 }
 
 fn ident<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
@@ -339,32 +342,49 @@ fn ident<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
 }
 
 fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> Result<u64, ()> {
-    if radix == 8 && lex.slice() == "0" {
-        return Ok(0);
-    }
     debug_assert!(lex.slice().len() > prefix_len);
+    let span = lex.span().start + prefix_len..lex.span().end;
 
     if matches!(lex.remainder().chars().next(), Some(ch) if ch.is_ascii_alphabetic()) {
-        return Err(());
+        let mut end = span.end + 1;
+        while end < lex.source().len() && lex.source().as_bytes()[end].is_ascii_alphabetic() {
+            end += 1;
+        }
+        lex.extras
+            .errors
+            .push(ParseError::NoSpaceBetweenIntAndIdent {
+                span: span.start..end,
+            })
     }
 
-    match u64::from_str_radix(&lex.slice()[prefix_len..], radix) {
+    match u64::from_str_radix(&lex.source()[span.clone()], radix) {
         Ok(value) => Ok(value),
         Err(err) => {
             debug_assert_eq!(err.kind(), &IntErrorKind::PosOverflow);
-            let start = lex.span().start + prefix_len;
-            let end = lex.span().end;
             lex.extras
                 .errors
-                .push(ParseError::IntegerOutOfRange { span: start..end });
-            // Return a dummy value so we can continue parsing
+                .push(ParseError::IntegerOutOfRange { span });
             Ok(Default::default())
         }
     }
 }
 
 fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> f64 {
-    lex.slice().parse().expect("failed to parse float")
+    let start = lex.span().start;
+    let last = lex.span().end - 1;
+    let s = match lex.source().as_bytes()[last] {
+        b'f' | b'F' => {
+            if !lex.extras.text_format_mode {
+                lex.extras
+                    .errors
+                    .push(ParseError::FloatSuffixOutsideTextFormat { span: lex.span() });
+            }
+            &lex.source()[start..last]
+        }
+        _ => lex.slice(),
+    };
+
+    s.parse().expect("failed to parse float")
 }
 
 fn bool<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
@@ -384,7 +404,10 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
         #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
         Byte(u8),
         #[regex(r#"\\u(?&hex)(?&hex)(?&hex)(?&hex)"#, unicode_escape)]
-        #[regex(r#"\\U(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)"#, unicode_escape)]
+        #[regex(
+            r#"\\U(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)(?&hex)"#,
+            unicode_escape
+        )]
         Char(char),
         #[error]
         Error,
@@ -426,8 +449,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
     }
 
     fn unicode_escape<'a>(lex: &mut Lexer<'a, Component<'a>>) -> Option<char> {
-        let value = u32::from_str_radix(&lex.slice()[2..], 16)
-            .expect("expected valid hex escape");
+        let value = u32::from_str_radix(&lex.slice()[2..], 16).expect("expected valid hex escape");
         char::from_u32(value)
     }
 
@@ -448,7 +470,10 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
             Some(Component::Char(ch)) => {
                 let mut buf = [0; 4];
                 let ch = ch.encode_utf8(&mut buf);
-                result.get_or_insert_with(Cow::default).to_mut().extend_from_slice(ch.as_bytes())
+                result
+                    .get_or_insert_with(Cow::default)
+                    .to_mut()
+                    .extend_from_slice(ch.as_bytes())
             }
             Some(Component::Error) => {
                 let start = lex.span().end + char_lexer.span().start;
@@ -505,7 +530,7 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
         s.strip_prefix("//").or_else(|| s.strip_prefix('#'))
     }
 
-    if !lex.extras.allow_hash_comments && lex.slice().starts_with('#') {
+    if !lex.extras.text_format_mode && lex.slice().starts_with('#') {
         lex.extras
             .errors
             .push(ParseError::HashCommentOutsideTextFormat { span: lex.span() });
@@ -690,6 +715,44 @@ mod tests {
     }
 
     #[test]
+    fn float_suffix() {
+        let source = "10f 5.f 0.5f 0.42e+2f 2e-4f .2e+3f";
+        let mut lexer = Token::lexer(source);
+
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(10.));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
+        assert_eq!(lexer.next(), None);
+
+        debug_assert_eq!(
+            lexer.extras.errors,
+            vec![
+                ParseError::FloatSuffixOutsideTextFormat { span: 0..3 },
+                ParseError::FloatSuffixOutsideTextFormat { span: 4..7 },
+                ParseError::FloatSuffixOutsideTextFormat { span: 8..12 },
+                ParseError::FloatSuffixOutsideTextFormat { span: 13..21 },
+                ParseError::FloatSuffixOutsideTextFormat { span: 22..27 },
+                ParseError::FloatSuffixOutsideTextFormat { span: 28..34 },
+            ],
+        );
+
+        let mut lexer = Token::lexer(source);
+        lexer.extras.text_format_mode = true;
+
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(10.));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
+        assert_eq!(lexer.next(), None);
+        assert_eq!(lexer.extras.errors, vec![]);
+    }
+
+    #[test]
     fn invalid_token() {
         let source = "@ foo";
         let mut lexer = Token::lexer(source);
@@ -789,7 +852,9 @@ mod tests {
 
         assert_eq!(
             lexer.next(),
-            Some(Token::StringLiteral(b"hello \xF0\x9F\x98\x80".as_ref().into()))
+            Some(Token::StringLiteral(
+                b"hello \xF0\x9F\x98\x80".as_ref().into()
+            ))
         );
         assert_eq!(lexer.next(), None);
 
@@ -926,7 +991,7 @@ mod tests {
         );
 
         let mut lexer = Token::lexer(source);
-        lexer.extras.allow_hash_comments = true;
+        lexer.extras.text_format_mode = true;
 
         assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
         assert_eq!(lexer.next(), None);
@@ -1016,16 +1081,22 @@ mod tests {
                 Token::IntLiteral(20),
             ]
         );
+
+        let mut lexer = Token::lexer("foo: 10bar: 20");
         assert_eq!(
-            Token::lexer("foo: 10bar: 20").collect::<Vec<_>>(),
+            lexer.by_ref().collect::<Vec<_>>(),
             vec![
                 Token::Ident("foo".into()),
                 Token::Colon,
-                Token::Error,
+                Token::IntLiteral(10),
                 Token::Ident("bar".into()),
                 Token::Colon,
                 Token::IntLiteral(20),
             ]
+        );
+        assert_eq!(
+            lexer.extras.errors,
+            vec![ParseError::NoSpaceBetweenIntAndIdent { span: 5..10 }]
         );
     }
 

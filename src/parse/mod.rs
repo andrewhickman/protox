@@ -89,8 +89,18 @@ pub(crate) enum ParseError {
         #[label("…and again here")]
         second: Span,
     },
-    #[error("'#' comments are not supported")]
+    #[error("whitespace is required between an integer literal and an identifier")]
+    NoSpaceBetweenIntAndIdent {
+        #[label("found here")]
+        span: Span,
+    },
+    #[error("'#' comments are only allowed in the text format")]
     HashCommentOutsideTextFormat {
+        #[label("found here")]
+        span: Span,
+    },
+    #[error("'f' suffix for float literals is only allowed supported in the text format")]
+    FloatSuffixOutsideTextFormat {
         #[label("found here")]
         span: Span,
     },
@@ -1012,9 +1022,7 @@ impl<'a> Parser<'a> {
             Some((Token::IntLiteral(_) | Token::FloatLiteral(_), _)) => {
                 self.parse_int_or_float(false)?
             }
-            Some((Token::StringLiteral(_), _)) => {
-                ast::Constant::String(self.parse_string()?)
-            }
+            Some((Token::StringLiteral(_), _)) => ast::Constant::String(self.parse_string()?),
             Some((Token::BoolLiteral(value), span)) => {
                 self.bump();
                 ast::Constant::Bool(ast::Bool { value, span })

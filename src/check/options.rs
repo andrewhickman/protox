@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::collections::btree_map::{self, BTreeMap};
 use std::slice;
 

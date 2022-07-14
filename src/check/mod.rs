@@ -20,7 +20,6 @@ const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
 pub(crate) use self::names::NameMap;
-pub(crate) use self::options::OptionSet;
 
 pub(crate) fn check(
     ast: &ast::File,
@@ -29,7 +28,7 @@ pub(crate) fn check(
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
     let ir = ir::File::build(ast);
     let source_code_info = source.map(|src| ir.get_source_code_info(src));
-    let (file_descriptor, _) = ir.check(None)?;
+    let file_descriptor = ir.check(None)?;
 
     Ok(FileDescriptorProto {
         name: name.map(ToOwned::to_owned),
@@ -43,11 +42,11 @@ pub(crate) fn check_with_names(
     name: Option<&str>,
     source: Option<&str>,
     file_map: &ParsedFileMap,
-) -> Result<(FileDescriptorProto, OptionSet, NameMap), Vec<CheckError>> {
+) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
     let ir = ir::File::build(ast);
     let name_map = ir.get_names(file_map)?;
     let source_code_info = source.map(|src| ir.get_source_code_info(src));
-    let (file_descriptor, options) = ir.check(Some(&name_map))?;
+    let file_descriptor = ir.check(Some(&name_map))?;
 
     Ok((
         FileDescriptorProto {
@@ -55,7 +54,6 @@ pub(crate) fn check_with_names(
             source_code_info,
             ..file_descriptor
         },
-        options,
         name_map,
     ))
 }

@@ -842,7 +842,6 @@ message Foo {
 
 */
 
-
 /*
 
 syntax = "proto2";
