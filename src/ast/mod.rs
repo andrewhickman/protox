@@ -10,6 +10,8 @@ use logos::Span;
 
 use crate::{case::to_pascal_case, index_to_i32, join_span};
 
+pub(crate) mod text_format;
+
 #[derive(Default, Clone, Debug, PartialEq)]
 pub(crate) struct File {
     pub span: Span,

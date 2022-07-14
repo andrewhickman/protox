@@ -12,6 +12,7 @@ mod comments;
 mod lex;
 #[cfg(test)]
 mod tests;
+mod text_format;
 
 use self::comments::Comments;
 use self::lex::Token;
@@ -103,6 +104,11 @@ pub(crate) enum ParseError {
     FloatSuffixOutsideTextFormat {
         #[label("found here")]
         span: Span,
+    },
+    #[error("a colon is required between a field name and scalar value")]
+    MissingColonForScalarTextFormatField {
+        #[label("expected ':' after field name here")]
+        field_name: Span,
     },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
@@ -1347,6 +1353,7 @@ impl<'a> Parser<'a> {
 impl ExpectedToken {
     const COMMA: Self = ExpectedToken::Token(Token::Comma);
     const SEMICOLON: Self = ExpectedToken::Token(Token::Semicolon);
+    const FORWARD_SLASH: Self = ExpectedToken::Token(Token::ForwardSlash);
     const LEFT_BRACE: Self = ExpectedToken::Token(Token::LeftBrace);
     const LEFT_BRACKET: Self = ExpectedToken::Token(Token::LeftBracket);
     const RIGHT_PAREN: Self = ExpectedToken::Token(Token::RightParen);

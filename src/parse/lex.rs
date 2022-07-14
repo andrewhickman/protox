@@ -1,6 +1,6 @@
 use std::{ascii, borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
-use logos::{skip, Lexer, Logos, Span};
+use logos::{skip, Lexer, Logos};
 
 use super::ParseError;
 
@@ -131,6 +131,8 @@ pub(crate) enum Token<'a> {
     Colon,
     #[token(";")]
     Semicolon,
+    #[token("/")]
+    ForwardSlash,
     #[regex(r#"(//|#)[^\n]*\n?"#, line_comment)]
     #[token(r#"/*"#, block_comment)]
     Comment(Cow<'a, str>),
@@ -251,6 +253,7 @@ impl<'a> Token<'a> {
             Token::Equals => Token::Equals,
             Token::Colon => Token::Colon,
             Token::Semicolon => Token::Semicolon,
+            Token::ForwardSlash => Token::ForwardSlash,
             Token::Comment(value) => Token::Comment(Cow::Owned(value.clone().into_owned())),
             Token::Newline => Token::Newline,
             Token::Error => Token::Error,
@@ -324,6 +327,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Equals => write!(f, "="),
             Token::Colon => write!(f, ":"),
             Token::Semicolon => write!(f, ";"),
+            Token::ForwardSlash => write!(f, "/"),
             Token::Comment(value) => write!(f, "/*{}*/", value),
             Token::Newline => writeln!(f),
             Token::Error => write!(f, "<ERROR>"),
