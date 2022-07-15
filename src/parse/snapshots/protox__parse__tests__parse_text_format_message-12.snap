@@ -1,0 +1,29 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Message {
+        fields: [
+            Field {
+                name: Ident(
+                    Ident {
+                        value: "foo",
+                        span: 0..3,
+                    },
+                ),
+                value: Scalar(
+                    Ident {
+                        negative: true,
+                        ident: Ident {
+                            value: "enum",
+                            span: 6..10,
+                        },
+                        span: 5..10,
+                    },
+                ),
+                span: 0..10,
+            },
+        ],
+    },
+)

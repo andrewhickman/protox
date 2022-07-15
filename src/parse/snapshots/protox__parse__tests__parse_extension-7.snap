@@ -1,12 +1,12 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_extend() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Err(
     [
         UnexpectedToken {
             expected: "a type name",
-            found: RightBracket,
+            found: "]",
             span: 7..8,
         },
     ],

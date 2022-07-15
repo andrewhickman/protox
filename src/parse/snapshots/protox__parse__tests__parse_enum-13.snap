@@ -1,0 +1,40 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 5..8,
+        },
+        options: [],
+        values: [
+            EnumValue {
+                name: Ident {
+                    value: "message",
+                    span: 11..18,
+                },
+                number: Int {
+                    negative: false,
+                    value: 1,
+                    span: 21..22,
+                },
+                options: None,
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 11..23,
+            },
+        ],
+        reserved: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..25,
+    },
+)

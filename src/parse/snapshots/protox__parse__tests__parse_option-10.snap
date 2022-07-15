@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "';'",
-            found: RightParen,
+            found: ")",
             span: 15..16,
         },
     ],

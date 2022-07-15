@@ -1,13 +1,13 @@
 ---
 source: src/parse/tests.rs
-expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Err(
     [
         UnexpectedToken {
-            expected: "a message field, option or '}'",
-            found: Oneof,
-            span: 12..17,
+            expected: "'='",
+            found: "{",
+            span: 22..23,
         },
     ],
 )

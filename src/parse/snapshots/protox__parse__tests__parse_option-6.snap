@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "an identifier or '('",
-            found: Semicolon,
+            found: ";",
             span: 7..8,
         },
     ],

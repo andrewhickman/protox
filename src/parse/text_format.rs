@@ -36,7 +36,9 @@ impl<'a> Parser<'a> {
     }
 
     #[cfg(test)]
-    pub(super) fn parse_text_format_message_test(&mut self) -> Result<ast::text_format::Message, ()> {
+    pub(super) fn parse_text_format_message_test(
+        &mut self,
+    ) -> Result<ast::text_format::Message, ()> {
         self.parse_text_format_message(&[])
     }
 
@@ -96,6 +98,7 @@ impl<'a> Parser<'a> {
                         ))
                     }
                     Some((Token::ForwardSlash, _)) => {
+                        self.bump();
                         let type_name = self.parse_full_ident(&[ExpectedToken::RIGHT_BRACKET])?;
                         let end = self.expect_eq(Token::RightBracket)?;
                         Ok(ast::text_format::FieldName::Any(
@@ -198,7 +201,7 @@ impl<'a> Parser<'a> {
                     span: join_span(start, end),
                 }))
             }
-            Some((Token::FloatLiteral(value), end)) => {
+            Some((Token::FloatLiteral(EqFloat(value)), end)) => {
                 self.bump();
 
                 Ok(ast::text_format::Scalar::Float(ast::Float {

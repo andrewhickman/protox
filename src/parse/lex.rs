@@ -4,7 +4,7 @@ use logos::{skip, Lexer, Logos};
 
 use super::ParseError;
 
-#[derive(Debug, Clone, Logos, PartialEq)]
+#[derive(Debug, Clone, Logos, PartialEq, Eq)]
 #[logos(extras = TokenExtras)]
 #[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
 pub(crate) enum Token<'a> {
@@ -20,89 +20,9 @@ pub(crate) enum Token<'a> {
     #[regex(r#"[0-9]+\.[0-9]*(?&exponent)?[fF]?"#, float)]
     #[regex(r#"[0-9]+(?&exponent)[fF]?"#, float)]
     #[regex(r#"\.[0-9]+(?&exponent)?[fF]?"#, float)]
-    FloatLiteral(f64),
+    FloatLiteral(EqFloat),
     #[regex(r#"'|""#, string)]
     StringLiteral(Cow<'a, [u8]>),
-    #[regex("false")]
-    False,
-    #[regex("true")]
-    True,
-    #[token("syntax")]
-    Syntax,
-    #[token("package")]
-    Package,
-    #[token("import")]
-    Import,
-    #[token("weak")]
-    Weak,
-    #[token("public")]
-    Public,
-    #[token("enum")]
-    Enum,
-    #[token("option")]
-    Option,
-    #[token("service")]
-    Service,
-    #[token("rpc")]
-    Rpc,
-    #[token("stream")]
-    Stream,
-    #[token("returns")]
-    Returns,
-    #[token("extend")]
-    Extend,
-    #[token("message")]
-    Message,
-    #[token("optional")]
-    Optional,
-    #[token("required")]
-    Required,
-    #[token("repeated")]
-    Repeated,
-    #[token("map")]
-    Map,
-    #[token("oneof")]
-    Oneof,
-    #[token("group")]
-    Group,
-    #[token("double")]
-    Double,
-    #[token("float")]
-    Float,
-    #[token("int32")]
-    Int32,
-    #[token("int64")]
-    Int64,
-    #[token("uint32")]
-    Uint32,
-    #[token("uint64")]
-    Uint64,
-    #[token("sint32")]
-    Sint32,
-    #[token("sint64")]
-    Sint64,
-    #[token("fixed32")]
-    Fixed32,
-    #[token("fixed64")]
-    Fixed64,
-    #[token("sfixed32")]
-    Sfixed32,
-    #[token("sfixed64")]
-    Sfixed64,
-    #[token("bool")]
-    Bool,
-    #[token("string")]
-    String,
-    #[token("bytes")]
-    Bytes,
-    #[token("reserved")]
-    Reserved,
-    #[token("extensions")]
-    Extensions,
-    #[token("to")]
-    To,
-    #[token("max")]
-    Max,
     #[token(".")]
     Dot,
     #[token("-")]
@@ -145,53 +65,59 @@ pub(crate) enum Token<'a> {
     Error,
 }
 
-impl<'a> Token<'a> {
-    pub fn as_ident(&self) -> Option<&str> {
-        match self {
-            Token::Ident(value) => Some(value),
-            Token::False => Some("false"),
-            Token::True => Some("true"),
-            Token::Syntax => Some("syntax"),
-            Token::Import => Some("import"),
-            Token::Weak => Some("weak"),
-            Token::Public => Some("public"),
-            Token::Package => Some("package"),
-            Token::Option => Some("option"),
-            Token::Enum => Some("enum"),
-            Token::Service => Some("service"),
-            Token::Rpc => Some("rpc"),
-            Token::Stream => Some("stream"),
-            Token::Returns => Some("returns"),
-            Token::Extend => Some("extend"),
-            Token::Message => Some("message"),
-            Token::Optional => Some("optional"),
-            Token::Required => Some("required"),
-            Token::Repeated => Some("repeated"),
-            Token::Map => Some("map"),
-            Token::Group => Some("group"),
-            Token::Oneof => Some("oneof"),
-            Token::Double => Some("double"),
-            Token::Float => Some("float"),
-            Token::Int32 => Some("int32"),
-            Token::Int64 => Some("int64"),
-            Token::Uint32 => Some("uint32"),
-            Token::Uint64 => Some("uint64"),
-            Token::Sint32 => Some("sint32"),
-            Token::Sint64 => Some("sint64"),
-            Token::Fixed32 => Some("fixed32"),
-            Token::Fixed64 => Some("fixed64"),
-            Token::Sfixed32 => Some("sfixed32"),
-            Token::Sfixed64 => Some("sfixed64"),
-            Token::Bool => Some("bool"),
-            Token::String => Some("string"),
-            Token::Bytes => Some("bytes"),
-            Token::Reserved => Some("reserved"),
-            Token::Extensions => Some("extensions"),
-            Token::To => Some("to"),
-            Token::Max => Some("max"),
-            _ => None,
-        }
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub(crate) struct EqFloat(pub f64);
+
+impl EqFloat {
+    fn new(f: f64) -> Self {
+        debug_assert!(!f.is_nan());
+        EqFloat(f)
     }
+}
+
+impl Eq for EqFloat {}
+
+impl<'a> Token<'a> {
+    pub const FALSE: Token<'static> = Token::Ident("false");
+    pub const TRUE: Token<'static> = Token::Ident("true");
+    pub const SYNTAX: Token<'static> = Token::Ident("syntax");
+    pub const PACKAGE: Token<'static> = Token::Ident("package");
+    pub const IMPORT: Token<'static> = Token::Ident("import");
+    pub const WEAK: Token<'static> = Token::Ident("weak");
+    pub const PUBLIC: Token<'static> = Token::Ident("public");
+    pub const ENUM: Token<'static> = Token::Ident("enum");
+    pub const OPTION: Token<'static> = Token::Ident("option");
+    pub const SERVICE: Token<'static> = Token::Ident("service");
+    pub const RPC: Token<'static> = Token::Ident("rpc");
+    pub const STREAM: Token<'static> = Token::Ident("stream");
+    pub const RETURNS: Token<'static> = Token::Ident("returns");
+    pub const EXTEND: Token<'static> = Token::Ident("extend");
+    pub const MESSAGE: Token<'static> = Token::Ident("message");
+    pub const OPTIONAL: Token<'static> = Token::Ident("optional");
+    pub const REQUIRED: Token<'static> = Token::Ident("required");
+    pub const REPEATED: Token<'static> = Token::Ident("repeated");
+    pub const MAP: Token<'static> = Token::Ident("map");
+    pub const ONEOF: Token<'static> = Token::Ident("oneof");
+    pub const GROUP: Token<'static> = Token::Ident("group");
+    pub const DOUBLE: Token<'static> = Token::Ident("double");
+    pub const FLOAT: Token<'static> = Token::Ident("float");
+    pub const INT32: Token<'static> = Token::Ident("int32");
+    pub const INT64: Token<'static> = Token::Ident("int64");
+    pub const UINT32: Token<'static> = Token::Ident("uint32");
+    pub const UINT64: Token<'static> = Token::Ident("uint64");
+    pub const SINT32: Token<'static> = Token::Ident("sint32");
+    pub const SINT64: Token<'static> = Token::Ident("sint64");
+    pub const FIXED32: Token<'static> = Token::Ident("fixed32");
+    pub const FIXED64: Token<'static> = Token::Ident("fixed64");
+    pub const SFIXED32: Token<'static> = Token::Ident("sfixed32");
+    pub const SFIXED64: Token<'static> = Token::Ident("sfixed64");
+    pub const BOOL: Token<'static> = Token::Ident("bool");
+    pub const STRING: Token<'static> = Token::Ident("string");
+    pub const BYTES: Token<'static> = Token::Ident("bytes");
+    pub const RESERVED: Token<'static> = Token::Ident("reserved");
+    pub const EXTENSIONS: Token<'static> = Token::Ident("extensions");
+    pub const TO: Token<'static> = Token::Ident("to");
+    pub const MAX: Token<'static> = Token::Ident("max");
 }
 
 impl<'a> fmt::Display for Token<'a> {
@@ -199,57 +125,19 @@ impl<'a> fmt::Display for Token<'a> {
         match self {
             Token::Ident(value) => write!(f, "{}", value),
             Token::IntLiteral(value) => write!(f, "{}", value),
-            Token::FloatLiteral(value) => if value.fract() == 0.0 {
-                write!(f, "{:.1}", value)
-            } else {
-                write!(f, "{}", value)
-            },
+            Token::FloatLiteral(value) => {
+                if value.0.fract() == 0.0 {
+                    write!(f, "{:.1}", value.0)
+                } else {
+                    write!(f, "{}", value.0)
+                }
+            }
             Token::StringLiteral(bytes) => {
                 for &ch in bytes.as_ref() {
                     write!(f, "\"{}\"", ascii::escape_default(ch))?;
                 }
                 Ok(())
             }
-            Token::False => write!(f, "false"),
-            Token::True => write!(f, "true"),
-            Token::Syntax => write!(f, "syntax"),
-            Token::Import => write!(f, "import"),
-            Token::Weak => write!(f, "weak"),
-            Token::Public => write!(f, "public"),
-            Token::Package => write!(f, "package"),
-            Token::Enum => write!(f, "enum"),
-            Token::Option => write!(f, "option"),
-            Token::Service => write!(f, "service"),
-            Token::Stream => write!(f, "stream"),
-            Token::Returns => write!(f, "returns"),
-            Token::Extend => write!(f, "extend"),
-            Token::Message => write!(f, "message"),
-            Token::Optional => write!(f, "optional"),
-            Token::Required => write!(f, "required"),
-            Token::Repeated => write!(f, "repeated"),
-            Token::Map => write!(f, "map"),
-            Token::Oneof => write!(f, "oneof"),
-            Token::Group => write!(f, "group"),
-            Token::Double => write!(f, "double"),
-            Token::Float => write!(f, "float"),
-            Token::Int32 => write!(f, "int32"),
-            Token::Int64 => write!(f, "int64"),
-            Token::Uint32 => write!(f, "uint32"),
-            Token::Uint64 => write!(f, "uint64"),
-            Token::Sint32 => write!(f, "sint32"),
-            Token::Sint64 => write!(f, "sint64"),
-            Token::Fixed32 => write!(f, "fixed32"),
-            Token::Fixed64 => write!(f, "fixed64"),
-            Token::Sfixed32 => write!(f, "sfixed32"),
-            Token::Sfixed64 => write!(f, "sfixed64"),
-            Token::Bool => write!(f, "bool"),
-            Token::String => write!(f, "string"),
-            Token::Bytes => write!(f, "bytes"),
-            Token::Reserved => write!(f, "reserved"),
-            Token::Extensions => write!(f, "extensions"),
-            Token::To => write!(f, "to"),
-            Token::Max => write!(f, "max"),
-            Token::Rpc => write!(f, "rpc"),
             Token::Dot => write!(f, "."),
             Token::Minus => write!(f, "-"),
             Token::LeftParen => write!(f, "("),
@@ -307,7 +195,7 @@ fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> Res
     }
 }
 
-fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> f64 {
+fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> EqFloat {
     let start = lex.span().start;
     let last = lex.span().end - 1;
     let s = match lex.source().as_bytes()[last] {
@@ -322,7 +210,7 @@ fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> f64 {
         _ => lex.slice(),
     };
 
-    s.parse().expect("failed to parse float")
+    EqFloat::new(s.parse().expect("failed to parse float"))
 }
 
 fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
@@ -610,14 +498,14 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
         assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
-        assert_eq!(lexer.next().unwrap(), Token::True);
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
+        assert_eq!(lexer.next().unwrap(), Token::TRUE);
         assert_eq!(lexer.next().unwrap(), Token::Newline);
-        assert_eq!(lexer.next().unwrap(), Token::False);
+        assert_eq!(lexer.next().unwrap(), Token::FALSE);
         assert_eq!(
             lexer.next().unwrap(),
             Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into())
@@ -654,12 +542,12 @@ mod tests {
         let source = "10f 5.f 0.5f 0.42e+2f 2e-4f .2e+3f";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(10.));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(10.)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -677,12 +565,12 @@ mod tests {
         let mut lexer = Token::lexer(source);
         lexer.extras.text_format_mode = true;
 
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(10.));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(5.));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.5));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
-        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(10.)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
         assert_eq!(lexer.next(), None);
         assert_eq!(lexer.extras.errors, vec![]);
     }
@@ -942,7 +830,7 @@ mod tests {
                 Token::Ident("value"),
                 Token::Colon,
                 Token::Minus,
-                Token::FloatLiteral(2.0),
+                Token::FloatLiteral(EqFloat(2.0)),
             ]
         );
         assert_eq!(
@@ -951,7 +839,7 @@ mod tests {
                 Token::Ident("value"),
                 Token::Colon,
                 Token::Minus,
-                Token::FloatLiteral(2.0),
+                Token::FloatLiteral(EqFloat(2.0)),
             ]
         );
         assert_eq!(
@@ -962,7 +850,7 @@ mod tests {
                 Token::Minus,
                 Token::Newline,
                 Token::Comment("comment\n".into()),
-                Token::FloatLiteral(2.0),
+                Token::FloatLiteral(EqFloat(2.0)),
             ]
         );
         assert_eq!(

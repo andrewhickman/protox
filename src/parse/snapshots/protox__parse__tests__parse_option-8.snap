@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "an identifier or '('",
-            found: RightBracket,
+            found: "]",
             span: 11..12,
         },
     ],

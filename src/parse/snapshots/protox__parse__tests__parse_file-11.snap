@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "a constant",
-            found: ForwardSlash,
+            found: "/",
             span: 17..18,
         },
     ],

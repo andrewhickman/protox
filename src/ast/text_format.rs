@@ -56,7 +56,9 @@ impl FieldName {
 impl FieldValue {
     pub fn span(&self) -> Span {
         match self {
-            FieldValue::Message(_, span) | FieldValue::MessageList(_, span) | FieldValue::ScalarList(_, span) => span.clone(),
+            FieldValue::Message(_, span)
+            | FieldValue::MessageList(_, span)
+            | FieldValue::ScalarList(_, span) => span.clone(),
             FieldValue::Scalar(scalar) => scalar.span(),
         }
     }
@@ -75,11 +77,7 @@ impl Scalar {
 
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let delimiter = if f.alternate() {
-            "\n"
-        } else {
-            ","
-        };
+        let delimiter = if f.alternate() { "\n" } else { "," };
 
         let mut first = true;
         for field in &self.fields {
@@ -121,7 +119,7 @@ impl fmt::Display for FieldValue {
                     write!(f, "{{{}}}", message)?;
                 }
                 Ok(())
-            },
+            }
             FieldValue::MessageList(list, _) => {
                 write!(f, "[")?;
                 let mut first = true;
@@ -137,7 +135,7 @@ impl fmt::Display for FieldValue {
                 }
                 write!(f, "]")?;
                 Ok(())
-            },
+            }
             FieldValue::Scalar(scalar) => scalar.fmt(f),
             FieldValue::ScalarList(list, _) => {
                 write!(f, "[")?;
@@ -154,7 +152,7 @@ impl fmt::Display for FieldValue {
                 }
                 write!(f, "]")?;
                 Ok(())
-            },
+            }
         }
     }
 }
@@ -164,13 +162,15 @@ impl fmt::Display for Scalar {
         match self {
             Scalar::String(string) => write!(f, "\"{}\"", string),
             Scalar::Float(float) => write!(f, "{}", float),
-            Scalar::Ident { negative, ident, .. } => {
+            Scalar::Ident {
+                negative, ident, ..
+            } => {
                 if *negative {
                     write!(f, "-")?;
                 }
                 write!(f, "{}", ident)?;
                 Ok(())
-            },
+            }
             Scalar::Int(int) => write!(f, "{}", int),
         }
     }

@@ -1,0 +1,74 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Service {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        options: [],
+        methods: [
+            Method {
+                name: Ident {
+                    value: "bar",
+                    span: 18..21,
+                },
+                input_ty: TypeName {
+                    leading_dot: Some(
+                        29..30,
+                    ),
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "stream",
+                                span: 30..36,
+                            },
+                            Ident {
+                                value: "rpc",
+                                span: 37..40,
+                            },
+                        ],
+                    },
+                },
+                output_ty: TypeName {
+                    leading_dot: Some(
+                        58..59,
+                    ),
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "map",
+                                span: 59..62,
+                            },
+                            Ident {
+                                value: "enum",
+                                span: 63..67,
+                            },
+                        ],
+                    },
+                },
+                options: [],
+                client_streaming: Some(
+                    22..28,
+                ),
+                server_streaming: Some(
+                    51..57,
+                ),
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 14..69,
+            },
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..71,
+    },
+)

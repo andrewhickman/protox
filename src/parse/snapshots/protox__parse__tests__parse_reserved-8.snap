@@ -9,9 +9,7 @@ Err(
         },
         UnexpectedToken {
             expected: "an integer",
-            found: FloatLiteral(
-                1.0,
-            ),
+            found: "1.0",
             span: 10..12,
         },
     ],

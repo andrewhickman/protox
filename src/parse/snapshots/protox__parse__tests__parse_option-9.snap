@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "a constant",
-            found: Equals,
+            found: "=",
             span: 13..14,
         },
     ],

@@ -6,7 +6,7 @@ Err(
     [
         UnexpectedToken {
             expected: "';' or '['",
-            found: Service,
+            found: "service",
             span: 25..32,
         },
     ],

@@ -1,0 +1,46 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Option {
+        body: OptionBody {
+            name: [
+                Ident(
+                    Ident {
+                        value: "ext",
+                        span: 7..10,
+                    },
+                ),
+                Extension(
+                    FullIdent {
+                        parts: [
+                            Ident {
+                                value: "service",
+                                span: 12..19,
+                            },
+                            Ident {
+                                value: "rpc",
+                                span: 20..23,
+                            },
+                        ],
+                    },
+                    11..24,
+                ),
+            ],
+            value: Int(
+                Int {
+                    negative: false,
+                    value: 1,
+                    span: 27..28,
+                },
+            ),
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..29,
+    },
+)
