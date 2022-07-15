@@ -113,7 +113,7 @@ pub(crate) enum ParseError {
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,
-        found: Token<'static>,
+        found: String,
         #[label("found here")]
         span: Span,
     },
@@ -1337,7 +1337,7 @@ impl<'a> Parser<'a> {
             Some((found, span)) => {
                 self.add_error(ParseError::UnexpectedToken {
                     expected: expected.to_string(),
-                    found: found.to_static(),
+                    found: found.to_string(),
                     span,
                 });
                 Err(())
