@@ -21,10 +21,12 @@ pub(crate) enum Token<'a> {
     #[regex(r#"[0-9]+(?&exponent)[fF]?"#, float)]
     #[regex(r#"\.[0-9]+(?&exponent)?[fF]?"#, float)]
     FloatLiteral(f64),
-    #[regex("false|true", bool)]
-    BoolLiteral(bool),
     #[regex(r#"'|""#, string)]
     StringLiteral(Cow<'a, [u8]>),
+    #[regex("false")]
+    False,
+    #[regex("true")]
+    True,
     #[token("syntax")]
     Syntax,
     #[token("package")]
@@ -147,8 +149,8 @@ impl<'a> Token<'a> {
     pub fn as_ident(&self) -> Option<&str> {
         match self {
             Token::Ident(value) => Some(value),
-            Token::BoolLiteral(false) => Some("false"),
-            Token::BoolLiteral(true) => Some("true"),
+            Token::False => Some("false"),
+            Token::True => Some("true"),
             Token::Syntax => Some("syntax"),
             Token::Import => Some("import"),
             Token::Weak => Some("weak"),
@@ -196,10 +198,11 @@ impl<'a> Token<'a> {
             Token::Ident(value) => Token::Ident(Cow::Owned(value.clone().into_owned())),
             Token::IntLiteral(value) => Token::IntLiteral(*value),
             Token::FloatLiteral(value) => Token::FloatLiteral(*value),
-            Token::BoolLiteral(value) => Token::BoolLiteral(*value),
             Token::StringLiteral(value) => {
                 Token::StringLiteral(Cow::Owned(value.clone().into_owned()))
             }
+            Token::False => Token::False,
+            Token::True => Token::True,
             Token::Syntax => Token::Syntax,
             Token::Package => Token::Package,
             Token::Import => Token::Import,
@@ -271,13 +274,14 @@ impl<'a> fmt::Display for Token<'a> {
             } else {
                 write!(f, "{}", value)
             },
-            Token::BoolLiteral(value) => write!(f, "{}", value),
             Token::StringLiteral(bytes) => {
                 for &ch in bytes.as_ref() {
                     write!(f, "\"{}\"", ascii::escape_default(ch))?;
                 }
                 Ok(())
             }
+            Token::False => write!(f, "false"),
+            Token::True => write!(f, "true"),
             Token::Syntax => write!(f, "syntax"),
             Token::Import => write!(f, "import"),
             Token::Weak => write!(f, "weak"),
@@ -393,10 +397,6 @@ fn float<'a>(lex: &mut Lexer<'a, Token<'a>>) -> f64 {
     };
 
     s.parse().expect("failed to parse float")
-}
-
-fn bool<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
-    lex.slice().parse().expect("faield to parse bool")
 }
 
 fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
@@ -689,9 +689,9 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.42e+2));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(2e-4));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(0.2e+3));
-        assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(true));
+        assert_eq!(lexer.next().unwrap(), Token::True);
         assert_eq!(lexer.next().unwrap(), Token::Newline);
-        assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
+        assert_eq!(lexer.next().unwrap(), Token::False);
         assert_eq!(
             lexer.next().unwrap(),
             Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into())

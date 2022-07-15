@@ -1029,9 +1029,13 @@ impl<'a> Parser<'a> {
                 self.parse_int_or_float(false)?
             }
             Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
-            Some((Token::BoolLiteral(value), span)) => {
+            Some((Token::False, span)) => {
                 self.bump();
-                ast::OptionValue::Bool(ast::Bool { value, span })
+                ast::OptionValue::Bool(ast::Bool { value: false, span })
+            }
+            Some((Token::True, span)) => {
+                self.bump();
+                ast::OptionValue::Bool(ast::Bool { value: true, span })
             }
             Some((Token::LeftBrace, start)) => {
                 self.bump();
