@@ -266,7 +266,11 @@ impl<'a> fmt::Display for Token<'a> {
         match self {
             Token::Ident(value) => write!(f, "{}", value),
             Token::IntLiteral(value) => write!(f, "{}", value),
-            Token::FloatLiteral(value) => write!(f, "{}", value),
+            Token::FloatLiteral(value) => if value.fract() == 0.0 {
+                write!(f, "{:.1}", value)
+            } else {
+                write!(f, "{}", value)
+            },
             Token::BoolLiteral(value) => write!(f, "{}", value),
             Token::StringLiteral(bytes) => {
                 for &ch in bytes.as_ref() {
@@ -405,7 +409,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
         Terminator(u8),
         #[regex(r#"\\[xX](?&hex)(?&hex)?"#, hex_escape)]
         #[regex(r#"\\[0-7][0-7]?[0-7]?"#, oct_escape)]
-        #[regex(r#"\\[abfnrtv\\'"]"#, char_escape)]
+        #[regex(r#"\\[abfnrtv?\\'"]"#, char_escape)]
         Byte(u8),
         #[regex(r#"\\u(?&hex)(?&hex)(?&hex)(?&hex)"#, unicode_escape)]
         #[regex(
@@ -445,6 +449,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
             b'r' => b'\r',
             b't' => b'\t',
             b'v' => b'\x0b',
+            b'?' => b'?',
             b'\\' => b'\\',
             b'\'' => b'\'',
             b'"' => b'"',
@@ -672,7 +677,7 @@ mod tests {
     #[test]
     fn simple_tokens() {
         let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true
-            false "hello \a\b\f\n\r\t\v\\\'\" \052 \x2a" 'hello 😀' _foo"#;
+            false "hello \a\b\f\n\r\t\v\?\\\'\" \052 \x2a" 'hello 😀' _foo"#;
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next().unwrap(), Token::Ident("hell0".into()));
@@ -689,7 +694,7 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::BoolLiteral(false));
         assert_eq!(
             lexer.next().unwrap(),
-            Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b\\'\" * *".as_ref().into())
+            Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into())
         );
         assert_eq!(
             lexer.next().unwrap(),

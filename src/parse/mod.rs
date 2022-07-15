@@ -95,12 +95,12 @@ pub(crate) enum ParseError {
         #[label("found here")]
         span: Span,
     },
-    #[error("'#' comments are only allowed in the text format")]
+    #[error("'#' comments are not allowed here")]
     HashCommentOutsideTextFormat {
         #[label("found here")]
         span: Span,
     },
-    #[error("'f' suffix for float literals is only allowed supported in the text format")]
+    #[error("'f' suffix for float literals is not allowed")]
     FloatSuffixOutsideTextFormat {
         #[label("found here")]
         span: Span,
@@ -1034,6 +1034,7 @@ impl<'a> Parser<'a> {
                 ast::OptionValue::Bool(ast::Bool { value, span })
             }
             Some((Token::LeftBrace, start)) => {
+                self.bump();
                 let value = self.parse_text_format_message(&[ExpectedToken::RIGHT_BRACE])?;
                 let end = self.expect_eq(Token::RightBrace)?;
                 ast::OptionValue::Aggregate(value, join_span(start, end))

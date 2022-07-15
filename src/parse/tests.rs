@@ -28,6 +28,26 @@ pub fn parse_option() {
     case!(parse_option("option foo.]"));
     case!(parse_option("option foo = ="));
     case!(parse_option("option foo = 1 )"));
+    case!(parse_option("option foo = {};"));
+    case!(parse_option("option (ext).foo = { foo: 5 };"));
+    case!(parse_option("option quz.(bar) = { foo: [blah] };"));
+    case!(parse_option("option baz = { foo: [<x:3>, <y{};z<a:-foo>,>] };"));
+    case!(parse_option("option foo = 1f;"));
+}
+
+#[test]
+fn parse_text_format_message() {
+    case!(parse_text_format_message_test("foo: 10"));
+    case!(parse_text_format_message_test("foo: 10f"));
+    case!(parse_text_format_message_test("foo: 1.0f"));
+    case!(parse_text_format_message_test("foo: 'bar' \"baz\" \n\t 'quz'"));
+    case!(parse_text_format_message_test(r#"s: "first" 'second'
+            "third"
+        joined: "first""second"'third''fourth'"#));
+    case!(parse_text_format_message_test("message: { foo: \"bar\" }"));
+    case!(parse_text_format_message_test("[ext.scalar]: 10"));
+    case!(parse_text_format_message_test("[ext.message]: { foo: \"bar\" }"));
+    case!(parse_text_format_message_test("any: { [type.googleapis.com/foo.bar]: { foo: \"bar\" } }"));
 }
 
 #[test]
@@ -141,6 +161,7 @@ pub fn parse_reserved() {
     case!(parse_reserved("reserved ;"));
     case!(parse_reserved("reserved '0foo';"));
     case!(parse_reserved("reserved '\\xFF';"));
+    case!(parse_reserved("reserved -1f;"));
 }
 
 #[test]
@@ -160,6 +181,7 @@ pub fn parse_group() {
     case!(parse_field("optional group A = {"));
     case!(parse_field("optional group A = 1 ;"));
     case!(parse_field("optional group A = 1 {]"));
+    case!(parse_field("optional group A = 1f { };"));
 }
 
 #[test]

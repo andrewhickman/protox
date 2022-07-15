@@ -5,6 +5,16 @@ impl<'a> Parser<'a> {
         &mut self,
         terminators: &[ExpectedToken],
     ) -> Result<ast::text_format::Message, ()> {
+        self.lexer.extras.text_format_mode = true;
+        let result = self.parse_text_format_message_inner(terminators);
+        self.lexer.extras.text_format_mode = false;
+        result
+    }
+
+    fn parse_text_format_message_inner(
+        &mut self,
+        terminators: &[ExpectedToken],
+    ) -> Result<ast::text_format::Message, ()> {
         let mut fields = Vec::new();
 
         loop {
@@ -13,15 +23,21 @@ impl<'a> Parser<'a> {
                     fields.push(self.parse_text_format_field()?)
                 }
                 Some((tok, _)) if terminators.iter().any(|e| e.matches(&tok)) => break,
+                None => break,
                 _ => self.unexpected_token(fmt_expected(
                     once(ExpectedToken::Ident)
                         .chain(terminators.iter().cloned())
-                        .chain(once(ExpectedToken::RIGHT_BRACKET)),
+                        .chain(once(ExpectedToken::LEFT_BRACKET)),
                 ))?,
             }
         }
 
         Ok(ast::text_format::Message { fields })
+    }
+
+    #[cfg(test)]
+    pub(super) fn parse_text_format_message_test(&mut self) -> Result<ast::text_format::Message, ()> {
+        self.parse_text_format_message(&[])
     }
 
     fn parse_text_format_field(&mut self) -> Result<ast::text_format::Field, ()> {
@@ -48,7 +64,7 @@ impl<'a> Parser<'a> {
         }
 
         let end = match self.peek() {
-            Some((Token::Comma | Token::Semicolon, span)) => span,
+            Some((Token::Comma | Token::Semicolon, _)) => self.bump(),
             _ => value.span(),
         };
 
@@ -217,10 +233,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     values.push(self.parse_text_format_scalar_value()?);
                 }
-                Some((Token::RightBracket, _)) => {
-                    self.bump();
-                    break;
-                }
+                Some((Token::RightBracket, _)) => break,
                 _ => self.unexpected_token("',' or ']'")?,
             }
         }
@@ -239,10 +252,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     values.push(self.parse_text_format_message_value()?);
                 }
-                Some((Token::RightBracket, _)) => {
-                    self.bump();
-                    break;
-                }
+                Some((Token::RightBracket, _)) => break,
                 _ => self.unexpected_token("',' or ']'")?,
             }
         }
