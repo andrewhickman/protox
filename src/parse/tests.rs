@@ -33,6 +33,9 @@ pub fn parse_option() {
     case!(parse_option("option quz.(bar) = { foo: [blah] };"));
     case!(parse_option("option baz = { foo: [<x:3>, <y{};z<a:-foo>,>] };"));
     case!(parse_option("option foo = 1f;"));
+    case!(parse_option("option optimize_for = message;"));
+    case!(parse_option("option message = 1;"));
+    case!(parse_option("option ext.(service.rpc) = 1;"));
 }
 
 #[test]
@@ -48,6 +51,11 @@ fn parse_text_format_message() {
     case!(parse_text_format_message_test("[ext.scalar]: 10"));
     case!(parse_text_format_message_test("[ext.message]: { foo: \"bar\" }"));
     case!(parse_text_format_message_test("any: { [type.googleapis.com/foo.bar]: { foo: \"bar\" } }"));
+    case!(parse_text_format_message_test("foo: enum"));
+    case!(parse_text_format_message_test("foo: [enum]"));
+    case!(parse_text_format_message_test("foo: [enum]"));
+    case!(parse_text_format_message_test("foo: -enum"));
+    case!(parse_text_format_message_test("foo: [-enum]"));
 }
 
 #[test]
@@ -66,6 +74,7 @@ fn parse_enum() {
     case!(parse_enum("enum Foo {]"));
     case!(parse_enum("enum Foo { BAR ."));
     case!(parse_enum("enum Foo { BAR = foo"));
+    case!(parse_enum("enum Foo { message = 1; }"));
 }
 
 #[test]
@@ -107,6 +116,8 @@ fn parse_service() {
     case!(parse_service(
         "service Foo { rpc bar(A) returns (stream B) {rpc"
     ));
+    case!(parse_service("service Foo { rpc bar(stream stream) returns (stream stream.stream); }"));
+    case!(parse_service("service Foo { rpc bar(stream .stream.rpc) returns (stream .map.enum); }"));
 }
 
 #[test]
@@ -254,6 +265,8 @@ pub fn parse_message() {
         }
     }"
     ));
+    case!(parse_message("message Foo { service foo = 1; }"));
+    case!(parse_message("message Foo { optional rpc foo = 1; }"));
 }
 
 #[test]
