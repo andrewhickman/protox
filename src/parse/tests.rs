@@ -65,6 +65,8 @@ fn parse_text_format_message() {
     case!(parse_text_format_message_test("foo: [enum]"));
     case!(parse_text_format_message_test("foo: -enum"));
     case!(parse_text_format_message_test("foo: [-enum]"));
+    case!(parse_text_format_message_test("pot < kind: TULIP name: \"Bob\" legs: 0 >"));
+    case!(parse_text_format_message_test(r#"escapes: '\a\b\f\n\r\t\v\?\\\'\"\1\11\111\xa\xAA\u1111\U00101111'"#));
 }
 
 #[test]

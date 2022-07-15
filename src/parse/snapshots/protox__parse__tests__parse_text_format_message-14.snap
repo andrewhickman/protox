@@ -8,24 +8,72 @@ Ok(
             Field {
                 name: Ident(
                     Ident {
-                        value: "foo",
+                        value: "pot",
                         span: 0..3,
                     },
                 ),
-                value: ScalarList(
-                    [
-                        Ident {
-                            negative: true,
-                            ident: Ident {
-                                value: "enum",
-                                span: 7..11,
+                value: Message(
+                    Message {
+                        fields: [
+                            Field {
+                                name: Ident(
+                                    Ident {
+                                        value: "kind",
+                                        span: 6..10,
+                                    },
+                                ),
+                                value: Scalar(
+                                    Ident {
+                                        negative: false,
+                                        ident: Ident {
+                                            value: "TULIP",
+                                            span: 12..17,
+                                        },
+                                        span: 12..17,
+                                    },
+                                ),
+                                span: 6..17,
                             },
-                            span: 6..11,
-                        },
-                    ],
-                    5..12,
+                            Field {
+                                name: Ident(
+                                    Ident {
+                                        value: "name",
+                                        span: 18..22,
+                                    },
+                                ),
+                                value: Scalar(
+                                    String(
+                                        String {
+                                            value: "Bob",
+                                            span: 24..29,
+                                        },
+                                    ),
+                                ),
+                                span: 18..29,
+                            },
+                            Field {
+                                name: Ident(
+                                    Ident {
+                                        value: "legs",
+                                        span: 30..34,
+                                    },
+                                ),
+                                value: Scalar(
+                                    Int(
+                                        Int {
+                                            negative: false,
+                                            value: 0,
+                                            span: 36..37,
+                                        },
+                                    ),
+                                ),
+                                span: 30..37,
+                            },
+                        ],
+                    },
+                    4..39,
                 ),
-                span: 0..12,
+                span: 0..39,
             },
         ],
     },
