@@ -87,20 +87,13 @@ pub(crate) struct String {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Constant {
+pub(crate) enum OptionValue {
     FullIdent(FullIdent),
     Int(Int),
     Float(Float),
     String(String),
     Bool(Bool),
-    // Aggregate(Vec<AggregateEntry>),
-}
-
-// TODO https://developers.google.com/protocol-buffers/docs/text-format-spec
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct AggregateEntry {
-    name: Ident,
-    value: Constant,
+    Aggregate(text_format::Message, Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -141,7 +134,7 @@ pub(crate) enum OptionNamePart {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct OptionBody {
     pub name: Vec<OptionNamePart>,
-    pub value: Constant,
+    pub value: OptionValue,
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -376,14 +369,15 @@ impl TypeName {
     }
 }
 
-impl Constant {
+impl OptionValue {
     pub fn span(&self) -> Span {
         match self {
-            Constant::FullIdent(ident) => ident.span(),
-            Constant::Int(int) => int.span.clone(),
-            Constant::Float(float) => float.span.clone(),
-            Constant::String(string) => string.span.clone(),
-            Constant::Bool(b) => b.span.clone(),
+            OptionValue::FullIdent(ident) => ident.span(),
+            OptionValue::Int(int) => int.span.clone(),
+            OptionValue::Float(float) => float.span.clone(),
+            OptionValue::String(string) => string.span.clone(),
+            OptionValue::Bool(b) => b.span.clone(),
+            OptionValue::Aggregate(_, span) => span.clone(),
         }
     }
 }
@@ -653,14 +647,15 @@ impl fmt::Display for TypeName {
     }
 }
 
-impl fmt::Display for Constant {
+impl fmt::Display for OptionValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Constant::FullIdent(ident) => ident.fmt(f),
-            Constant::Int(int) => int.fmt(f),
-            Constant::Float(float) => float.fmt(f),
-            Constant::String(string) => string.fmt(f),
-            Constant::Bool(bool) => bool.fmt(f),
+            OptionValue::FullIdent(ident) => ident.fmt(f),
+            OptionValue::Int(int) => int.fmt(f),
+            OptionValue::Float(float) => float.fmt(f),
+            OptionValue::String(string) => string.fmt(f),
+            OptionValue::Bool(bool) => bool.fmt(f),
+            OptionValue::Aggregate(message, _) => message.fmt(f),
         }
     }
 }

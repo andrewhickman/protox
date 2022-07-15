@@ -47,9 +47,16 @@ impl<'a> Parser<'a> {
             });
         }
 
-        // TODO delimiter
+        let end = match self.peek() {
+            Some((Token::Comma | Token::Semicolon, span)) => span,
+            _ => value.span(),
+        };
 
-        Ok(ast::text_format::Field { name, value })
+        Ok(ast::text_format::Field {
+            value,
+            span: join_span(name.span(), end),
+            name,
+        })
     }
 
     fn parse_text_format_field_name(&mut self) -> Result<ast::text_format::FieldName, ()> {

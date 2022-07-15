@@ -1015,7 +1015,7 @@ impl<'a> Parser<'a> {
 
         let value = match self.peek() {
             Some((Token::Ident(_), _)) => {
-                ast::Constant::FullIdent(self.parse_full_ident(terminators)?)
+                ast::OptionValue::FullIdent(self.parse_full_ident(terminators)?)
             }
             Some((Token::Plus, _)) => {
                 self.bump();
@@ -1028,11 +1028,16 @@ impl<'a> Parser<'a> {
             Some((Token::IntLiteral(_) | Token::FloatLiteral(_), _)) => {
                 self.parse_int_or_float(false)?
             }
-            Some((Token::StringLiteral(_), _)) => ast::Constant::String(self.parse_string()?),
+            Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
             Some((Token::BoolLiteral(value), span)) => {
                 self.bump();
-                ast::Constant::Bool(ast::Bool { value, span })
+                ast::OptionValue::Bool(ast::Bool { value, span })
             }
+            Some((Token::LeftBrace, start)) => {
+                let value = self.parse_text_format_message(&[ExpectedToken::RIGHT_BRACE])?;
+                let end = self.expect_eq(Token::RightBrace)?;
+                ast::OptionValue::Aggregate(value, join_span(start, end))
+            },
             _ => self.unexpected_token("a constant")?,
         };
 
@@ -1052,11 +1057,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_int_or_float(&mut self, negate: bool) -> Result<ast::Constant, ()> {
+    fn parse_int_or_float(&mut self, negate: bool) -> Result<ast::OptionValue, ()> {
         match self.peek() {
             Some((Token::IntLiteral(value), span)) => {
                 self.bump();
-                Ok(ast::Constant::Int(ast::Int {
+                Ok(ast::OptionValue::Int(ast::Int {
                     value,
                     span,
                     negative: negate,
@@ -1064,7 +1069,7 @@ impl<'a> Parser<'a> {
             }
             Some((Token::FloatLiteral(value), span)) => {
                 self.bump();
-                Ok(ast::Constant::Float(ast::Float {
+                Ok(ast::OptionValue::Float(ast::Float {
                     value: if negate { -value } else { value },
                     span,
                 }))
@@ -1358,6 +1363,7 @@ impl ExpectedToken {
     const LEFT_BRACKET: Self = ExpectedToken::Token(Token::LeftBracket);
     const RIGHT_PAREN: Self = ExpectedToken::Token(Token::RightParen);
     const RIGHT_BRACKET: Self = ExpectedToken::Token(Token::RightBracket);
+    const RIGHT_BRACE: Self = ExpectedToken::Token(Token::RightBrace);
     const RIGHT_ANGLE_BRACKET: Self = ExpectedToken::Token(Token::RightAngleBracket);
 
     fn matches(&self, t: &Token) -> bool {

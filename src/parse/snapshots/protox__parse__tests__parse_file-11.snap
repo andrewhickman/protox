@@ -4,7 +4,9 @@ expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwra
 ---
 Err(
     [
-        InvalidToken {
+        UnexpectedToken {
+            expected: "a constant",
+            found: ForwardSlash,
             span: 17..18,
         },
     ],
