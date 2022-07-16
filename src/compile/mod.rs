@@ -6,6 +6,7 @@ use std::{
     sync::Arc,
 };
 
+use logos::Span;
 use miette::NamedSource;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -151,7 +152,8 @@ impl Compiler {
         let mut import_stack = vec![name.clone()];
         for import in &ast.imports {
             self.add_import(
-                import,
+                &import.value,
+                Some(import.span.clone()),
                 &mut import_stack,
                 make_source(&name, &file.path, source.clone()),
             )?;
@@ -164,6 +166,38 @@ impl Compiler {
             name_map,
             path: file.path,
             is_root: true,
+        });
+        Ok(self)
+    }
+
+    // TODO:
+    // - should the added descriptor be returned with include_imports?
+    // - how do we handle resolution of relative type names etc?
+
+    #[doc(hidden)]
+    pub fn add_file_descriptor_proto(&mut self, descriptor: FileDescriptorProto) -> Result<&mut Self, Error> {
+        if self.file_map.file_names.contains_key(descriptor.name()) {
+            return Ok(self);
+        }
+
+        let mut import_stack = vec![descriptor.name().to_owned()];
+        for import in &descriptor.dependency {
+            self.add_import(
+                import,
+                None,
+                &mut import_stack,
+                DynSourceCode::default(),
+            )?;
+        }
+
+        let name_map = NameMap::from_proto(&descriptor, &self.file_map)
+            .map_err(|errors| Error::check_errors(errors, DynSourceCode::default()))?;
+
+        self.file_map.add(ParsedFile {
+            descriptor,
+            name_map,
+            path: None,
+            is_root: true, // TODO should this be configurable?
         });
         Ok(self)
     }
@@ -192,33 +226,34 @@ impl Compiler {
 
     fn add_import(
         &mut self,
-        import: &ast::Import,
+        file_name: &str,
+        span: Option<Span>,
         import_stack: &mut Vec<String>,
         import_src: DynSourceCode,
     ) -> Result<(), Error> {
-        if import_stack.contains(&import.value) {
+        if import_stack.iter().any(|name| name == file_name) {
             let mut cycle = String::new();
             for import in import_stack {
                 write!(&mut cycle, "{} -> ", import).unwrap();
             }
-            write!(&mut cycle, "{}", import.value).unwrap();
+            write!(&mut cycle, "{}", file_name).unwrap();
 
             return Err(Error::from_kind(ErrorKind::CircularImport { cycle }));
         }
 
-        if self.file_map.file_names.contains_key(&import.value) {
+        if self.file_map.file_names.contains_key(file_name) {
             return Ok(());
         }
 
-        let file = match self.resolver.open_file(&import.value) {
+        let file = match self.resolver.open_file(file_name) {
             Ok(file) if file.content.len() > (MAX_FILE_LEN as usize) => {
                 return Err(Error::from_kind(ErrorKind::FileTooLarge {
                     src: import_src,
-                    span: Some(import.value_span.clone().into()),
+                    span: span.map(Into::into),
                 }));
             }
             Ok(file) => file,
-            Err(err) => return Err(err.add_import_context(import_src, import.span.clone())),
+            Err(err) => return Err(err.add_import_context(import_src, span)),
         };
 
         let source: Arc<str> = file.content.into();
@@ -227,22 +262,23 @@ impl Compiler {
             Err(errors) => {
                 return Err(Error::parse_errors(
                     errors,
-                    make_source(&import.value, &file.path, source),
+                    make_source(file_name, &file.path, source),
                 ));
             }
         };
 
-        import_stack.push(import.value.clone());
+        import_stack.push(file_name.to_owned());
         for import in &ast.imports {
             self.add_import(
-                import,
+                &import.value,
+                Some(import.span.clone()),
                 import_stack,
                 make_source(&import.value, &file.path, source.clone()),
             )?;
         }
         import_stack.pop();
 
-        let (descriptor, name_map) = self.check_file(&import.value, &ast, source, &file.path)?;
+        let (descriptor, name_map) = self.check_file(file_name, &ast, source, &file.path)?;
 
         self.file_map.add(ParsedFile {
             descriptor,

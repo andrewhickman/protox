@@ -1,16 +1,33 @@
 use std::{
+    fmt,
     borrow::Cow,
-    collections::{hash_map, HashMap},
+    collections::{hash_map, HashMap}, iter::once,
 };
 
 use logos::Span;
+use miette::{Diagnostic, LabeledSpan};
+use prost_types::{field_descriptor_proto, FileDescriptorProto, DescriptorProto, FieldDescriptorProto, EnumDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto};
 
 use crate::{
     ast,
-    compile::{ParsedFile, ParsedFileMap},
+    compile::{ParsedFile, ParsedFileMap}, index_to_i32,
 };
 
 use super::{ir, CheckError};
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DuplicateNameError {
+    pub name: String,
+    pub first: NameLocation,
+    pub second: NameLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum NameLocation {
+    Import(String),
+    Root(Span),
+    Unknown,
+}
 
 /// A simple map of all definitions in a proto file for checking downstream files.
 #[derive(Debug)]
@@ -21,7 +38,7 @@ pub(crate) struct NameMap {
 #[derive(Debug, Clone)]
 struct Entry {
     kind: DefinitionKind,
-    span: Span,
+    span: Option<Span>,
     public: bool,
     file: Option<String>,
 }
@@ -30,7 +47,6 @@ struct Entry {
 pub(crate) enum DefinitionKind {
     Package,
     Message,
-    Group,
     Enum,
     EnumValue {
         number: i32,
@@ -38,19 +54,51 @@ pub(crate) enum DefinitionKind {
     Oneof,
     Field {
         number: i32,
-        ty: ast::Ty,
-        label: Option<ast::FieldLabel>,
-    },
-    Extension {
-        number: i32,
-        ty: ast::Ty,
-        label: Option<ast::FieldLabel>,
+        ty: Option<field_descriptor_proto::Type>,
+        type_name: Option<String>,
+        label: Option<field_descriptor_proto::Label>,
+        oneof_index: Option<i32>,
+        extendee: Option<String>
     },
     Service,
     Method,
 }
 
 impl NameMap {
+    pub fn from_ir(ir: &ir::File, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
+        let mut ctx = NamePass {
+            name_map: NameMap::new(),
+            errors: Vec::new(),
+            scope: Vec::new(),
+        };
+
+        ctx.add_file(ir, file_map);
+        debug_assert!(ctx.scope.is_empty());
+
+        if ctx.errors.is_empty() {
+            Ok(ctx.name_map)
+        } else {
+            Err(ctx.errors)
+        }
+    }
+
+    pub fn from_proto(file: &FileDescriptorProto, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
+        let mut ctx = NamePass {
+            name_map: NameMap::new(),
+            errors: Vec::new(),
+            scope: Vec::new(),
+        };
+
+        ctx.add_file_descriptor_proto(file, file_map);
+        debug_assert!(ctx.scope.is_empty());
+
+        if ctx.errors.is_empty() {
+            Ok(ctx.name_map)
+        } else {
+            Err(ctx.errors)
+        }
+    }
+
     fn new() -> Self {
         NameMap {
             map: HashMap::new(),
@@ -61,10 +109,10 @@ impl NameMap {
         &mut self,
         name: String,
         kind: DefinitionKind,
-        span: Span,
+        span: Option<Span>,
         file: Option<&str>,
         public: bool,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), DuplicateNameError> {
         match self.map.entry(name) {
             hash_map::Entry::Vacant(entry) => {
                 entry.insert(Entry {
@@ -77,30 +125,15 @@ impl NameMap {
             }
             hash_map::Entry::Occupied(entry) => match (kind, &entry.get().kind) {
                 (DefinitionKind::Package, DefinitionKind::Package) => Ok(()),
-                _ => Err({
-                    let name = entry.key().clone();
-                    if let Some(first_file) = &entry.get().file {
-                        if let Some(second_file) = file {
-                            CheckError::DuplicateNameInImports {
-                                name,
-                                first_file: first_file.clone(),
-                                second_file: second_file.to_owned(),
-                            }
-                        } else {
-                            CheckError::DuplicateNameInFileAndImport {
-                                name,
-                                first_file: first_file.clone(),
-                                second: span,
-                            }
-                        }
-                    } else {
-                        CheckError::DuplicateNameInFile {
-                            name,
-                            first: entry.get().span.clone(),
-                            second: span,
-                        }
-                    }
-                }),
+                _ => {
+                    let first = NameLocation::new(entry.get().file.clone(), entry.get().span.clone());
+                    let second = NameLocation::new(file.map(ToOwned::to_owned), span);
+
+                    Err(DuplicateNameError {
+                        name: entry.key().to_owned(),
+                        first, second
+                    })
+                },
             },
         }
     }
@@ -125,25 +158,6 @@ impl NameMap {
     }
 }
 
-impl<'a> ir::File<'a> {
-    pub fn get_names(&self, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
-        let mut ctx = NamePass {
-            name_map: NameMap::new(),
-            errors: Vec::new(),
-            scope: Vec::new(),
-        };
-
-        ctx.add_file(self, file_map);
-        debug_assert!(ctx.scope.is_empty());
-
-        if ctx.errors.is_empty() {
-            Ok(ctx.name_map)
-        } else {
-            Err(ctx.errors)
-        }
-    }
-}
-
 struct NamePass {
     name_map: NameMap,
     scope: Vec<String>,
@@ -151,12 +165,12 @@ struct NamePass {
 }
 
 impl NamePass {
-    fn add_name<'a>(&mut self, name: impl Into<Cow<'a, str>>, kind: DefinitionKind, span: Span) {
+    fn add_name<'a>(&mut self, name: impl Into<Cow<'a, str>>, kind: DefinitionKind, span: Option<Span>) {
         if let Err(err) = self
             .name_map
             .add(self.full_name(name), kind, span, None, true)
         {
-            self.errors.push(err);
+            self.errors.push(CheckError::DuplicateName(err));
         }
     }
 
@@ -196,7 +210,7 @@ impl NamePass {
 
         if let Some(package) = &file.ast.package {
             let name = package.name.to_string();
-            self.add_name(&name, DefinitionKind::Package, package.name.span());
+            self.add_name(&name, DefinitionKind::Package, Some(package.name.span()));
             self.enter(&name);
         }
 
@@ -219,24 +233,23 @@ impl NamePass {
     }
 
     fn add_message(&mut self, message: &ir::Message) {
-        let def = match message.ast {
-            ir::MessageSource::Group(..) => DefinitionKind::Group,
-            ir::MessageSource::Map(_) | ir::MessageSource::Message(_) => DefinitionKind::Message,
-        };
-
         let name = message.ast.name();
-        self.add_name(name.as_ref(), def, message.ast.name_span());
+        self.add_name(name.as_ref(), DefinitionKind::Message, Some(message.ast.name_span()));
         self.enter(name);
 
         for field in &message.fields {
+            let ty = field.ast.ty();
             self.add_name(
                 field.ast.name(),
                 DefinitionKind::Field {
-                    ty: field.ast.ty(),
+                    ty: ty.proto_ty(),
+                    type_name: ty.ty_name(),
                     number: field.ast.number().as_i32().unwrap_or(0),
-                    label: field.ast.label(),
+                    label: field.ast.label().map(|l| l.proto_label()),
+                    oneof_index: field.oneof_index,
+                    extendee: None,
                 },
-                field.ast.name_span(),
+                Some(field.ast.name_span()),
             );
         }
 
@@ -252,7 +265,7 @@ impl NamePass {
                 ),
             };
 
-            self.add_name(name, DefinitionKind::Oneof, span);
+            self.add_name(name, DefinitionKind::Oneof, Some(span));
         }
 
         for nested_message in &message.messages {
@@ -280,20 +293,24 @@ impl NamePass {
 
     fn add_extend(&mut self, extend: &ast::Extend) {
         for field in &extend.fields {
+            let ty = field.ty();
             self.add_name(
                 field.field_name(),
-                DefinitionKind::Extension {
-                    ty: field.ty(),
+                DefinitionKind::Field {
+                    ty: ty.proto_ty(),
+                    type_name: ty.ty_name(),
                     number: field.number.as_i32().unwrap_or(0),
-                    label: field.label.clone().map(|(l, _)| l),
+                    label: field.label.clone().map(|(l, _)| l.proto_label()),
+                    oneof_index: None,
+                    extendee: Some(extend.extendee.to_string()),
                 },
-                field.name.span.clone(),
+                Some(field.name.span.clone()),
             );
         }
     }
 
     fn add_enum(&mut self, enu: &ast::Enum) {
-        self.add_name(&enu.name.value, DefinitionKind::Enum, enu.name.span.clone());
+        self.add_name(&enu.name.value, DefinitionKind::Enum, Some(enu.name.span.clone()));
 
         for value in &enu.values {
             self.add_name(
@@ -301,7 +318,7 @@ impl NamePass {
                 DefinitionKind::EnumValue {
                     number: value.number.as_i32().unwrap_or(0),
                 },
-                value.name.span.clone(),
+                Some(value.name.span.clone()),
             )
         }
     }
@@ -310,7 +327,7 @@ impl NamePass {
         self.add_name(
             &service.name.value,
             DefinitionKind::Service,
-            service.name.span.clone(),
+            Some(service.name.span.clone()),
         );
 
         self.enter(&service.name.value);
@@ -318,9 +335,157 @@ impl NamePass {
             self.add_name(
                 &method.name.value,
                 DefinitionKind::Method,
-                method.name.span.clone(),
+                Some(method.name.span.clone()),
             );
         }
         self.exit();
+    }
+
+    fn add_file_descriptor_proto(&mut self, file: &FileDescriptorProto, file_map: &ParsedFileMap) {
+        for (index, import) in file.dependency.iter().enumerate() {
+            let import_file = &file_map[import.as_str()];
+            self.merge_names(
+                import_file,
+                file.public_dependency.contains(&index_to_i32(index)),
+            );
+        }
+
+        if file.package() != "" {
+            self.add_name(file.package(), DefinitionKind::Package, None);
+            self.enter(file.package());
+        }
+
+        for message in &file.message_type {
+            self.add_descriptor_proto(message);
+        }
+
+        for enu in &file.enum_type {
+            self.add_enum_descriptor_proto(enu);
+        }
+
+        for extend in &file.extension {
+            self.add_field_descriptor_proto(extend);
+        }
+
+        for service in &file.service {
+            self.add_service_descriptor_proto(service);
+        }
+
+        if file.package() != "" {
+            self.exit();
+        }
+    }
+
+    fn add_descriptor_proto(&mut self, message: &DescriptorProto) {
+        self.add_name(message.name(), DefinitionKind::Message, None);
+        self.enter(message.name());
+
+        for field in &message.field {
+            self.add_field_descriptor_proto(field)
+        }
+
+        for oneof in &message.oneof_decl {
+            self.add_oneof_descriptor_proto(oneof);
+        }
+
+        for message in &message.nested_type {
+            self.add_descriptor_proto(message);
+        }
+
+        for enu in &message.enum_type {
+            self.add_enum_descriptor_proto(enu);
+        }
+
+        for extension in &message.extension {
+            self.add_field_descriptor_proto(extension);
+        }
+
+        self.exit();
+    }
+
+    fn add_field_descriptor_proto(&mut self, field: &FieldDescriptorProto) {
+        self.add_name(
+            field.name(),
+            DefinitionKind::Field {
+                ty: field_descriptor_proto::Type::from_i32(field.r#type.unwrap_or(0)),
+                type_name: field.type_name.clone(),
+                number: field.number(),
+                label: field_descriptor_proto::Label::from_i32(field.label.unwrap_or(0)),
+                oneof_index: field.oneof_index,
+                extendee: field.extendee.clone(),
+            },
+            None,
+        );
+    }
+
+    fn add_oneof_descriptor_proto(&mut self, oneof: &OneofDescriptorProto) {
+        self.add_name(oneof.name(), DefinitionKind::Oneof, None);
+    }
+
+    fn add_enum_descriptor_proto(&mut self, enu: &EnumDescriptorProto) {
+        self.add_name(enu.name(), DefinitionKind::Enum, None);
+
+        for value in &enu.value {
+            self.add_name(
+                value.name(),
+                DefinitionKind::EnumValue {
+                    number: value.number(),
+                },
+                None,
+            );
+        }
+    }
+
+    fn add_service_descriptor_proto(&mut self, service: &ServiceDescriptorProto) {
+        self.add_name(
+            service.name(),
+            DefinitionKind::Service,
+            None,
+        );
+
+        self.enter(service.name());
+        for method in &service.method {
+            self.add_name(
+                method.name(),
+                DefinitionKind::Method,
+                None,
+            );
+        }
+        self.exit();
+    }
+}
+
+impl NameLocation {
+    fn new(file: Option<String>, span: Option<Span>) -> NameLocation {
+        match (file, span) {
+            (Some(file), _) => NameLocation::Import(file),
+            (None, Some(span)) => NameLocation::Root(span),
+            (None, None) => NameLocation::Unknown,
+        }
+    }
+}
+
+impl fmt::Display for DuplicateNameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (&self.first, &self.second) {
+            (NameLocation::Import(first), NameLocation::Import(second)) => write!(f, "name '{}' is defined both in imported file '{}' and '{}'", self.name, first, second),
+            (NameLocation::Import(first), NameLocation::Root(_) | NameLocation::Unknown) => write!(f, "name '{}' is already defined in imported file '{}'", self.name, first),
+            _ => write!(f, "name '{}' is defined twice", self.name)
+        }
+    }
+}
+
+impl std::error::Error for DuplicateNameError {}
+
+impl Diagnostic for DuplicateNameError {
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
+        match (&self.first, &self.second) {
+            (NameLocation::Root(first), NameLocation::Root(second)) => Some(Box::new(vec![
+                LabeledSpan::new_with_span(Some("first defined here…".to_owned()), first.clone()),
+                LabeledSpan::new_with_span(Some("…and again here".to_owned()), second.clone()),
+            ].into_iter())),
+            (_, NameLocation::Root(span)) | (NameLocation::Root(span), _) => Some(Box::new(once(LabeledSpan::new_with_span(Some("defined here".to_owned()), span.clone())))),
+            _ => None,
+        }
     }
 }

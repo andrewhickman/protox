@@ -7,6 +7,7 @@ use std::{
 };
 
 use logos::Span;
+use prost_types::field_descriptor_proto;
 
 use crate::{case::to_pascal_case, index_to_i32, join_span};
 
@@ -555,6 +556,46 @@ impl Field {
                 leading_dot: None,
                 name: FullIdent::from(Ident::new(self.map_message_name(), self.name.span.clone())),
             }),
+        }
+    }
+}
+
+impl Ty {
+    pub fn proto_ty(&self) -> std::option::Option<field_descriptor_proto::Type> {
+        match self {
+            Ty::Double => Some(field_descriptor_proto::Type::Double),
+            Ty::Float => Some(field_descriptor_proto::Type::Float),
+            Ty::Int32 => Some(field_descriptor_proto::Type::Int32),
+            Ty::Int64 => Some(field_descriptor_proto::Type::Int64),
+            Ty::Uint32 => Some(field_descriptor_proto::Type::Uint32),
+            Ty::Uint64 => Some(field_descriptor_proto::Type::Uint64),
+            Ty::Sint32 => Some(field_descriptor_proto::Type::Sint32),
+            Ty::Sint64 => Some(field_descriptor_proto::Type::Sint64),
+            Ty::Fixed32 => Some(field_descriptor_proto::Type::Fixed32),
+            Ty::Fixed64 => Some(field_descriptor_proto::Type::Fixed64),
+            Ty::Sfixed32 => Some(field_descriptor_proto::Type::Sfixed32),
+            Ty::Sfixed64 => Some(field_descriptor_proto::Type::Sfixed64),
+            Ty::Bool => Some(field_descriptor_proto::Type::Bool),
+            Ty::String => Some(field_descriptor_proto::Type::String),
+            Ty::Bytes => Some(field_descriptor_proto::Type::Bytes),
+            Ty::Named(_) => None,
+        }
+    }
+
+    pub fn ty_name(&self) -> std::option::Option<std::string::String> {
+        match self {
+            Ty::Named(name) => Some(name.to_string()),
+            _ => None,
+        }
+    }
+}
+
+impl FieldLabel {
+    pub fn proto_label(&self) -> field_descriptor_proto::Label {
+        match self {
+            FieldLabel::Optional => field_descriptor_proto::Label::Optional,
+            FieldLabel::Required => field_descriptor_proto::Label::Required,
+            FieldLabel::Repeated => field_descriptor_proto::Label::Repeated,
         }
     }
 }

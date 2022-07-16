@@ -133,22 +133,16 @@ impl<'a> FieldSource<'a> {
 
     pub fn ty(&self) -> ast::Ty {
         match self {
-            FieldSource::Field(field) => match &field.kind {
-                ast::FieldKind::Normal { ty, .. } => ty.clone(),
-                ast::FieldKind::Group { .. } => ast::Ty::Named(ast::TypeName {
-                    leading_dot: None,
-                    name: ast::FullIdent::from(field.name.clone()),
-                }),
-                ast::FieldKind::Map { .. } => ast::Ty::Named(ast::TypeName {
-                    leading_dot: None,
-                    name: ast::FullIdent::from(ast::Ident::new(
-                        field.map_message_name(),
-                        field.name.span.clone(),
-                    )),
-                }),
-            },
+            FieldSource::Field(field) => field.ty(),
             FieldSource::MapKey(ty, _) => (*ty).clone(),
             FieldSource::MapValue(ty, _) => (*ty).clone(),
+        }
+    }
+
+    pub fn is_group(&self) -> bool {
+        match self {
+            FieldSource::Field(field) => field.is_group(),
+            FieldSource::MapKey(..) | FieldSource::MapValue(..) => false,
         }
     }
 

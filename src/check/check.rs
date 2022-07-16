@@ -295,7 +295,7 @@ impl<'a> Context<'a> {
         let name = field.ast.name();
         let json_name = Some(to_json_name(&name));
         let number = self.check_field_number(&field.ast.number());
-        let (ty, type_name) = self.check_type(&field.ast.ty());
+        let (ty, type_name) = self.check_type(&field.ast.ty(), field.ast.is_group());
 
         let oneof_index = field.oneof_index;
 
@@ -454,33 +454,18 @@ impl<'a> Context<'a> {
     fn check_type(
         &mut self,
         ty: &ast::Ty,
+        is_group: bool,
     ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
         match ty {
-            ast::Ty::Double => (Some(field_descriptor_proto::Type::Double), None),
-            ast::Ty::Float => (Some(field_descriptor_proto::Type::Float), None),
-            ast::Ty::Int32 => (Some(field_descriptor_proto::Type::Int32), None),
-            ast::Ty::Int64 => (Some(field_descriptor_proto::Type::Int64), None),
-            ast::Ty::Uint32 => (Some(field_descriptor_proto::Type::Uint32), None),
-            ast::Ty::Uint64 => (Some(field_descriptor_proto::Type::Uint64), None),
-            ast::Ty::Sint32 => (Some(field_descriptor_proto::Type::Sint32), None),
-            ast::Ty::Sint64 => (Some(field_descriptor_proto::Type::Sint64), None),
-            ast::Ty::Fixed32 => (Some(field_descriptor_proto::Type::Fixed32), None),
-            ast::Ty::Fixed64 => (Some(field_descriptor_proto::Type::Fixed64), None),
-            ast::Ty::Sfixed32 => (Some(field_descriptor_proto::Type::Sfixed32), None),
-            ast::Ty::Sfixed64 => (Some(field_descriptor_proto::Type::Sfixed64), None),
-            ast::Ty::Bool => (Some(field_descriptor_proto::Type::Bool), None),
-            ast::Ty::String => (Some(field_descriptor_proto::Type::String), None),
-            ast::Ty::Bytes => (Some(field_descriptor_proto::Type::Bytes), None),
             ast::Ty::Named(type_name) => match self.resolve_type_name(type_name) {
                 (name, None) => (None, Some(name)),
-                (name, Some(DefinitionKind::Message)) => {
+                (name, Some(DefinitionKind::Message)) => if is_group {
+                    (Some(field_descriptor_proto::Type::Group as _), Some(name))
+                } else {
                     (Some(field_descriptor_proto::Type::Message as _), Some(name))
                 }
                 (name, Some(DefinitionKind::Enum)) => {
                     (Some(field_descriptor_proto::Type::Enum as _), Some(name))
-                }
-                (name, Some(DefinitionKind::Group)) => {
-                    (Some(field_descriptor_proto::Type::Group as _), Some(name))
                 }
                 (name, Some(_)) => {
                     self.errors.push(CheckError::InvalidMessageFieldTypeName {
@@ -490,6 +475,7 @@ impl<'a> Context<'a> {
                     (None, Some(name))
                 }
             },
+            _ => (ty.proto_ty(), None),
         }
     }
 
@@ -581,7 +567,7 @@ impl<'a> Context<'a> {
             let name = field.field_name();
             let json_name = Some(to_json_name(&name));
             let number = self.check_field_number(&field.number);
-            let (ty, type_name) = self.check_type(&field.ty());
+            let (ty, type_name) = self.check_type(&field.ty(), field.is_group());
             FieldDescriptorProto {
                 name: Some(name.into_owned()),
                 json_name,
@@ -667,7 +653,7 @@ impl<'a> Context<'a> {
         let (input_type, kind) = self.resolve_type_name(&method.input_ty);
         if !matches!(
             kind,
-            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+            None | Some(DefinitionKind::Message)
         ) {
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.input_ty.to_string(),
@@ -679,7 +665,7 @@ impl<'a> Context<'a> {
         let (output_type, kind) = self.resolve_type_name(&method.output_ty);
         if !matches!(
             kind,
-            None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
+            None | Some(DefinitionKind::Message)
         ) {
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.output_ty.to_string(),

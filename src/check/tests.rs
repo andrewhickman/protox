@@ -6,7 +6,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use super::CheckError::*;
 use super::*;
-use crate::{error::ErrorKind, file::File, file::FileResolver, Compiler, Error};
+use crate::{error::ErrorKind, file::File, file::FileResolver, Compiler, Error, check::names::NameLocation};
 
 struct TestFileResolver {
     files: HashMap<String, String>,
@@ -75,11 +75,11 @@ fn name_conflict_in_imported_files() {
             ("root.proto", r#"import "dep1.proto"; import "dep2.proto";"#),
         ])
         .unwrap_err(),
-        vec![DuplicateNameInImports {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first_file: "dep1.proto".to_owned(),
-            second_file: "dep2.proto".to_owned()
-        }]
+            first: NameLocation::Import("dep1.proto".to_owned()),
+            second: NameLocation::Import("dep2.proto".to_owned()),
+        })]
     );
 }
 
@@ -91,11 +91,11 @@ fn name_conflict_with_import() {
             ("root.proto", r#"import "dep.proto"; message Foo {}"#),
         ])
         .unwrap_err(),
-        vec![DuplicateNameInFileAndImport {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first_file: "dep.proto".to_owned(),
-            second: 28..31,
-        }]
+            first: NameLocation::Import("dep.proto".to_owned()),
+            second: NameLocation::Root(28..31),
+        })]
     );
 }
 
@@ -107,11 +107,11 @@ fn name_conflict_package() {
             ("root.proto", r#"import "dep.proto"; message foo {}"#),
         ])
         .unwrap_err(),
-        vec![DuplicateNameInFileAndImport {
+        vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
-            first_file: "dep.proto".to_owned(),
-            second: 28..31,
-        }]
+            first: NameLocation::Import("dep.proto".to_owned()),
+            second: NameLocation::Root(28..31),
+        })]
     );
     assert_eq!(
         check_with_imports(vec![
@@ -119,11 +119,11 @@ fn name_conflict_package() {
             ("root.proto", r#"import "dep.proto"; package foo;"#),
         ])
         .unwrap_err(),
-        vec![DuplicateNameInFileAndImport {
+        vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
-            first_file: "dep.proto".to_owned(),
-            second: 28..31,
-        }]
+            first: NameLocation::Import("dep.proto".to_owned()),
+            second: NameLocation::Root(28..31),
+        })]
     );
     assert_yaml_snapshot!(check_with_imports(vec![
         ("dep.proto", "package foo;"),
@@ -173,35 +173,35 @@ fn name_conflict_field_camel_case() {
 fn name_conflict() {
     assert_eq!(
         check_err("message Foo {} message Foo {}"),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: 8..11,
-            second: 23..26
-        }]
+            first: NameLocation::Root(8..11),
+            second: NameLocation::Root(23..26),
+        })]
     );
     assert_eq!(
         check_err("message Foo {} enum Foo {}"),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: 8..11,
-            second: 20..23
-        }]
+            first: NameLocation::Root(8..11),
+            second: NameLocation::Root(20..23),
+        })]
     );
     assert_eq!(
         check_err("message Foo {} service Foo {}"),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: 8..11,
-            second: 23..26
-        }]
+            first: NameLocation::Root(8..11),
+            second: NameLocation::Root(23..26),
+        })]
     );
     assert_eq!(
         check_err("message Foo {} enum Bar { Foo = 1; }"),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: 8..11,
-            second: 26..29
-        }]
+            first: NameLocation::Root(8..11),
+            second: NameLocation::Root(26..29),
+        })]
     );
 }
 
@@ -245,11 +245,11 @@ fn generate_map_entry_message_name_conflict() {
                 }
             }"
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo.BazEntry".to_owned(),
-            first: 32..35,
-            second: 63..71,
-        }]
+            first: NameLocation::Root(32..35),
+            second: NameLocation::Root(63..71),
+        })]
     );
 }
 
@@ -266,11 +266,11 @@ fn generate_group_message_name_conflict() {
                 }
             }"
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo.Baz".to_owned(),
-            first: 28..31,
-            second: 61..64,
-        }],
+            first: NameLocation::Root(28..31),
+            second: NameLocation::Root(61..64),
+        })],
     );
 }
 
@@ -287,11 +287,11 @@ fn generate_synthetic_oneof_name_conflict() {
                 message _val {}
             }"
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Foo._val".to_owned(),
-            first: 79..82,
-            second: 113..117,
-        }],
+            first: NameLocation::Root(79..82),
+            second: NameLocation::Root(113..117),
+        })],
     );
 }
 
@@ -412,11 +412,11 @@ fn name_collision() {
             message Message {}
             "
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Message".to_owned(),
-            first: 8..15,
-            second: 39..46,
-        }],
+            first: NameLocation::Root(8..15),
+            second: NameLocation::Root(39..46),
+        })],
     );
     assert_eq!(
         check_err(
@@ -426,11 +426,11 @@ fn name_collision() {
                 ZERO = 1;
             }"
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Message".to_owned(),
-            first: 8..15,
-            second: 36..43,
-        }],
+            first: NameLocation::Root(8..15),
+            second: NameLocation::Root(36..43),
+        })],
     );
     assert_eq!(
         check_err(
@@ -443,11 +443,11 @@ fn name_collision() {
                 }
             }"
         ),
-        vec![DuplicateNameInFile {
+        vec![DuplicateName(DuplicateNameError {
             name: "Message.foo".to_owned(),
-            first: 49..52,
-            second: 80..83,
-        }],
+            first: NameLocation::Root(49..52),
+            second: NameLocation::Root(80..83),
+        })],
     );
     assert_eq!(
         check_with_imports(vec![
@@ -455,11 +455,11 @@ fn name_collision() {
             ("root.proto", "import 'dep.proto'; message foo {}"),
         ])
         .unwrap_err(),
-        vec![DuplicateNameInFileAndImport {
+        vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
-            first_file: "dep.proto".to_owned(),
-            second: 28..31,
-        }],
+            first: NameLocation::Import("dep.proto".to_owned()),
+            second: NameLocation::Root(28..31),
+        })],
     );
 }
 

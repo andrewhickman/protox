@@ -162,16 +162,16 @@ impl Error {
     pub(crate) fn add_import_context(
         mut self,
         import_src: impl Into<DynSourceCode>,
-        import_span: impl Into<SourceSpan>,
+        import_span: Option<impl Into<SourceSpan>>,
     ) -> Self {
         match &mut *self.kind {
             ErrorKind::OpenFile { src, span, .. } => {
                 *src = import_src.into();
-                *span = Some(import_span.into());
+                *span = import_span.map(Into::into);
             }
             ErrorKind::ImportNotFound { src, span, .. } => {
                 *src = import_src.into();
-                *span = Some(import_span.into());
+                *span = import_span.map(Into::into);
             }
             _ => (),
         };

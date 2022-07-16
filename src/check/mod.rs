@@ -19,6 +19,7 @@ mod tests;
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
+use self::names::DuplicateNameError;
 pub(crate) use self::names::NameMap;
 
 pub(crate) fn check(
@@ -44,7 +45,7 @@ pub(crate) fn check_with_names(
     file_map: &ParsedFileMap,
 ) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
     let ir = ir::File::build(ast);
-    let name_map = ir.get_names(file_map)?;
+    let name_map = NameMap::from_ir(&ir, file_map)?;
     let source_code_info = source.map(|src| ir.get_source_code_info(src));
     let file_descriptor = ir.check(Some(&name_map))?;
 
@@ -60,28 +61,9 @@ pub(crate) fn check_with_names(
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {
-    #[error("name '{name}' is defined twice")]
-    DuplicateNameInFile {
-        name: String,
-        #[label("first defined here…")]
-        first: Span,
-        #[label]
-        #[label("…and again here")]
-        second: Span,
-    },
-    #[error("name '{name}' is already defined in imported file '{first_file}'")]
-    DuplicateNameInFileAndImport {
-        name: String,
-        first_file: String,
-        #[label("defined here")]
-        second: Span,
-    },
-    #[error("name '{name}' is defined twice in imported files '{first_file}' and '{second_file}'")]
-    DuplicateNameInImports {
-        name: String,
-        first_file: String,
-        second_file: String,
-    },
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    DuplicateName(#[from] DuplicateNameError),
     #[error("camel-case name of field '{first_name}' conflicts with field '{second_name}'")]
     DuplicateCamelCaseFieldName {
         first_name: String,
