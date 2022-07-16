@@ -23,7 +23,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     compiler.add_file(file).unwrap();
 
     assert_eq!(compiler.file_map.files.len(), 1);
-    assert_eq!(compiler.file_map[name].name, name);
+    assert_eq!(compiler.file_map[name].name(), name);
     assert_eq!(
         compiler.file_map[name].descriptor,
         FileDescriptorProto {
@@ -703,16 +703,16 @@ fn import_files() {
 
     assert_eq!(compiler.file_map.files.len(), 3);
 
-    assert_eq!(compiler.file_map[0].name.as_str(), "dep2.proto");
+    assert_eq!(compiler.file_map[0].name(), "dep2.proto");
     assert_eq!(compiler.file_map[0].path, Some(dir.join("dep2.proto")));
 
-    assert_eq!(compiler.file_map[1].name.as_str(), "dep.proto");
+    assert_eq!(compiler.file_map[1].name(), "dep.proto");
     assert_eq!(
         compiler.file_map[1].path,
         Some(dir.join("include").join("dep.proto"))
     );
 
-    assert_eq!(compiler.file_map[2].name.as_str(), "root.proto");
+    assert_eq!(compiler.file_map[2].name(), "root.proto");
     assert_eq!(compiler.file_map[2].path, Some(dir.join("root.proto")));
 
     let file_descriptor_set = compiler.file_descriptor_set();
@@ -812,16 +812,16 @@ fn duplicated_import() {
 
     assert_eq!(compiler.file_map.files.len(), 3);
 
-    assert_eq!(compiler.file_map[0].name.as_str(), "dep2.proto");
+    assert_eq!(compiler.file_map[0].name(), "dep2.proto");
     assert_eq!(compiler.file_map[0].path, Some(dir.join("dep2.proto")));
 
-    assert_eq!(compiler.file_map[1].name.as_str(), "dep.proto");
+    assert_eq!(compiler.file_map[1].name(), "dep.proto");
     assert_eq!(
         compiler.file_map[1].path,
         Some(dir.join("include").join("dep.proto"))
     );
 
-    assert_eq!(compiler.file_map[2].name.as_str(), "root.proto");
+    assert_eq!(compiler.file_map[2].name(), "root.proto");
     assert_eq!(compiler.file_map[2].path, Some(dir.join("root.proto")));
 }
 

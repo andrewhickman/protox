@@ -36,7 +36,6 @@ pub(crate) struct ParsedFile {
     pub descriptor: FileDescriptorProto,
     pub name_map: NameMap,
     pub path: Option<PathBuf>,
-    pub name: String,
     pub is_root: bool,
 }
 
@@ -163,7 +162,6 @@ impl Compiler {
         self.file_map.add(ParsedFile {
             descriptor,
             name_map,
-            name,
             path: file.path,
             is_root: true,
         });
@@ -249,7 +247,6 @@ impl Compiler {
         self.file_map.add(ParsedFile {
             descriptor,
             name_map,
-            name: import.value.clone(),
             path: file.path,
             is_root: false,
         });
@@ -284,9 +281,15 @@ impl fmt::Debug for Compiler {
     }
 }
 
+impl ParsedFile {
+    pub fn name(&self) -> &str {
+        self.descriptor.name()
+    }
+}
+
 impl ParsedFileMap {
     fn add(&mut self, file: ParsedFile) {
-        self.file_names.insert(file.name.clone(), self.files.len());
+        self.file_names.insert(file.name().to_owned(), self.files.len());
         self.files.push(file);
     }
 

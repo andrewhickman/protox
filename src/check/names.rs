@@ -163,7 +163,7 @@ impl NamePass {
     fn merge_names(&mut self, file: &ParsedFile, public: bool) {
         if let Err(err) = self
             .name_map
-            .merge(&file.name_map, file.name.clone(), public)
+            .merge(&file.name_map, file.name().to_owned(), public)
         {
             self.errors.push(err);
         }
