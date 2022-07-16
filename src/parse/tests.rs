@@ -38,6 +38,8 @@ pub fn parse_option() {
     case!(parse_option("option optimize_for = message;"));
     case!(parse_option("option message = 1;"));
     case!(parse_option("option ext.(service.rpc) = 1;"));
+    case!(parse_option("option foo = {"));
+    case!(parse_option("option foo = { x:1"));
 }
 
 #[test]
@@ -72,6 +74,12 @@ fn parse_text_format_message() {
         r#"escapes: '\a\b\f\n\r\t\v\?\\\'\"\1\11\111\xa\xAA\u1111\U00101111'"#
     ));
     case!(parse_text_format_message_test(r#"value: -'string'"#));
+    case!(parse_text_format_message_test(r#"value: -"#));
+    case!(parse_text_format_message_test(r#"value"#));
+    case!(parse_text_format_message_test(r#"value: {"#));
+    case!(parse_text_format_message_test(r#"value: {} foo: 10f"#));
+    case!(parse_text_format_message_test(r#"value: <"#));
+    case!(parse_text_format_message_test(r#"value 'foo'"#));
 }
 
 #[test]

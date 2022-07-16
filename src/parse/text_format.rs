@@ -220,9 +220,13 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("'{' or '<'")?,
         };
 
-        let message = self.parse_text_format_message(&[ExpectedToken::Token(delimiter.clone())])?;
+        let message =
+            self.parse_text_format_message_inner(&[ExpectedToken::Token(delimiter.clone())])?;
 
-        let end = self.expect_eq(delimiter)?;
+        let end = match self.peek() {
+            Some((tok, _)) if tok == delimiter => self.bump(),
+            _ => self.unexpected_token(format!("a field name or '{}'", delimiter))?,
+        };
 
         Ok((message, join_span(start, end)))
     }
