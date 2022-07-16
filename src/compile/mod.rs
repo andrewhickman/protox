@@ -49,8 +49,8 @@ pub(crate) struct ParsedFileMap {
 impl Compiler {
     /// Create a new [`Compiler`] with default options and the given set of include paths.
     ///
-    /// In addition to the given include paths, the [`Compiler`] instance will have access to
-    /// standard imports like `google/protobuf/descriptor.proto`.
+    /// In addition to the given include paths, the [`Compiler`] instance will be able to import
+    /// standard files like `google/protobuf/descriptor.proto`.
     pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
         let mut resolver = ChainFileResolver::new();
 

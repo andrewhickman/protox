@@ -100,6 +100,7 @@ compare!(generate_synthetic_oneof_ordering);
 compare!(generate_synthetic_oneof);
 compare!(generated_message_ordering);
 compare!(multiple_extends);
+compare!(name_resolution);
 // TODO need to get protoc to use the exact same versions of these files
 // compare!(import_google);
 

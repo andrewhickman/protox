@@ -130,7 +130,7 @@ pub(crate) fn check_shadow(
     actual_path: &Option<PathBuf>,
     expected_path: &Path,
 ) -> Result<(), Error> {
-    // actual_path is assumed to be an include path concatenated with `expected_path`
+    // actual_path is expected to be an include path concatenated with `expected_path`
     if let Some(actual_path) = actual_path {
         if !ends_with(actual_path, expected_path) {
             return Err(Error::from_kind(ErrorKind::FileShadowed {

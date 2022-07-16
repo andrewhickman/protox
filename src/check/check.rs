@@ -84,33 +84,22 @@ impl<'a> Context<'a> {
         name.to_string()
     }
 
-    fn resolve_ast_type_name(
+    fn resolve_type_name(
         &mut self,
         type_name: &ast::TypeName,
     ) -> (String, Option<&DefinitionKind>) {
-        self.resolve_type_name(
-            type_name.leading_dot.is_some(),
-            type_name.name.to_string(),
-            type_name.span(),
-        )
-    }
-
-    fn resolve_type_name(
-        &mut self,
-        absolute: bool,
-        name: String,
-        span: Span,
-    ) -> (String, Option<&DefinitionKind>) {
         if let Some(name_map) = &self.name_map {
-            if absolute {
+            let name = type_name.name.to_string();
+
+            if type_name.leading_dot.is_some() {
                 if let Some(def) = name_map.get(&name) {
-                    (name, Some(def))
+                    (type_name.to_string(), Some(def))
                 } else {
                     self.errors.push(CheckError::TypeNameNotFound {
                         name: name.clone(),
-                        span,
+                        span: type_name.span(),
                     });
-                    (name, None)
+                    (type_name.to_string(), None)
                 }
             } else {
                 for scope in self.scope.iter().rev() {
@@ -132,12 +121,12 @@ impl<'a> Context<'a> {
 
                 self.errors.push(CheckError::TypeNameNotFound {
                     name: name.clone(),
-                    span,
+                    span: type_name.span(),
                 });
                 (name, None)
             }
         } else {
-            (name, None)
+            (type_name.to_string(), None)
         }
     }
 
@@ -482,7 +471,7 @@ impl<'a> Context<'a> {
             ast::Ty::Bool => (Some(field_descriptor_proto::Type::Bool), None),
             ast::Ty::String => (Some(field_descriptor_proto::Type::String), None),
             ast::Ty::Bytes => (Some(field_descriptor_proto::Type::Bytes), None),
-            ast::Ty::Named(type_name) => match self.resolve_ast_type_name(type_name) {
+            ast::Ty::Named(type_name) => match self.resolve_type_name(type_name) {
                 (name, None) => (None, Some(name)),
                 (name, Some(DefinitionKind::Message)) => {
                     (Some(field_descriptor_proto::Type::Message as _), Some(name))
@@ -579,7 +568,7 @@ impl<'a> Context<'a> {
     }
 
     fn check_extend(&mut self, extend: &ast::Extend, result: &mut Vec<FieldDescriptorProto>) {
-        let (extendee, def) = self.resolve_ast_type_name(&extend.extendee);
+        let (extendee, def) = self.resolve_type_name(&extend.extendee);
         if def.is_some() && def != Some(&DefinitionKind::Message) {
             self.errors.push(CheckError::InvalidExtendeeTypeName {
                 name: extend.extendee.to_string(),
@@ -675,7 +664,7 @@ impl<'a> Context<'a> {
     fn check_method(&mut self, method: &ast::Method) -> MethodDescriptorProto {
         let name = s(&method.name);
 
-        let (input_type, kind) = self.resolve_ast_type_name(&method.input_ty);
+        let (input_type, kind) = self.resolve_type_name(&method.input_ty);
         if !matches!(
             kind,
             None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)
@@ -687,7 +676,7 @@ impl<'a> Context<'a> {
             })
         }
 
-        let (output_type, kind) = self.resolve_ast_type_name(&method.output_ty);
+        let (output_type, kind) = self.resolve_type_name(&method.output_ty);
         if !matches!(
             kind,
             None | Some(DefinitionKind::Message) | Some(DefinitionKind::Group)

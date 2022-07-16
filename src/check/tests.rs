@@ -296,27 +296,171 @@ fn generate_synthetic_oneof_name_conflict() {
 }
 
 #[test]
-fn generate_synthetic_oneof_message_type() {}
-
-#[test]
 fn invalid_service_type() {
     // use enum/service/oneof etc
+    assert_eq!(
+        check_err(
+            "\
+            syntax = 'proto3';
+
+            enum Enum {
+                ZERO = 0;
+            }
+            message Message {}
+
+            service Service {
+                rpc rpc(.Enum) returns (.Message);
+            }"
+        ),
+        vec![InvalidMethodTypeName {
+            name: ".Enum".to_owned(),
+            kind: "input",
+            span: 170..175,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            "\
+            syntax = 'proto3';
+
+            enum Enum {
+                ZERO = 0;
+            }
+            message Message {}
+
+            service Service {
+                rpc rpc(.Message) returns (.Enum);
+            }"
+        ),
+        vec![InvalidMethodTypeName {
+            name: ".Enum".to_owned(),
+            kind: "output",
+            span: 189..194,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            "\
+            syntax = 'proto3';
+
+            message Message {}
+
+            service Service {
+                rpc rpc(.Message) returns (.Service);
+            }"
+        ),
+        vec![InvalidMethodTypeName {
+            name: ".Service".to_owned(),
+            kind: "output",
+            span: 125..133,
+        }],
+    );
 }
 
 #[test]
 fn name_resolution() {
-    // local vs global scope
-    // leading dot
-    // package vs no package
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo.bar; message FooBar {}"),
+            (
+                "root.proto",
+                r#"
+                syntax = 'proto3';
 
-    // parent package e.g. resolving google.protobuf.FileDescriptorProto in google.protobuf.compiler
+                import "dep.proto";
+
+                message foo {
+                    .foo.FooBar foobar = 1;
+                }"#
+            ),
+        ])
+        .unwrap_err(),
+        vec![TypeNameNotFound {
+            name: "foo.FooBar".to_owned(),
+            span: 124..135,
+        }]
+    );
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo.bar; message FooBar {}"),
+            (
+                "root.proto",
+                r#"
+                syntax = 'proto3';
+
+                import "dep.proto";
+
+                message foo {
+                    .FooBar foobar = 1;
+                }"#
+            ),
+        ])
+        .unwrap_err(),
+        vec![TypeNameNotFound {
+            name: "FooBar".to_owned(),
+            span: 124..131,
+        }]
+    );
 }
 
 #[test]
 fn name_collision() {
-    // message vs message vs service etc
-    // field vs submessage
-    // message vs package
+    assert_eq!(
+        check_err(
+            "\
+            message Message {}
+            message Message {}
+            "
+        ),
+        vec![DuplicateNameInFile {
+            name: "Message".to_owned(),
+            first: 8..15,
+            second: 39..46,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            "\
+            message Message {}
+            enum Message {
+                ZERO = 1;
+            }"
+        ),
+        vec![DuplicateNameInFile {
+            name: "Message".to_owned(),
+            first: 8..15,
+            second: 36..43,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            "\
+            message Message {
+                optional int32 foo = 1;
+
+                enum foo {
+                    ZERO = 1;
+                }
+            }"
+        ),
+        vec![DuplicateNameInFile {
+            name: "Message.foo".to_owned(),
+            first: 49..52,
+            second: 80..83,
+        }],
+    );
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo;"),
+            ("root.proto", "import 'dep.proto'; message foo {}"),
+        ])
+        .unwrap_err(),
+        vec![DuplicateNameInFileAndImport {
+            name: "foo".to_owned(),
+            first_file: "dep.proto".to_owned(),
+            second: 28..31,
+        }],
+    );
 }
 
 #[test]

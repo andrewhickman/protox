@@ -7,3 +7,7 @@ message Foo {
 message Bar {
     optional sfixed64 _val = 1;
 }
+
+message Quz {
+    optional Bar val = 1;
+}

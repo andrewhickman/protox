@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "include/package.proto";
+import "include/no_package.proto";
+
+package foo.bar;
+
+message FooBar {}
+
+message Names {
+    .foo.bar.FooBar field1 = 1;
+    foo.bar.FooBar field2 = 2;
+    bar.FooBar field3 = 3;
+    FooBar field4 = 4;
+
+    .foo.Foo field5 = 5;
+    foo.Foo field6 = 6;
+    Foo field7 = 7;
+
+    .Bar field8 = 8;
+    Bar field9 = 9;
+}
