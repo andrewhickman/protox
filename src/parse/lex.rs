@@ -133,9 +133,11 @@ impl<'a> fmt::Display for Token<'a> {
                 }
             }
             Token::StringLiteral(bytes) => {
+                write!(f, "\"")?;
                 for &ch in bytes.as_ref() {
-                    write!(f, "\"{}\"", ascii::escape_default(ch))?;
+                    write!(f, "{}", ascii::escape_default(ch))?;
                 }
+                write!(f, "\"")?;
                 Ok(())
             }
             Token::Dot => write!(f, "."),

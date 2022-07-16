@@ -65,8 +65,13 @@ fn parse_text_format_message() {
     case!(parse_text_format_message_test("foo: [enum]"));
     case!(parse_text_format_message_test("foo: -enum"));
     case!(parse_text_format_message_test("foo: [-enum]"));
-    case!(parse_text_format_message_test("pot < kind: TULIP name: \"Bob\" legs: 0 >"));
-    case!(parse_text_format_message_test(r#"escapes: '\a\b\f\n\r\t\v\?\\\'\"\1\11\111\xa\xAA\u1111\U00101111'"#));
+    case!(parse_text_format_message_test(
+        "pot < kind: TULIP name: \"Bob\" legs: 0 >"
+    ));
+    case!(parse_text_format_message_test(
+        r#"escapes: '\a\b\f\n\r\t\v\?\\\'\"\1\11\111\xa\xAA\u1111\U00101111'"#
+    ));
+    case!(parse_text_format_message_test(r#"value: -'string'"#));
 }
 
 #[test]
@@ -86,6 +91,7 @@ fn parse_enum() {
     case!(parse_enum("enum Foo { BAR ."));
     case!(parse_enum("enum Foo { BAR = foo"));
     case!(parse_enum("enum Foo { message = 1; }"));
+    case!(parse_enum("enum \"Foo\""));
 }
 
 #[test]
@@ -208,6 +214,7 @@ pub fn parse_group() {
     case!(parse_field("optional group A = 1 ;"));
     case!(parse_field("optional group A = 1 {]"));
     case!(parse_field("optional group A = 1f { };"));
+    case!(parse_field("optional 'group' A = 1 { };"));
 }
 
 #[test]
