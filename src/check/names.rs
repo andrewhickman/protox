@@ -209,9 +209,10 @@ impl NamePass {
         }
 
         if let Some(package) = &file.ast.package {
-            let name = package.name.to_string();
-            self.add_name(&name, DefinitionKind::Package, Some(package.name.span()));
-            self.enter(&name);
+            for part in &package.name.parts {
+                self.add_name(&part.value, DefinitionKind::Package, Some(package.name.span().start..part.span.end));
+                self.enter(&part.value);
+            }
         }
 
         for message in &file.messages {
@@ -227,8 +228,10 @@ impl NamePass {
             }
         }
 
-        if file.ast.package.is_some() {
-            self.exit();
+        if let Some(package) = &file.ast.package {
+            for _ in &package.name.parts {
+                self.exit();
+            }
         }
     }
 
@@ -350,9 +353,9 @@ impl NamePass {
             );
         }
 
-        if file.package() != "" {
-            self.add_name(file.package(), DefinitionKind::Package, None);
-            self.enter(file.package());
+        for part in file.package().split('.') {
+            self.add_name(part, DefinitionKind::Package, None);
+            self.enter(part);
         }
 
         for message in &file.message_type {
@@ -371,7 +374,7 @@ impl NamePass {
             self.add_service_descriptor_proto(service);
         }
 
-        if file.package() != "" {
+        for _ in file.package().split('.') {
             self.exit();
         }
     }

@@ -369,7 +369,7 @@ fn name_resolution() {
 
                 import "dep.proto";
 
-                message foo {
+                message Foo {
                     .foo.FooBar foobar = 1;
                 }"#
             ),
@@ -390,7 +390,7 @@ fn name_resolution() {
 
                 import "dep.proto";
 
-                message foo {
+                message Foo {
                     .FooBar foobar = 1;
                 }"#
             ),
@@ -452,6 +452,18 @@ fn name_collision() {
     assert_eq!(
         check_with_imports(vec![
             ("dep.proto", "package foo;"),
+            ("root.proto", "import 'dep.proto'; message foo {}"),
+        ])
+        .unwrap_err(),
+        vec![DuplicateName(DuplicateNameError {
+            name: "foo".to_owned(),
+            first: NameLocation::Import("dep.proto".to_owned()),
+            second: NameLocation::Root(28..31),
+        })],
+    );
+    assert_eq!(
+        check_with_imports(vec![
+            ("dep.proto", "package foo.bar;"),
             ("root.proto", "import 'dep.proto'; message foo {}"),
         ])
         .unwrap_err(),
