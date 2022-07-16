@@ -77,6 +77,7 @@ pub(crate) enum Value {
     String(String),
     Bytes(Vec<u8>),
     Message(OptionSet),
+    Group(OptionSet),
     RepeatedFloat(Vec<f32>),
     RepeatedDouble(Vec<f64>),
     RepeatedBool(Vec<bool>),
@@ -93,11 +94,19 @@ pub(crate) enum Value {
     RepeatedString(Vec<String>),
     RepeatedBytes(Vec<Vec<u8>>),
     RepeatedMessage(Vec<OptionSet>),
+    RepeatedGroup(Vec<OptionSet>),
 }
 
 impl OptionSet {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn get_message_mut(&mut self, number: i32) -> &mut OptionSet {
+        match self.fields.entry(number as u32).or_insert_with(|| Value::Message(OptionSet::new())) {
+            Value::Message(message) => message,
+            _ => panic!("type mismatch"),
+        }
     }
 
     pub fn set(&mut self, key: i32, value: Value) -> bool {
@@ -171,6 +180,10 @@ impl OptionSet {
                     list.push(value);
                     true
                 }
+                (Value::RepeatedGroup(list), Value::Group(value)) => {
+                    list.push(value);
+                    true
+                }
                 (Value::RepeatedFloat(list), Value::RepeatedFloat(values)) => {
                     list.extend(values);
                     true
@@ -235,6 +248,10 @@ impl OptionSet {
                     list.extend(values);
                     true
                 }
+                (Value::RepeatedGroup(list), Value::RepeatedGroup(values)) => {
+                    list.extend(values);
+                    true
+                }
                 _ => false,
             },
         }
@@ -265,6 +282,7 @@ impl Message for OptionSet {
                 Value::String(value) => prost::encoding::string::encode(tag, value, buf),
                 Value::Bytes(value) => prost::encoding::bytes::encode(tag, value, buf),
                 Value::Message(value) => prost::encoding::message::encode(tag, value, buf),
+                Value::Group(value) => prost::encoding::group::encode(tag, value, buf),
                 Value::RepeatedFloat(values) => {
                     prost::encoding::float::encode_repeated(tag, values, buf)
                 }
@@ -313,6 +331,9 @@ impl Message for OptionSet {
                 Value::RepeatedMessage(values) => {
                     prost::encoding::message::encode_repeated(tag, values, buf)
                 }
+                Value::RepeatedGroup(values) => {
+                    prost::encoding::group::encode_repeated(tag, values, buf)
+                }
             }
         }
     }
@@ -337,6 +358,7 @@ impl Message for OptionSet {
                 Value::String(value) => len += prost::encoding::string::encoded_len(tag, value),
                 Value::Bytes(value) => len += prost::encoding::bytes::encoded_len(tag, value),
                 Value::Message(value) => len += prost::encoding::message::encoded_len(tag, value),
+                Value::Group(value) => len += prost::encoding::group::encoded_len(tag, value),
                 Value::RepeatedFloat(values) => {
                     len += prost::encoding::float::encoded_len_repeated(tag, values)
                 }
@@ -384,6 +406,9 @@ impl Message for OptionSet {
                 }
                 Value::RepeatedMessage(values) => {
                     len += prost::encoding::message::encoded_len_repeated(tag, values)
+                }
+                Value::RepeatedGroup(values) => {
+                    len += prost::encoding::group::encoded_len_repeated(tag, values)
                 }
             }
         }

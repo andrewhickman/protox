@@ -164,4 +164,16 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("unknown field '{name}' for '{namespace}'")]
+    OptionUnknownField {
+        name: String,
+        namespace: String,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("cannot set field for scalar type")]
+    OptionScalarFieldAccess {
+        #[label("defined here")]
+        span: Span,
+    },
 }

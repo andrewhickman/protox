@@ -41,6 +41,7 @@ bytes = "1.1.0"
 clap = { version = "3.2.6", features = ["derive"], optional = true }
 logos = "0.12.0"
 miette = "5.1.0"
+once_cell = { version = "1.12.0", default_features = false }
 prost = "0.10.4"
 prost-types = "0.10.1"
 thiserror = "1.0.31"
@@ -48,7 +49,6 @@ thiserror = "1.0.31"
 [dev-dependencies]
 assert_fs = "1.0.7"
 insta = "1.15.0"
-once_cell = "1.12.0"
 proptest = "1.0.0"
 prost-build = { version = "0.10.4", features = ["vendored"] }
 prost-reflect = { version = "0.8.1", features = ["serde", "reflect-well-known-types"] }

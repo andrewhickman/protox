@@ -1,6 +1,7 @@
 use std::{
+    borrow::Cow,
     collections::{hash_map, HashMap},
-    fmt::Display,
+    fmt::Display, any::type_name,
 };
 
 use logos::Span;
@@ -8,7 +9,8 @@ use logos::Span;
 use crate::{
     ast,
     case::{to_json_name, to_lower_without_underscores},
-    options::{OptionSet, self},
+    make_absolute_name, make_name,
+    options::{self, OptionSet},
     s,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
@@ -16,7 +18,7 @@ use crate::{
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
         FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
         ServiceDescriptorProto,
-    }, make_name, make_absolute_name,
+    },
 };
 
 use super::{
@@ -273,7 +275,10 @@ impl<'a> Context<'a> {
         };
 
         if let ir::MessageSource::Map(_) = &message.ast {
-            options.get_or_insert_with(Default::default).set(options::MESSAGE_MAP_ENTRY, options::Value::Bool(true));
+            // TODO this might panic if user defines their own google.protobuf.MessageOptions.
+            options
+                .get_or_insert_with(Default::default)
+                .set(options::MESSAGE_MAP_ENTRY, options::Value::Bool(true));
         };
 
         self.exit();
@@ -752,86 +757,237 @@ impl<'a> Context<'a> {
     }
 
     fn check_file_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
-        }
-
-        #[allow(clippy::all)]
-        if self.name_map.is_some() {
-            // build options set
-        } else {
-            // set uninterpreted option
-        }
-        // todo!()
-        None
+        self.check_options(
+            "google.protobuf.FileOptions",
+            options.iter().map(|o| &o.body),
+        )
     }
 
     fn check_message_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
-        }
-
-        // todo!()
-        None
+        self.check_options(
+            "google.protobuf.MessageOptions",
+            options.iter().map(|o| &o.body),
+        )
     }
 
     fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        let _options = options?;
-
-        // todo!()
-        None
+        self.check_options(
+            "google.protobuf.FieldOptions",
+            options.iter().flat_map(|o| o.options.iter()),
+        )
     }
 
     fn check_extension_range_options(
         &mut self,
         options: Option<&ast::OptionList>,
     ) -> Option<OptionSet> {
-        let _options = options?;
-
-        // todo!()
-        None
+        self.check_options(
+            "google.protobuf.ExtensionRangeOptions",
+            options.iter().flat_map(|o| o.options.iter()),
+        )
     }
 
-    fn check_oneof_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
+    fn check_oneof_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
+        self.check_options(
+            "google.protobuf.OneofOptions",
+            options.iter().map(|o| &o.body),
+        )
+    }
+
+    fn check_enum_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
+        self.check_options(
+            "google.protobuf.EnumOptions",
+            options.iter().map(|o| &o.body),
+        )
+    }
+
+    fn check_enum_value_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
+        self.check_options(
+            "google.protobuf.EnumValueOptions",
+            options.iter().flat_map(|o| o.options.iter()),
+        )
+    }
+
+    fn check_service_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
+        self.check_options(
+            "google.protobuf.ServiceOptions",
+            options.iter().map(|o| &o.body),
+        )
+    }
+
+    fn check_method_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
+        self.check_options(
+            "google.protobuf.MethodOptions",
+            options.iter().map(|o| &o.body),
+        )
+    }
+
+    fn check_options<'b>(
+        &mut self,
+        message_name: &str,
+        options: impl Iterator<Item = &'b ast::OptionBody>,
+    ) -> Option<OptionSet> {
+        let mut result = None;
+
+        for option in options {
+            let mut message = result.get_or_insert_with(OptionSet::new);
+            let _ = self.check_option(message, message_name, option);
         }
 
-        // todo!()
-        None
+        result
     }
 
-    fn check_enum_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
+    fn check_option(
+        &mut self,
+        mut result: &mut OptionSet,
+        namespace: &str,
+        option: &ast::OptionBody,
+    ) -> Result<(), ()> {
+        let names = self.google_descriptor();
+
+        let mut number = 0;
+        let mut ty = None;
+        let mut type_name = Some(Cow::Borrowed(namespace));
+
+        for part in &option.name {
+            let namespace = match (ty, &type_name) {
+                (None | Some(field_descriptor_proto::Type::Message | field_descriptor_proto::Type::Group), Some(name)) => name.as_ref(),
+                _ => {
+                    self.errors.push(CheckError::OptionScalarFieldAccess { span: part.span() });
+                    return Err(());
+                }
+            };
+
+            if number != 0 {
+                result = result.get_message_mut(number);
+            }
+
+            match part {
+                ast::OptionNamePart::Ident(name) => {
+                    let full_name = make_name(namespace, name);
+                    if let Some(DefinitionKind::Field {
+                        number: field_number,
+                        ty: field_ty,
+                        type_name: field_type_name,
+                        extendee: None,
+                        ..
+                    }) = names.get(&full_name)
+                    {
+                        number = *field_number;
+                        ty = *field_ty;
+                        type_name = field_type_name.as_deref().map(Cow::Borrowed);
+                    } else {
+                        self.errors.push(CheckError::OptionUnknownField {
+                            name: name.to_string(),
+                            namespace: namespace.to_owned(),
+                            span: name.span.clone(),
+                        });
+                        return Err(());
+                    }
+                }
+                ast::OptionNamePart::Extension(_, _) => todo!(),
+            }
         }
 
-        // todo!()
-        None
+        let value = match ty {
+            Some(field_descriptor_proto::Type::Double) => options::Value::Double(self.check_option_value_f64(&option.value)?),
+            Some(field_descriptor_proto::Type::Float) => options::Value::Float(self.check_option_value_f64(&option.value)? as f32),
+            Some(field_descriptor_proto::Type::Int32) => options::Value::Int32(self.check_option_value_i32(&option.value)?),
+            Some(field_descriptor_proto::Type::Int64) => options::Value::Int64(self.check_option_value_i64(&option.value)?),
+            Some(field_descriptor_proto::Type::Uint32) => options::Value::Uint32(self.check_option_value_u32(&option.value)?),
+            Some(field_descriptor_proto::Type::Uint64) => options::Value::Uint64(self.check_option_value_u64(&option.value)?),
+            Some(field_descriptor_proto::Type::Sint32) => options::Value::Sint32(self.check_option_value_i32(&option.value)?),
+            Some(field_descriptor_proto::Type::Sint64) => options::Value::Sint64(self.check_option_value_i64(&option.value)?),
+            Some(field_descriptor_proto::Type::Fixed32) => options::Value::Fixed32(self.check_option_value_u32(&option.value)?),
+            Some(field_descriptor_proto::Type::Fixed64) => options::Value::Fixed64(self.check_option_value_u64(&option.value)?),
+            Some(field_descriptor_proto::Type::Sfixed32) => options::Value::Sfixed32(self.check_option_value_i32(&option.value)?),
+            Some(field_descriptor_proto::Type::Sfixed64) => options::Value::Sfixed64(self.check_option_value_i64(&option.value)?),
+            Some(field_descriptor_proto::Type::Bool) => options::Value::Bool(self.check_option_value_bool(&option.value)?),
+            Some(field_descriptor_proto::Type::String) => options::Value::String(self.check_option_value_string(&option.value)?),
+            Some(field_descriptor_proto::Type::Bytes) => options::Value::Bytes(self.check_option_value_bytes(&option.value)?),
+            None | Some(field_descriptor_proto::Type::Enum | field_descriptor_proto::Type::Message | field_descriptor_proto::Type::Group) => {
+                if let Some(name_map) = &self.name_map {
+                    let type_name = type_name.as_deref().unwrap_or_default();
+                    // TODO need full resolution algorithm
+                    match name_map.get(type_name) {
+                        Some(DefinitionKind::Message) => {
+                            let value = self.check_option_value_message(&option.value, type_name, name_map)?;
+                            if ty == Some(field_descriptor_proto::Type::Group) {
+                                options::Value::Group(value)
+                            } else {
+                                options::Value::Message(value)
+                            }
+                        }
+                        Some(DefinitionKind::Enum) => {
+                            let value = self.check_option_value_enum(&option.value, type_name, name_map)?;
+                            options::Value::Int32(value)
+                        }
+                        Some(_) => {
+                            self.errors.push(CheckError::InvalidOptionTypeName {
+
+                            });
+                            return Err(());
+                        },
+                        None => {
+                            self.errors.push(CheckError::TypeNameNotFound {
+                                name: type_name.to_owned(),
+                                span: option.name_span(),
+                            });
+                            return Err(());
+                        },
+                    }
+                } else {
+                    return Ok(())
+                }
+            },
+        };
+
+        result.set(number, value);
+        Ok(())
     }
 
-    fn check_enum_value_options(&self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        let _options = options?;
-
-        // todo!()
-        None
+    fn check_option_value_f64(&self, value: &ast::OptionValue) -> Result<f64, ()> {
+        todo!()
     }
 
-    fn check_service_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
-        }
-
-        // todo!()
-        None
+    fn check_option_value_i32(&self, value: &ast::OptionValue) -> Result<i32, ()> {
+        todo!()
     }
 
-    fn check_method_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
-        if options.is_empty() {
-            return None;
-        }
+    fn check_option_value_i64(&self, value: &ast::OptionValue) -> Result<i64, ()> {
+        todo!()
+    }
 
-        // todo!()
-        None
+    fn check_option_value_u32(&self, value: &ast::OptionValue) -> Result<u32, ()> {
+        todo!()
+    }
+
+    fn check_option_value_u64(&self, value: &ast::OptionValue) -> Result<u64, ()> {
+        todo!()
+    }
+
+    fn check_option_value_bool(&self, value: &ast::OptionValue) -> Result<bool, ()> {
+        todo!()
+    }
+
+    fn check_option_value_string(&self, value: &ast::OptionValue) -> Result<String, ()> {
+        todo!()
+    }
+
+    fn check_option_value_bytes(&self, value: &ast::OptionValue) -> Result<Vec<u8>, ()> {
+        todo!()
+    }
+
+    fn check_option_value_message(&self, value: &ast::OptionValue, type_name: &str, name_map: &NameMap) -> Result<OptionSet, ()> {
+        todo!()
+    }
+
+    fn check_option_value_enum(&self, value: &ast::OptionValue, type_name: &str, name_map: &NameMap) -> Result<i32, ()> {
+        todo!()
+    }
+
+    fn google_descriptor(&self) -> &NameMap {
+        // TODO import extensions from current context if available
+        NameMap::google_descriptor()
     }
 }

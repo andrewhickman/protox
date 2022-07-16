@@ -596,6 +596,12 @@ fn proto2_enum_in_proto3_message() {}
 #[test]
 fn proto3_enum_default() {}
 
+#[test]
+fn option_unknown_field() {}
+
+#[test]
+fn option_unknown_extension() {}
+
 /*
 syntax = 'proto2';
 
@@ -1061,5 +1067,71 @@ extend google.protobuf.FileOptions {
 message Foo {
     optional group Foo = 1 {};
 }
+
+*/
+
+
+/*
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo: 1
+};
+option (a).foo = 2;
+option (a).bar = 2;
+
+extend google.protobuf.FileOptions {
+    optional Foo a = 1001;
+}
+
+message Foo {
+    repeated int32 foo = 1;
+    optional int32 bar = 2;
+}
+
+*/
+
+
+/*
+
+
+foo.proto:8:8: Option field "(a)" is a repeated message. Repeated message options must be initialized using an aggregate value.
+
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+option (a) = {
+    foo: 1
+};
+option (a).foo = 2;
+
+extend google.protobuf.FileOptions {
+    repeated Foo a = 1001;
+}
+
+message Foo {
+    repeated int32 foo = 1;
+    optional int32 bar = 2;
+}
+
+
+*/
+
+
+/*
+
+syntax = "proto3";
+
+package google.protobuf;
+
+message FileOptions {
+    optional string java_outer_classname = 1;
+}
+
+option java_outer_classname = "ClassName";
 
 */

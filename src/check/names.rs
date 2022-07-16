@@ -3,19 +3,23 @@ use std::{
     collections::{hash_map, HashMap},
     fmt,
     iter::once,
+    mem,
 };
 
 use logos::Span;
 use miette::{Diagnostic, LabeledSpan};
+use once_cell::sync::Lazy;
 
 use crate::{
     ast,
     compile::{ParsedFile, ParsedFileMap},
-    index_to_i32,
+    file::GoogleFileResolver,
+    index_to_i32, make_name,
     types::{
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-    }, make_name,
+    },
+    Compiler,
 };
 
 use super::{ir, CheckError};
@@ -35,7 +39,7 @@ pub(crate) enum NameLocation {
 }
 
 /// A simple map of all definitions in a proto file for checking downstream files.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct NameMap {
     map: HashMap<String, Entry>,
 }
@@ -107,10 +111,21 @@ impl NameMap {
         }
     }
 
+    pub fn google_descriptor() -> &'static Self {
+        static INSTANCE: Lazy<NameMap> = Lazy::new(|| {
+            let mut compiler = Compiler::with_file_resolver(GoogleFileResolver::new());
+            compiler
+                .add_file("google/protobuf/descriptor.proto")
+                .expect("invalid descriptor.proto");
+            let mut file_map = compiler.into_parsed_file_map();
+            mem::take(&mut file_map["google/protobuf/descriptor.proto"].name_map)
+        });
+
+        &INSTANCE
+    }
+
     fn new() -> Self {
-        NameMap {
-            map: HashMap::new(),
-        }
+        NameMap::default()
     }
 
     fn add(

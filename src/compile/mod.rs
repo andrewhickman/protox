@@ -228,6 +228,10 @@ impl Compiler {
         prost_types::FileDescriptorSet { file }
     }
 
+    pub(crate) fn into_parsed_file_map(self) -> ParsedFileMap {
+        self.file_map
+    }
+
     fn add_import(
         &mut self,
         file_name: &str,
