@@ -39,7 +39,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           component: clippy, rustfmt
       - run: cargo fmt --all -- --check
-      - run: cargo clippy -- -D -warnings
+      - run: cargo clippy -- -D warnings
 
   coverage:
     name: Coverage
