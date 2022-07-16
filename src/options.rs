@@ -1,11 +1,58 @@
-#![allow(unused)]
-
 use std::collections::btree_map::{self, BTreeMap};
-use std::slice;
 
 use bytes::{Buf, BufMut};
-use prost::encoding::{self, DecodeContext, WireType};
+use prost::encoding::{DecodeContext, WireType};
 use prost::{DecodeError, Message};
+
+pub(crate) const FILE_JAVA_PACKAGE: i32 = 1;
+pub(crate) const FILE_JAVA_OUTER_CLASSNAME: i32 = 8;
+pub(crate) const FILE_JAVA_MULTIPLE_FILES: i32 = 10;
+pub(crate) const FILE_JAVA_GENERATE_EQUALS_AND_HASH: i32 = 20;
+pub(crate) const FILE_JAVA_STRING_CHECK_UTF8: i32 = 27;
+pub(crate) const FILE_OPTIMIZE_FOR: i32 = 9;
+pub(crate) const FILE_GO_PACKAGE: i32 = 11;
+pub(crate) const FILE_CC_GENERIC_SERVICES: i32 = 16;
+pub(crate) const FILE_JAVA_GENERIC_SERVICES: i32 = 17;
+pub(crate) const FILE_PY_GENERIC_SERVICES: i32 = 18;
+pub(crate) const FILE_PHP_GENERIC_SERVICES: i32 = 42;
+pub(crate) const FILE_DEPRECATED: i32 = 23;
+pub(crate) const FILE_CC_ENABLE_ARENAS: i32 = 31;
+pub(crate) const FILE_OBJC_CLASS_PREFIX: i32 = 36;
+pub(crate) const FILE_CSHARP_NAMESPACE: i32 = 37;
+pub(crate) const FILE_SWIFT_PREFIX: i32 = 39;
+pub(crate) const FILE_PHP_CLASS_PREFIX: i32 = 40;
+pub(crate) const FILE_PHP_NAMESPACE: i32 = 41;
+pub(crate) const FILE_PHP_METADATA_NAMESPACE: i32 = 44;
+pub(crate) const FILE_RUBY_PACKAGE: i32 = 45;
+pub(crate) const FILE_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const MESSAGE_MESSAGE_SET_WIRE_FORMAT: i32 = 1;
+pub(crate) const MESSAGE_NO_STANDARD_DESCRIPTOR_ACCESSOR: i32 = 2;
+pub(crate) const MESSAGE_DEPRECATED: i32 = 3;
+pub(crate) const MESSAGE_MAP_ENTRY: i32 = 7;
+pub(crate) const MESSAGE_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const FIELD_CTYPE: i32 = 1;
+pub(crate) const FIELD_PACKED: i32 = 2;
+pub(crate) const FIELD_JSTYPE: i32 = 6;
+pub(crate) const FIELD_LAZY: i32 = 5;
+pub(crate) const FIELD_DEPRECATED: i32 = 3;
+pub(crate) const FIELD_WEAK: i32 = 10;
+pub(crate) const FIELD_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const ENUM_ALLOW_ALIAS: i32 = 2;
+pub(crate) const ENUM_DEPRECATED: i32 = 3;
+pub(crate) const ENUM_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const ENUM_VALUE_DEPRECATED: i32 = 1;
+pub(crate) const ENUM_VALUE_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const SERVICE_DEPRECATED: i32 = 33;
+pub(crate) const SERVICE_UNINTERPRETED_OPTION: i32 = 999;
+
+pub(crate) const METHOD_DEPRECATED: i32 = 33;
+pub(crate) const METHOD_IDEMPOTENCY_LEVEL: i32 = 34;
+pub(crate) const METHOD_UNINTERPRETED_OPTION: i32 = 999;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct OptionSet {
@@ -51,6 +98,146 @@ pub(crate) enum Value {
 impl OptionSet {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn set(&mut self, key: i32, value: Value) -> bool {
+        match self.fields.entry(key as u32) {
+            btree_map::Entry::Vacant(entry) => {
+                entry.insert(value);
+                true
+            }
+            btree_map::Entry::Occupied(mut entry) => match (entry.get_mut(), value) {
+                (Value::RepeatedFloat(list), Value::Float(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedDouble(list), Value::Double(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedBool(list), Value::Bool(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedInt32(list), Value::Int32(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedInt64(list), Value::Int64(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedUint32(list), Value::Uint32(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedUint64(list), Value::Uint64(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedFixed32(list), Value::Fixed32(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedFixed64(list), Value::Fixed64(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedSint32(list), Value::Sint32(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedSint64(list), Value::Sint64(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedSfixed32(list), Value::Sfixed32(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedSfixed64(list), Value::Sfixed64(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedString(list), Value::String(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedBytes(list), Value::Bytes(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedMessage(list), Value::Message(value)) => {
+                    list.push(value);
+                    true
+                }
+                (Value::RepeatedFloat(list), Value::RepeatedFloat(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedDouble(list), Value::RepeatedDouble(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedBool(list), Value::RepeatedBool(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedInt32(list), Value::RepeatedInt32(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedInt64(list), Value::RepeatedInt64(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedUint32(list), Value::RepeatedUint32(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedUint64(list), Value::RepeatedUint64(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedFixed32(list), Value::RepeatedFixed32(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedFixed64(list), Value::RepeatedFixed64(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedSint32(list), Value::RepeatedSint32(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedSint64(list), Value::RepeatedSint64(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedSfixed32(list), Value::RepeatedSfixed32(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedSfixed64(list), Value::RepeatedSfixed64(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedString(list), Value::RepeatedString(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedBytes(list), Value::RepeatedBytes(values)) => {
+                    list.extend(values);
+                    true
+                }
+                (Value::RepeatedMessage(list), Value::RepeatedMessage(values)) => {
+                    list.extend(values);
+                    true
+                }
+                _ => false,
+            },
+        }
     }
 }
 

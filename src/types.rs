@@ -5,8 +5,8 @@ use prost::Message;
 
 #[allow(unused_imports)]
 pub(crate) use prost_types::{
-    field_descriptor_proto, source_code_info, uninterpreted_option,
-    SourceCodeInfo, UninterpretedOption, enum_descriptor_proto
+    enum_descriptor_proto, field_descriptor_proto, source_code_info, uninterpreted_option,
+    SourceCodeInfo, UninterpretedOption,
 };
 
 use crate::options::OptionSet;
@@ -70,18 +70,18 @@ pub(crate) struct DescriptorProto {
 }
 
 pub(crate) mod descriptor_proto {
-    use prost::Message;
     use crate::options::OptionSet;
+    use prost::Message;
 
     pub(crate) use prost_types::descriptor_proto::ReservedRange;
 
     #[derive(Clone, PartialEq, Message)]
     pub(crate) struct ExtensionRange {
-        #[prost(int32, optional, tag="1")]
+        #[prost(int32, optional, tag = "1")]
         pub start: Option<i32>,
-        #[prost(int32, optional, tag="2")]
+        #[prost(int32, optional, tag = "2")]
         pub end: Option<i32>,
-        #[prost(message, optional, tag="3")]
+        #[prost(message, optional, tag = "3")]
         pub options: Option<OptionSet>,
     }
 }

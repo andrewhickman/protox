@@ -8,14 +8,14 @@ use logos::Span;
 use crate::{
     ast,
     case::{to_json_name, to_lower_without_underscores},
-    options::OptionSet,
+    options::{OptionSet, self},
     s,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
         enum_descriptor_proto::EnumReservedRange,
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
-        FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
-        OneofDescriptorProto, ServiceDescriptorProto,
+        FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
+        ServiceDescriptorProto,
     },
 };
 
@@ -273,8 +273,7 @@ impl<'a> Context<'a> {
         };
 
         if let ir::MessageSource::Map(_) = &message.ast {
-            todo!()
-            // options.get_or_insert_with(Default::default).map_entry = Some(true);
+            options.get_or_insert_with(Default::default).set(options::MESSAGE_MAP_ENTRY, options::Value::Bool(true));
         };
 
         self.exit();
@@ -811,10 +810,7 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn check_enum_value_options(
-        &self,
-        options: Option<&ast::OptionList>,
-    ) -> Option<OptionSet> {
+    fn check_enum_value_options(&self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
         let _options = options?;
 
         // todo!()
