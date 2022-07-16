@@ -11,13 +11,15 @@ mod check;
 mod compile;
 mod error;
 mod lines;
+mod options;
 mod parse;
+mod types;
 
 use std::sync::Arc;
 use std::{convert::TryInto, path::Path};
 
 use logos::Span;
-use prost_types::{FileDescriptorProto, FileDescriptorSet};
+use prost::Message;
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -121,7 +123,7 @@ pub use self::error::Error;
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
-) -> Result<FileDescriptorSet, Error> {
+) -> Result<prost_types::FileDescriptorSet, Error> {
     let mut compiler = compile::Compiler::new(includes)?;
 
     compiler.include_source_info(true);
@@ -134,7 +136,7 @@ pub fn compile(
     Ok(compiler.file_descriptor_set())
 }
 
-/// Parses a single protobuf source file into a [`FileDescriptorProto`].
+/// Parses a single protobuf source file into a [`FileDescriptorProto`](prost_types::FileDescriptorProto).
 ///
 /// This function only looks at the syntax of the file, without resolving type names or reading
 /// imported files.
@@ -186,11 +188,13 @@ pub fn compile(
 ///     ..Default::default()
 /// })
 /// ```
-pub fn parse(source: &str) -> Result<FileDescriptorProto, Error> {
+pub fn parse(source: &str) -> Result<prost_types::FileDescriptorProto, Error> {
     let ast =
         parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;
-    check::check(&ast, None, Some(source))
-        .map_err(|errors| Error::check_errors(errors, Arc::from(source)))
+    match check::check(&ast, None, Some(source)) {
+        Ok(file) => Ok(transcode_file(&file, &mut Vec::new())),
+        Err(errors) => Err(Error::check_errors(errors, Arc::from(source))),
+    }
 }
 
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
@@ -207,6 +211,18 @@ fn s(s: impl ToString) -> Option<String> {
 
 fn join_span(start: Span, end: Span) -> Span {
     start.start..end.end
+}
+
+fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U
+where
+    T: Message,
+    U: Message + Default,
+{
+    buf.clear();
+    buf.reserve(file.encoded_len());
+    file.encode(buf)
+        .expect("vec should have sufficient capacity");
+    U::decode(buf.as_slice()).expect("incompatible message types")
 }
 
 #[cfg(test)]

@@ -1,10 +1,9 @@
 use std::{fs, io, iter::once};
 
 use assert_fs::TempDir;
-use prost_types::FileDescriptorProto;
 
 use super::*;
-use crate::with_current_dir;
+use crate::{types::FileDescriptorProto, with_current_dir};
 
 const EMPTY: &[u8] = &[];
 const INVALID_UTF8: &[u8] = &[255];

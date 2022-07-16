@@ -7,9 +7,8 @@ use std::{
 };
 
 use logos::Span;
-use prost_types::field_descriptor_proto;
 
-use crate::{case::to_pascal_case, index_to_i32, join_span};
+use crate::{case::to_pascal_case, index_to_i32, join_span, types::field_descriptor_proto};
 
 pub(crate) mod text_format;
 

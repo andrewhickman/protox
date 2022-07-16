@@ -4,19 +4,19 @@ use std::{
 };
 
 use logos::Span;
-use prost_types::{
-    descriptor_proto::{ExtensionRange, ReservedRange},
-    enum_descriptor_proto::EnumReservedRange,
-    field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumOptions,
-    EnumValueDescriptorProto, EnumValueOptions, ExtensionRangeOptions, FieldDescriptorProto,
-    FieldOptions, FileDescriptorProto, FileOptions, MessageOptions, MethodDescriptorProto,
-    MethodOptions, OneofDescriptorProto, OneofOptions, ServiceDescriptorProto, ServiceOptions,
-};
 
 use crate::{
     ast,
     case::{to_json_name, to_lower_without_underscores},
+    options::OptionSet,
     s,
+    types::{
+        descriptor_proto::{ExtensionRange, ReservedRange},
+        enum_descriptor_proto::EnumReservedRange,
+        field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
+        FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
+        OneofDescriptorProto, ServiceDescriptorProto,
+    },
 };
 
 use super::{
@@ -273,7 +273,8 @@ impl<'a> Context<'a> {
         };
 
         if let ir::MessageSource::Map(_) = &message.ast {
-            options.get_or_insert_with(Default::default).map_entry = Some(true);
+            todo!()
+            // options.get_or_insert_with(Default::default).map_entry = Some(true);
         };
 
         self.exit();
@@ -459,10 +460,12 @@ impl<'a> Context<'a> {
         match ty {
             ast::Ty::Named(type_name) => match self.resolve_type_name(type_name) {
                 (name, None) => (None, Some(name)),
-                (name, Some(DefinitionKind::Message)) => if is_group {
-                    (Some(field_descriptor_proto::Type::Group as _), Some(name))
-                } else {
-                    (Some(field_descriptor_proto::Type::Message as _), Some(name))
+                (name, Some(DefinitionKind::Message)) => {
+                    if is_group {
+                        (Some(field_descriptor_proto::Type::Group as _), Some(name))
+                    } else {
+                        (Some(field_descriptor_proto::Type::Message as _), Some(name))
+                    }
                 }
                 (name, Some(DefinitionKind::Enum)) => {
                     (Some(field_descriptor_proto::Type::Enum as _), Some(name))
@@ -651,10 +654,7 @@ impl<'a> Context<'a> {
         let name = s(&method.name);
 
         let (input_type, kind) = self.resolve_type_name(&method.input_ty);
-        if !matches!(
-            kind,
-            None | Some(DefinitionKind::Message)
-        ) {
+        if !matches!(kind, None | Some(DefinitionKind::Message)) {
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.input_ty.to_string(),
                 kind: "input",
@@ -663,10 +663,7 @@ impl<'a> Context<'a> {
         }
 
         let (output_type, kind) = self.resolve_type_name(&method.output_ty);
-        if !matches!(
-            kind,
-            None | Some(DefinitionKind::Message)
-        ) {
+        if !matches!(kind, None | Some(DefinitionKind::Message)) {
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.output_ty.to_string(),
                 kind: "output",
@@ -755,7 +752,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_file_options(&mut self, options: &[ast::Option]) -> Option<FileOptions> {
+    fn check_file_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }
@@ -770,7 +767,7 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn check_message_options(&mut self, options: &[ast::Option]) -> Option<MessageOptions> {
+    fn check_message_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }
@@ -779,7 +776,7 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<FieldOptions> {
+    fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
         let _options = options?;
 
         // todo!()
@@ -789,14 +786,14 @@ impl<'a> Context<'a> {
     fn check_extension_range_options(
         &mut self,
         options: Option<&ast::OptionList>,
-    ) -> Option<ExtensionRangeOptions> {
+    ) -> Option<OptionSet> {
         let _options = options?;
 
         // todo!()
         None
     }
 
-    fn check_oneof_options(&self, options: &[ast::Option]) -> Option<OneofOptions> {
+    fn check_oneof_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }
@@ -805,7 +802,7 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn check_enum_options(&self, options: &[ast::Option]) -> Option<EnumOptions> {
+    fn check_enum_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }
@@ -817,14 +814,14 @@ impl<'a> Context<'a> {
     fn check_enum_value_options(
         &self,
         options: Option<&ast::OptionList>,
-    ) -> Option<EnumValueOptions> {
+    ) -> Option<OptionSet> {
         let _options = options?;
 
         // todo!()
         None
     }
 
-    fn check_service_options(&self, options: &[ast::Option]) -> Option<ServiceOptions> {
+    fn check_service_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }
@@ -833,7 +830,7 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn check_method_options(&self, options: &[ast::Option]) -> Option<MethodOptions> {
+    fn check_method_options(&self, options: &[ast::Option]) -> Option<OptionSet> {
         if options.is_empty() {
             return None;
         }

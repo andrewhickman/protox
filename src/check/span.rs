@@ -1,8 +1,11 @@
 use logos::Span;
-use prost_types::{source_code_info::Location, SourceCodeInfo};
 
 use super::ir;
-use crate::{ast, index_to_i32, lines::LineResolver};
+use crate::{
+    ast, index_to_i32,
+    lines::LineResolver,
+    types::{source_code_info::Location, SourceCodeInfo},
+};
 
 impl<'a> ir::File<'a> {
     pub fn get_source_code_info(&self, source: &str) -> SourceCodeInfo {

@@ -41,7 +41,6 @@ bytes = "1.1.0"
 clap = { version = "3.2.6", features = ["derive"], optional = true }
 logos = "0.12.0"
 miette = "5.1.0"
-once_cell = { version = "1.12.0", default-features = false }
 prost = "0.10.4"
 prost-types = "0.10.1"
 thiserror = "1.0.31"

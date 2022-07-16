@@ -2,16 +2,14 @@ use std::ops::Range;
 
 use logos::Span;
 use miette::Diagnostic;
-use prost_types::FileDescriptorProto;
 use thiserror::Error;
 
-use crate::{ast, compile::ParsedFileMap};
+use crate::{ast, compile::ParsedFileMap, types::FileDescriptorProto};
 
 #[allow(clippy::module_inception)]
 mod check;
 mod ir;
 mod names;
-mod options;
 mod span;
 #[cfg(test)]
 mod tests;

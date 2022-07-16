@@ -6,7 +6,9 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use super::CheckError::*;
 use super::*;
-use crate::{error::ErrorKind, file::File, file::FileResolver, Compiler, Error, check::names::NameLocation};
+use crate::{
+    check::names::NameLocation, error::ErrorKind, file::File, file::FileResolver, Compiler, Error,
+};
 
 struct TestFileResolver {
     files: HashMap<String, String>,

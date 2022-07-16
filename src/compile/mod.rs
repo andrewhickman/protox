@@ -8,7 +8,6 @@ use std::{
 
 use logos::Span;
 use miette::NamedSource;
-use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     ast,
@@ -18,7 +17,9 @@ use crate::{
         check_shadow, path_to_file_name, ChainFileResolver, FileResolver, GoogleFileResolver,
         IncludeFileResolver,
     },
-    parse, MAX_FILE_LEN,
+    parse, transcode_file,
+    types::FileDescriptorProto,
+    MAX_FILE_LEN,
 };
 
 #[cfg(test)]
@@ -79,7 +80,8 @@ impl Compiler {
     /// Set whether the output `FileDescriptorSet` should include source info.
     ///
     /// If set, the file descriptors returned by [`file_descriptor_set`](Compiler::file_descriptor_set) will have
-    /// the [`FileDescriptorProto::source_code_info`] field populated with source locations and comments.
+    /// the [`FileDescriptorProto::source_code_info`](prost_types::FileDescriptorProto::source_code_info) field
+    /// populated with source locations and comments.
     pub fn include_source_info(&mut self, yes: bool) -> &mut Self {
         self.include_source_info = yes;
         self
@@ -175,19 +177,19 @@ impl Compiler {
     // - how do we handle resolution of relative type names etc?
 
     #[doc(hidden)]
-    pub fn add_file_descriptor_proto(&mut self, descriptor: FileDescriptorProto) -> Result<&mut Self, Error> {
+    pub fn add_file_descriptor_proto(
+        &mut self,
+        descriptor: prost_types::FileDescriptorProto,
+    ) -> Result<&mut Self, Error> {
         if self.file_map.file_names.contains_key(descriptor.name()) {
             return Ok(self);
         }
 
+        let descriptor: FileDescriptorProto = transcode_file(&descriptor, &mut Vec::new());
+
         let mut import_stack = vec![descriptor.name().to_owned()];
         for import in &descriptor.dependency {
-            self.add_import(
-                import,
-                None,
-                &mut import_stack,
-                DynSourceCode::default(),
-            )?;
+            self.add_import(import, None, &mut import_stack, DynSourceCode::default())?;
         }
 
         let name_map = NameMap::from_proto(&descriptor, &self.file_map)
@@ -202,26 +204,28 @@ impl Compiler {
         Ok(self)
     }
 
-    /// Convert all added files into an instance of [`FileDescriptorSet`].
+    /// Convert all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet).
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
-    pub fn file_descriptor_set(&self) -> FileDescriptorSet {
+    pub fn file_descriptor_set(&self) -> prost_types::FileDescriptorSet {
+        let mut buf = Vec::new();
+
         let file = if self.include_imports {
             self.file_map
                 .files
                 .iter()
-                .map(|f| f.descriptor.clone())
+                .map(|f| transcode_file(&f.descriptor, &mut buf))
                 .collect()
         } else {
             self.file_map
                 .files
                 .iter()
                 .filter(|f| f.is_root)
-                .map(|f| f.descriptor.clone())
+                .map(|f| transcode_file(&f.descriptor, &mut buf))
                 .collect()
         };
 
-        FileDescriptorSet { file }
+        prost_types::FileDescriptorSet { file }
     }
 
     fn add_import(
@@ -325,7 +329,8 @@ impl ParsedFile {
 
 impl ParsedFileMap {
     fn add(&mut self, file: ParsedFile) {
-        self.file_names.insert(file.name().to_owned(), self.files.len());
+        self.file_names
+            .insert(file.name().to_owned(), self.files.len());
         self.files.push(file);
     }
 
