@@ -33,8 +33,6 @@ pub(crate) enum ErrorKind {
         #[related]
         errors: Vec<CheckError>,
     },
-    #[error("at least once include path must be provided")]
-    NoIncludePaths,
     #[error("error opening file '{path}'")]
     OpenFile {
         path: PathBuf,

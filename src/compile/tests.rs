@@ -1,7 +1,4 @@
-use std::{
-    fs, io,
-    iter::{empty, once},
-};
+use std::{fs, io, iter::once};
 
 use assert_fs::TempDir;
 use prost_types::FileDescriptorProto;
@@ -594,15 +591,6 @@ fn complex_include_complex_file() {
             "foo.proto",
         );
     });
-}
-
-#[test]
-fn no_include_paths() {
-    let err = Compiler::new(empty::<std::path::PathBuf>()).unwrap_err();
-    match err.kind() {
-        ErrorKind::NoIncludePaths => (),
-        kind => panic!("unexpected error {}", kind),
-    }
 }
 
 #[test]
