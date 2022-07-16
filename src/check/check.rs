@@ -16,7 +16,7 @@ use crate::{
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
         FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
         ServiceDescriptorProto,
-    },
+    }, make_name, make_absolute_name,
 };
 
 use super::{
@@ -75,7 +75,7 @@ impl<'a> Context<'a> {
         for def in self.scope.iter().rev() {
             match def {
                 Scope::Message { full_name, .. } | Scope::Package { full_name } => {
-                    return format!("{}.{}", full_name, name)
+                    return make_name(full_name, name)
                 }
                 _ => continue,
             }
@@ -105,7 +105,7 @@ impl<'a> Context<'a> {
                 for scope in self.scope.iter().rev() {
                     let full_name = match scope {
                         Scope::Message { full_name, .. } | Scope::Package { full_name } => {
-                            format!(".{}.{}", full_name, name)
+                            make_absolute_name(full_name, &name)
                         }
                         _ => continue,
                     };
@@ -116,7 +116,7 @@ impl<'a> Context<'a> {
                 }
 
                 if let Some(def) = name_map.get(&name) {
-                    return (format!(".{}", name), Some(def));
+                    return (make_absolute_name("", name), Some(def));
                 }
 
                 self.errors.push(CheckError::TypeNameNotFound {

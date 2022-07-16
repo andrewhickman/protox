@@ -15,7 +15,7 @@ use crate::{
     types::{
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-    },
+    }, make_name,
 };
 
 use super::{ir, CheckError};
@@ -201,7 +201,7 @@ impl NamePass {
     fn full_name<'a>(&self, name: impl Into<Cow<'a, str>>) -> String {
         let name = name.into();
         match self.scope.last() {
-            Some(namespace) => format!("{}.{}", namespace, name.as_ref()),
+            Some(namespace) => make_name(namespace, name),
             None => name.into_owned(),
         }
     }

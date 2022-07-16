@@ -15,6 +15,7 @@ mod options;
 mod parse;
 mod types;
 
+use std::fmt;
 use std::sync::Arc;
 use std::{convert::TryInto, path::Path};
 
@@ -211,6 +212,22 @@ fn s(s: impl ToString) -> Option<String> {
 
 fn join_span(start: Span, end: Span) -> Span {
     start.start..end.end
+}
+
+fn make_name(namespace: &str, name: impl fmt::Display) -> String {
+    if namespace.is_empty() {
+        name.to_string()
+    } else {
+        format!("{}.{}", namespace, name)
+    }
+}
+
+fn make_absolute_name(namespace: &str, name: impl fmt::Display) -> String {
+    if namespace.is_empty() {
+        format!(".{}", name)
+    } else {
+        format!(".{}.{}", namespace, name)
+    }
 }
 
 fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U
