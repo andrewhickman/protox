@@ -1490,7 +1490,11 @@ impl<'a> Context<'a> {
             }
         }
 
-        return NameMap::google_descriptor().get(name);
+        if !self.have_google_descriptor() {
+            return NameMap::google_descriptor().get(name);
+        }
+
+        None
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
@@ -1500,10 +1504,20 @@ impl<'a> Context<'a> {
             }
         }
 
-        if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
-            return Some(def);
+        if !self.have_google_descriptor() {
+            if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
+                return Some(def);
+            }
         }
 
         None
+    }
+
+    fn have_google_descriptor(&self) -> bool {
+        if let Some(name_map) = &self.name_map {
+            name_map.has_google_descriptor()
+        } else {
+            false
+        }
     }
 }
