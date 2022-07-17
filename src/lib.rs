@@ -230,6 +230,13 @@ fn make_absolute_name(namespace: &str, name: impl fmt::Display) -> String {
     }
 }
 
+fn parse_namespace(name: &str) -> &str {
+    match name.rsplit_once('.') {
+        Some((namespace, _)) => namespace,
+        None => "",
+    }
+}
+
 fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U
 where
     T: Message,

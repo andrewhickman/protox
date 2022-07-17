@@ -11,7 +11,7 @@ use crate::{
     case::{to_json_name, to_lower_without_underscores},
     make_name,
     options::{self, OptionSet},
-    s,
+    parse_namespace, s,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
         enum_descriptor_proto::EnumReservedRange,
@@ -1113,10 +1113,7 @@ impl<'a> Context<'a> {
         context: &str,
         type_name: &str,
     ) -> Result<i32, ()> {
-        let type_namespace = match type_name.rsplit_once('.') {
-            Some((parent, _)) => parent,
-            None => "",
-        };
+        let type_namespace = parse_namespace(type_name);
 
         match value {
             ast::OptionValue::Ident(ident) => {

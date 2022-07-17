@@ -14,7 +14,7 @@ use crate::{
     ast,
     compile::{ParsedFile, ParsedFileMap},
     file::GoogleFileResolver,
-    index_to_i32, make_absolute_name, make_name,
+    index_to_i32, make_absolute_name, make_name, parse_namespace,
     types::{
         field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
@@ -198,11 +198,11 @@ impl NameMap {
                 if let Some(def) = self.get(&full_name[1..]) {
                     return Some((Cow::Owned(full_name), def));
                 }
-                if let Some((parent, _)) = context.rsplit_once('.') {
-                    context = parent;
-                } else {
+
+                if context.is_empty() {
                     return None;
                 }
+                context = parse_namespace(context);
             }
         }
     }
