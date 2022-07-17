@@ -1147,11 +1147,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        if name.starts_with("google.protobuf.") {
-            return NameMap::google_descriptor().get(name);
-        }
-
-        None
+        return NameMap::google_descriptor().get(name)
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
@@ -1161,10 +1157,8 @@ impl<'a> Context<'a> {
             }
         }
 
-        if name.starts_with("google.protobuf.") {
-            if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
-                return Some(def);
-            }
+        if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
+            return Some(def);
         }
 
         None
