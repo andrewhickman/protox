@@ -9,15 +9,19 @@ use logos::Span;
 use crate::{
     ast,
     case::{to_json_name, to_lower_without_underscores},
+    index_to_i32,
+    lines::LineResolver,
     make_name,
     options::{self, OptionSet},
     parse_namespace, s,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
         enum_descriptor_proto::EnumReservedRange,
-        field_descriptor_proto, DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto,
-        FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto,
-        ServiceDescriptorProto,
+        field_descriptor_proto,
+        source_code_info::Location,
+        DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
+        FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+        SourceCodeInfo,
     },
 };
 
@@ -30,20 +34,34 @@ impl<'a> ir::File<'a> {
     pub fn check(
         &self,
         name_map: Option<&NameMap>,
+        source: Option<&str>,
     ) -> Result<FileDescriptorProto, Vec<CheckError>> {
         let mut context = Context {
             syntax: self.ast.syntax,
             name_map,
             scope: Vec::new(),
             errors: Vec::new(),
+            path: Vec::new(),
+            locations: Vec::new(),
+            lines: source.map(LineResolver::new),
         };
 
         let file = context.check_file(self);
-
         debug_assert!(context.scope.is_empty());
 
+        let source_code_info = if source.is_some() {
+            Some(SourceCodeInfo {
+                location: context.locations,
+            })
+        } else {
+            None
+        };
+
         if context.errors.is_empty() {
-            Ok(file)
+            Ok(FileDescriptorProto {
+                source_code_info,
+                ..file
+            })
         } else {
             Err(context.errors)
         }
@@ -55,6 +73,9 @@ struct Context<'a> {
     name_map: Option<&'a NameMap>,
     scope: Vec<Scope>,
     errors: Vec<CheckError>,
+    path: Vec<i32>,
+    locations: Vec<Location>,
+    lines: Option<LineResolver>,
 }
 
 enum Scope {
@@ -71,6 +92,51 @@ impl<'a> Context<'a> {
 
     fn exit(&mut self) {
         self.scope.pop().expect("unbalanced scope stack");
+    }
+
+    fn add_location(&mut self, span: Span) {
+        if let Some(lines) = &self.lines {
+            let span = lines.resolve_span(span);
+            self.locations.push(Location {
+                path: self.path.clone(),
+                span,
+                ..Default::default()
+            });
+        }
+    }
+
+    fn add_comments(&mut self, span: Span, comments: ast::Comments) {
+        if let Some(lines) = &self.lines {
+            let span = lines.resolve_span(span);
+            self.locations.push(Location {
+                path: self.path.clone(),
+                span,
+                leading_comments: comments.leading_comment,
+                trailing_comments: comments.trailing_comment,
+                leading_detached_comments: comments.leading_detached_comments,
+            });
+        }
+    }
+
+    fn add_location_for(&mut self, path_items: &[i32], span: Span) {
+        self.path.extend_from_slice(path_items);
+        self.add_location(span);
+        self.pop_path(path_items.len());
+    }
+
+    fn add_comments_for(&mut self, path_items: &[i32], span: Span, comments: ast::Comments) {
+        self.path.extend_from_slice(path_items);
+        self.add_comments(span, comments);
+        self.pop_path(path_items.len());
+    }
+
+    fn pop_path(&mut self, n: usize) {
+        self.path.truncate(self.path.len() - n);
+    }
+
+    fn replace_path(&mut self, path_items: &[i32]) {
+        self.pop_path(path_items.len());
+        self.path.extend(path_items);
     }
 
     fn scope_name(&self) -> &str {
@@ -123,7 +189,22 @@ impl<'a> Context<'a> {
     }
 
     fn check_file(&mut self, file: &ir::File) -> FileDescriptorProto {
+        const PACKAGE: i32 = 2;
+        const DEPENDENCY: i32 = 3;
+        const PUBLIC_DEPENDENCY: i32 = 10;
+        const WEAK_DEPENDENCY: i32 = 11;
+        const MESSAGE_TYPE: i32 = 4;
+        const ENUM_TYPE: i32 = 5;
+        const SERVICE: i32 = 6;
+        const EXTENSION: i32 = 7;
+        const OPTIONS: i32 = 8;
+        const SYNTAX: i32 = 12;
+
+        self.add_location(file.ast.span.clone());
+
         if let Some(package) = &file.ast.package {
+            self.add_comments_for(&[PACKAGE], package.span.clone(), package.comments.clone());
+
             for part in &package.name.parts {
                 self.enter(Scope::Package {
                     full_name: self.full_name(part),
@@ -133,15 +214,52 @@ impl<'a> Context<'a> {
 
         let package = file.ast.package.as_ref().map(|p| p.name.to_string());
 
-        let dependency = file.ast.imports.iter().map(|i| i.value.clone()).collect();
-        let public_dependency = file.ast.public_imports().map(|(index, _)| index).collect();
-        let weak_dependency = file.ast.weak_imports().map(|(index, _)| index).collect();
+        let mut dependency = Vec::with_capacity(file.ast.imports.len());
+        let mut public_dependency = Vec::new();
+        let mut weak_dependency = Vec::new();
 
+        for import in file.ast.imports.iter() {
+            let index = index_to_i32(dependency.len());
+
+            self.add_comments_for(
+                &[DEPENDENCY, index],
+                import.span.clone(),
+                import.comments.clone(),
+            );
+
+            dependency.push(import.value.clone());
+            match &import.kind {
+                Some((ast::ImportKind::Public, _)) => {
+                    self.add_location_for(
+                        &[PUBLIC_DEPENDENCY, index_to_i32(public_dependency.len())],
+                        import.span.clone(),
+                    );
+                    public_dependency.push(index);
+                }
+                Some((ast::ImportKind::Weak, _)) => {
+                    self.add_location_for(
+                        &[WEAK_DEPENDENCY, index_to_i32(public_dependency.len())],
+                        import.span.clone(),
+                    );
+                    weak_dependency.push(index);
+                }
+                _ => (),
+            }
+        }
+
+        self.path.push(MESSAGE_TYPE);
         let message_type = file
             .messages
             .iter()
-            .map(|message| self.check_message(message))
+            .enumerate()
+            .map(|(index, message)| {
+                self.path.push(index_to_i32(index));
+                let desc = self.check_message(message);
+                self.path.pop();
+                desc
+            })
             .collect();
+        self.path.pop();
 
         let mut enum_type = Vec::new();
         let mut service = Vec::new();
@@ -150,14 +268,32 @@ impl<'a> Context<'a> {
         for item in &file.ast.items {
             match item {
                 ast::FileItem::Message(_) => continue,
-                ast::FileItem::Enum(e) => enum_type.push(self.check_enum(e)),
-                ast::FileItem::Extend(e) => self.check_extend(e, &mut extension),
-                ast::FileItem::Service(s) => service.push(self.check_service(s)),
+                ast::FileItem::Enum(e) => {
+                    self.path
+                        .extend(&[ENUM_TYPE, index_to_i32(enum_type.len())]);
+                    enum_type.push(self.check_enum(e));
+                    self.pop_path(2);
+                }
+                ast::FileItem::Extend(e) => {
+                    self.path.push(EXTENSION);
+                    self.check_extend(e, &mut extension);
+                    self.path.pop();
+                }
+                ast::FileItem::Service(s) => {
+                    self.path.extend(&[SERVICE, index_to_i32(service.len())]);
+                    service.push(self.check_service(s));
+                    self.pop_path(2);
+                }
             }
         }
 
+        self.path.push(OPTIONS);
         let options = self.check_file_options(&file.ast.options);
+        self.path.pop();
 
+        if let Some((syntax_span, syntax_comments)) = &file.ast.syntax_span {
+            self.add_comments_for(&[SYNTAX], syntax_span.clone(), syntax_comments.clone());
+        }
         let syntax = if self.syntax == ast::Syntax::default() {
             None
         } else {
@@ -187,25 +323,64 @@ impl<'a> Context<'a> {
     }
 
     fn check_message(&mut self, message: &ir::Message) -> DescriptorProto {
+        const NAME: i32 = 1;
+        const FIELD: i32 = 2;
+        const EXTENSION: i32 = 6;
+        const NESTED_TYPE: i32 = 3;
+        const ENUM_TYPE: i32 = 4;
+        const EXTENSION_RANGE: i32 = 5;
+        const OPTIONS: i32 = 7;
+        const ONEOF_DECL: i32 = 8;
+        const RESERVED_RANGE: i32 = 9;
+        const RESERVED_NAME: i32 = 10;
+
         self.enter(Scope::Message {
             full_name: self.full_name(&message.ast.name()),
         });
 
+        match message.ast {
+            ir::MessageSource::Message(message) => {
+                self.add_comments(message.span.clone(), message.comments.clone());
+                self.add_location_for(&[NAME], message.name.span.clone());
+            }
+            ir::MessageSource::Group(field, _) => {
+                self.add_comments(field.span.clone(), field.comments.clone());
+                self.add_location_for(&[NAME], field.name.span.clone());
+            }
+            ir::MessageSource::Map(_) => (),
+        }
+
+        self.path.extend(&[FIELD, 0]);
         let field = message
             .fields
             .iter()
-            .map(|field| self.check_message_field(field))
+            .enumerate()
+            .map(|(index, field)| {
+                self.replace_path(&[index_to_i32(index)]);
+                self.check_message_field(field)
+            })
             .collect();
+        self.replace_path(&[NESTED_TYPE, 0]);
         let nested_type = message
             .messages
             .iter()
-            .map(|nested| self.check_message(nested))
+            .enumerate()
+            .map(|(index, message)| {
+                self.replace_path(&[index_to_i32(index)]);
+                self.check_message(message)
+            })
             .collect();
+        self.replace_path(&[ONEOF_DECL, 0]);
         let oneof_decl = message
             .oneofs
             .iter()
-            .map(|oneof| self.check_oneof(oneof))
+            .enumerate()
+            .map(|(index, oneof)| {
+                self.replace_path(&[index_to_i32(index)]);
+                self.check_oneof(oneof)
+            })
             .collect();
+        self.pop_path(2);
 
         self.check_message_field_camel_case_names(message.fields.iter());
 
@@ -221,35 +396,63 @@ impl<'a> Context<'a> {
                     ast::MessageItem::Field(_)
                     | ast::MessageItem::Message(_)
                     | ast::MessageItem::Oneof(_) => continue,
-                    ast::MessageItem::Enum(e) => enum_type.push(self.check_enum(e)),
-                    ast::MessageItem::Extend(e) => self.check_extend(e, &mut extension),
+                    ast::MessageItem::Enum(e) => {
+                        self.path
+                            .extend(&[ENUM_TYPE, index_to_i32(enum_type.len())]);
+                        enum_type.push(self.check_enum(e));
+                        self.pop_path(2);
+                    }
+                    ast::MessageItem::Extend(e) => {
+                        self.path.push(EXTENSION);
+                        self.check_extend(e, &mut extension);
+                        self.path.pop();
+                    }
                 }
             }
 
             for reserved in &body.reserved {
                 match &reserved.kind {
-                    ast::ReservedKind::Ranges(ranges) => reserved_range.extend(
-                        ranges
-                            .iter()
-                            .map(|range| self.check_message_reserved_range(range)),
-                    ),
+                    ast::ReservedKind::Ranges(ranges) => {
+                        self.path.push(RESERVED_RANGE);
+                        self.add_comments(reserved.span.clone(), reserved.comments.clone());
+                        for range in ranges {
+                            self.path.push(index_to_i32(reserved_range.len()));
+                            reserved_range.push(self.check_message_reserved_range(range));
+                            self.path.pop();
+                        }
+                        self.path.pop();
+                    }
+
                     ast::ReservedKind::Names(names) => {
-                        reserved_name.extend(names.iter().map(|name| name.value.to_owned()))
+                        self.path.push(RESERVED_NAME);
+                        self.add_comments(reserved.span.clone(), reserved.comments.clone());
+                        for name in names {
+                            self.path.push(index_to_i32(reserved_name.len()));
+                            reserved_name.push(name.value.to_owned());
+                            self.path.pop();
+                        }
+                        self.path.pop();
                     }
                 }
             }
 
-            for extension in &body.extensions {
-                let extension_options =
-                    self.check_extension_range_options(extension.options.as_ref());
+            self.path.push(EXTENSION_RANGE);
+            for extensions in &body.extensions {
+                self.add_comments(extensions.span.clone(), extensions.comments.clone());
 
-                extension_range.extend(extension.ranges.iter().map(|e| ExtensionRange {
-                    options: extension_options.clone(),
-                    ..self.check_message_extension_range(e)
-                }));
+                for range in &extensions.ranges {
+                    self.path.push(index_to_i32(extension_range.len()));
+                    extension_range.push(
+                        self.check_message_extension_range(range, extensions.options.as_ref()),
+                    );
+                    self.path.pop();
+                }
             }
+            self.path.pop();
 
+            self.path.push(OPTIONS);
             options = self.check_message_options(&body.options);
+            self.path.pop();
         };
 
         if let ir::MessageSource::Map(_) = &message.ast {
@@ -312,11 +515,51 @@ impl<'a> Context<'a> {
         field: &ast::Field,
         ty: Option<field_descriptor_proto::Type>,
     ) -> FieldDescriptorProto {
-        let label = self.check_field_label(field);
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 3;
+        const LABEL: i32 = 4;
+        const TYPE: i32 = 5;
+        const TYPE_NAME: i32 = 6;
+        const DEFAULT_VALUE: i32 = 7;
+        const OPTIONS: i32 = 8;
 
+        self.add_comments(field.span.clone(), field.comments.clone());
+
+        self.add_location_for(&[NAME], field.name.span.clone());
+        self.add_location_for(&[NUMBER], field.number.span.clone());
+
+        let label = self.check_field_label(field);
+        if let Some((_, label_span)) = &field.label {
+            self.add_location_for(&[LABEL], label_span.clone());
+        }
+
+        match &field.kind {
+            ast::FieldKind::Normal {
+                ty: ast::Ty::Named(name),
+                ..
+            } => {
+                self.add_location_for(&[TYPE_NAME], name.span());
+            }
+            ast::FieldKind::Normal { ty_span, .. } => {
+                self.add_location_for(&[TYPE], ty_span.clone());
+            }
+            ast::FieldKind::Group { ty_span, .. } => {
+                self.add_location_for(&[TYPE], ty_span.clone());
+                self.add_location_for(&[TYPE_NAME], field.name.span.clone());
+            }
+            ast::FieldKind::Map { ty_span, .. } => {
+                self.add_location_for(&[TYPE_NAME], ty_span.clone());
+            }
+        }
+
+        self.path.push(OPTIONS);
         let options = self.check_field_options(field.options.as_ref());
+        self.path.pop();
 
         let default_value = self.check_field_default_value(field, ty);
+        if let Some(default_value) = &field.default_value() {
+            self.add_location_for(&[DEFAULT_VALUE], default_value.value.span());
+        }
 
         let proto3_optional = if self.in_synthetic_oneof() {
             Some(true)
@@ -522,9 +765,17 @@ impl<'a> Context<'a> {
     }
 
     fn check_oneof(&mut self, oneof: &ir::Oneof) -> OneofDescriptorProto {
+        const NAME: i32 = 1;
+        const OPTIONS: i32 = 2;
+
         match oneof.ast {
             ir::OneofSource::Oneof(oneof) => {
+                self.add_location(oneof.span.clone());
+                self.add_location_for(&[NAME], oneof.name.span.clone());
+
+                self.path.push(OPTIONS);
                 let options = self.check_oneof_options(&oneof.options);
+                self.path.pop();
 
                 OneofDescriptorProto {
                     name: s(&oneof.name.value),
@@ -539,6 +790,10 @@ impl<'a> Context<'a> {
     }
 
     fn check_extend(&mut self, extend: &ast::Extend, result: &mut Vec<FieldDescriptorProto>) {
+        const FIELD_EXTENDEE: i32 = 2;
+
+        self.add_comments(extend.span.clone(), extend.comments.clone());
+
         let (extendee, def) = self.resolve_type_name(&extend.extendee);
         if def.is_some() && def != Some(&DefinitionKind::Message) {
             self.errors.push(CheckError::InvalidExtendeeTypeName {
@@ -548,12 +803,15 @@ impl<'a> Context<'a> {
         }
 
         self.enter(Scope::Extend);
-        result.extend(extend.fields.iter().map(|field| {
+        for field in &extend.fields {
+            self.path.push(index_to_i32(result.len()));
+            self.add_location_for(&[FIELD_EXTENDEE], extend.extendee.span());
+
             let name = field.field_name();
             let json_name = Some(to_json_name(&name));
             let number = self.check_field_number(&field.number);
             let (ty, type_name) = self.check_type(&field.ty(), field.is_group());
-            FieldDescriptorProto {
+            result.push(FieldDescriptorProto {
                 name: Some(name.into_owned()),
                 json_name,
                 number,
@@ -561,36 +819,66 @@ impl<'a> Context<'a> {
                 type_name,
                 extendee: Some(extendee.clone()),
                 ..self.check_field(field, ty)
-            }
-        }));
+            });
+            self.path.pop();
+        }
         self.exit();
     }
 
     fn check_enum(&mut self, e: &ast::Enum) -> EnumDescriptorProto {
+        const NAME: i32 = 1;
+        const VALUE: i32 = 2;
+        const OPTIONS: i32 = 3;
+        const RESERVED_RANGE: i32 = 4;
+        const RESERVED_NAME: i32 = 5;
+
+        self.add_comments(e.span.clone(), e.comments.clone());
+        self.add_location_for(&[NAME], e.name.span.clone());
         let name = s(&e.name.value);
 
+        self.path.extend(&[VALUE, 0]);
         let value = e
             .values
             .iter()
-            .map(|value| self.check_enum_value(value))
+            .enumerate()
+            .map(|(index, value)| {
+                self.replace_path(&[index_to_i32(index)]);
+                self.check_enum_value(value)
+            })
             .collect();
+        self.pop_path(2);
 
         let mut reserved_range = Vec::new();
         let mut reserved_name = Vec::new();
         for reserved in &e.reserved {
             match &reserved.kind {
-                ast::ReservedKind::Ranges(ranges) => reserved_range.extend(
-                    ranges
-                        .iter()
-                        .map(|range| self.check_enum_reserved_range(range)),
-                ),
+                ast::ReservedKind::Ranges(ranges) => {
+                    self.path.push(RESERVED_RANGE);
+                    self.add_comments(reserved.span.clone(), reserved.comments.clone());
+                    for range in ranges {
+                        self.path.push(index_to_i32(reserved_range.len()));
+                        reserved_range.push(self.check_enum_reserved_range(range));
+                        self.path.pop();
+                    }
+                    self.path.pop();
+                }
+
                 ast::ReservedKind::Names(names) => {
-                    reserved_name.extend(names.iter().map(|name| name.value.to_owned()))
+                    self.path.push(RESERVED_NAME);
+                    self.add_comments(reserved.span.clone(), reserved.comments.clone());
+                    for name in names {
+                        self.path.push(index_to_i32(reserved_name.len()));
+                        reserved_name.push(name.value.to_owned());
+                        self.path.pop();
+                    }
+                    self.path.pop();
                 }
             }
         }
 
+        self.path.push(OPTIONS);
         let options = self.check_enum_options(&e.options);
+        self.path.pop();
 
         EnumDescriptorProto {
             name,
@@ -602,10 +890,20 @@ impl<'a> Context<'a> {
     }
 
     fn check_enum_value(&mut self, value: &ast::EnumValue) -> EnumValueDescriptorProto {
+        const NAME: i32 = 1;
+        const NUMBER: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        self.add_comments(value.span.clone(), value.comments.clone());
+        self.add_location_for(&[NAME], value.name.span.clone());
         let name = s(&value.name.value);
+
+        self.add_location_for(&[NUMBER], value.number.span.clone());
         let number = self.check_enum_number(&value.number);
 
+        self.path.push(OPTIONS);
         let options = self.check_enum_value_options(value.options.as_ref());
+        self.path.pop();
 
         EnumValueDescriptorProto {
             name,
@@ -615,15 +913,29 @@ impl<'a> Context<'a> {
     }
 
     fn check_service(&mut self, service: &ast::Service) -> ServiceDescriptorProto {
+        const NAME: i32 = 1;
+        const METHOD: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        self.add_comments(service.span.clone(), service.comments.clone());
+        self.add_location_for(&[NAME], service.name.span.clone());
         let name = s(&service.name.value);
 
+        self.path.extend(&[METHOD, 0]);
         let method = service
             .methods
             .iter()
-            .map(|method| self.check_method(method))
+            .enumerate()
+            .map(|(index, method)| {
+                self.replace_path(&[index_to_i32(index)]);
+                self.check_method(method)
+            })
             .collect();
+        self.pop_path(2);
 
+        self.path.push(OPTIONS);
         let options = self.check_service_options(&service.options);
+        self.path.pop();
 
         ServiceDescriptorProto {
             name,
@@ -633,8 +945,18 @@ impl<'a> Context<'a> {
     }
 
     fn check_method(&mut self, method: &ast::Method) -> MethodDescriptorProto {
+        const NAME: i32 = 1;
+        const INPUT_TYPE: i32 = 2;
+        const OUTPUT_TYPE: i32 = 3;
+        const OPTIONS: i32 = 4;
+        const CLIENT_STREAMING: i32 = 5;
+        const SERVER_STREAMING: i32 = 6;
+
+        self.add_comments(method.span.clone(), method.comments.clone());
+        self.add_location_for(&[NAME], method.name.span.clone());
         let name = s(&method.name);
 
+        self.add_location_for(&[INPUT_TYPE], method.input_ty.span());
         let (input_type, kind) = self.resolve_type_name(&method.input_ty);
         if !matches!(kind, None | Some(DefinitionKind::Message)) {
             self.errors.push(CheckError::InvalidMethodTypeName {
@@ -644,6 +966,7 @@ impl<'a> Context<'a> {
             })
         }
 
+        self.add_location_for(&[OUTPUT_TYPE], method.output_ty.span());
         let (output_type, kind) = self.resolve_type_name(&method.output_ty);
         if !matches!(kind, None | Some(DefinitionKind::Message)) {
             self.errors.push(CheckError::InvalidMethodTypeName {
@@ -653,7 +976,16 @@ impl<'a> Context<'a> {
             })
         }
 
+        if let Some(span) = &method.client_streaming {
+            self.add_location_for(&[CLIENT_STREAMING], span.clone());
+        }
+        if let Some(span) = &method.server_streaming {
+            self.add_location_for(&[SERVER_STREAMING], span.clone());
+        }
+
+        self.path.push(OPTIONS);
         let options = self.check_method_options(&method.options);
+        self.path.pop();
 
         MethodDescriptorProto {
             name,
@@ -676,7 +1008,23 @@ impl<'a> Context<'a> {
         ReservedRange { start, end }
     }
 
-    fn check_message_extension_range(&mut self, range: &ast::ReservedRange) -> ExtensionRange {
+    fn check_message_extension_range(
+        &mut self,
+        range: &ast::ReservedRange,
+        options: Option<&ast::OptionList>,
+    ) -> ExtensionRange {
+        const START: i32 = 1;
+        const END: i32 = 2;
+        const OPTIONS: i32 = 3;
+
+        self.add_location(range.span());
+        self.add_location_for(&[START], range.start_span());
+        self.add_location_for(&[END], range.end_span());
+
+        self.path.push(OPTIONS);
+        let options = self.check_extension_range_options(options);
+        self.path.pop();
+
         let start = self.check_field_number(&range.start);
         let end = match &range.end {
             ast::ReservedRangeEnd::None => start.map(|n| n + 1),
@@ -687,7 +1035,7 @@ impl<'a> Context<'a> {
         ExtensionRange {
             start,
             end,
-            ..Default::default()
+            options,
         }
     }
 
@@ -735,81 +1083,74 @@ impl<'a> Context<'a> {
     }
 
     fn check_file_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.FileOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.FileOptions", options)
     }
 
     fn check_message_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.MessageOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.MessageOptions", options)
     }
 
     fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.FieldOptions",
-            options.iter().flat_map(|o| o.options.iter()),
-        )
+        self.check_option_list("google.protobuf.FieldOptions", options)
     }
 
     fn check_extension_range_options(
         &mut self,
         options: Option<&ast::OptionList>,
     ) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.ExtensionRangeOptions",
-            options.iter().flat_map(|o| o.options.iter()),
-        )
+        self.check_option_list("google.protobuf.ExtensionRangeOptions", options)
     }
 
     fn check_oneof_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.OneofOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.OneofOptions", options)
     }
 
     fn check_enum_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.EnumOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.EnumOptions", options)
     }
 
     fn check_enum_value_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.EnumValueOptions",
-            options.iter().flat_map(|o| o.options.iter()),
-        )
+        self.check_option_list("google.protobuf.EnumValueOptions", options)
     }
 
     fn check_service_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.ServiceOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.ServiceOptions", options)
     }
 
     fn check_method_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options(
-            "google.protobuf.MethodOptions",
-            options.iter().map(|o| &o.body),
-        )
+        self.check_options("google.protobuf.MethodOptions", options)
     }
 
-    fn check_options<'b>(
+    fn check_options(
         &mut self,
         message_name: &str,
-        options: impl Iterator<Item = &'b ast::OptionBody>,
+        options: &[ast::Option],
     ) -> Option<OptionSet> {
         let mut result = None;
 
         for option in options {
+            self.add_location(option.span.clone());
+
             let message = result.get_or_insert_with(OptionSet::new);
-            let _ = self.check_option(message, message_name, option);
+            let _ = self.check_option(message, message_name, &option.body, option.span.clone());
+        }
+
+        result
+    }
+
+    fn check_option_list(
+        &mut self,
+        message_name: &str,
+        options: Option<&ast::OptionList>,
+    ) -> Option<OptionSet> {
+        let mut result = None;
+
+        if let Some(options) = options {
+            self.add_location(options.span.clone());
+            for option in &options.options {
+                let message = result.get_or_insert_with(OptionSet::new);
+                let _ = self.check_option(message, message_name, option, option.span());
+            }
         }
 
         result
@@ -820,10 +1161,11 @@ impl<'a> Context<'a> {
         mut result: &mut OptionSet,
         namespace: &str,
         option: &ast::OptionBody,
+        option_span: Span,
     ) -> Result<(), ()> {
         use field_descriptor_proto::Type;
 
-        let mut number = 0;
+        let mut numbers = vec![];
         let mut ty = None;
         let mut type_name = Some(Cow::Borrowed(namespace));
         let mut type_name_context = None;
@@ -838,7 +1180,7 @@ impl<'a> Context<'a> {
                 }
             };
 
-            if number != 0 {
+            if let Some(&number) = numbers.last() {
                 result = result.get_message_mut(number);
             }
 
@@ -853,7 +1195,7 @@ impl<'a> Context<'a> {
                         ..
                     }) = self.get_option_def(&full_name)
                     {
-                        number = *field_number;
+                        numbers.push(*field_number);
                         ty = *field_ty;
                         type_name_context = Some(namespace.to_owned());
                         type_name = field_type_name.clone().map(Cow::Owned);
@@ -958,7 +1300,8 @@ impl<'a> Context<'a> {
             }
         };
 
-        result.set(number, value);
+        self.add_location_for(&numbers, option_span);
+        result.set(*numbers.last().expect("expected at least one field access"), value);
         Ok(())
     }
 
@@ -1147,7 +1490,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        return NameMap::google_descriptor().get(name)
+        return NameMap::google_descriptor().get(name);
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {

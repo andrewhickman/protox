@@ -10,7 +10,6 @@ use crate::{ast, compile::ParsedFileMap, types::FileDescriptorProto};
 mod check;
 mod ir;
 mod names;
-mod span;
 #[cfg(test)]
 mod tests;
 
@@ -26,12 +25,10 @@ pub(crate) fn check(
     source: Option<&str>,
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
     let ir = ir::File::build(ast);
-    let source_code_info = source.map(|src| ir.get_source_code_info(src));
-    let file_descriptor = ir.check(None)?;
+    let file_descriptor = ir.check(None, source)?;
 
     Ok(FileDescriptorProto {
         name: name.map(ToOwned::to_owned),
-        source_code_info,
         ..file_descriptor
     })
 }
@@ -44,13 +41,11 @@ pub(crate) fn check_with_names(
 ) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
     let ir = ir::File::build(ast);
     let name_map = NameMap::from_ir(&ir, file_map)?;
-    let source_code_info = source.map(|src| ir.get_source_code_info(src));
-    let file_descriptor = ir.check(Some(&name_map))?;
+    let file_descriptor = ir.check(Some(&name_map), source)?;
 
     Ok((
         FileDescriptorProto {
             name: name.map(ToOwned::to_owned),
-            source_code_info,
             ..file_descriptor
         },
         name_map,
