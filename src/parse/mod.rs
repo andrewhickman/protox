@@ -956,16 +956,12 @@ impl<'a> Parser<'a> {
     fn parse_options_list(&mut self) -> Result<ast::OptionList, ()> {
         let start = self.expect_eq(Token::LeftBracket)?;
 
-        let mut options =
-            vec![self.parse_option_body(&[ExpectedToken::COMMA, ExpectedToken::RIGHT_BRACKET])?];
+        let mut options = vec![self.parse_option_body()?];
         let end = loop {
             match self.peek() {
                 Some((Token::Comma, _)) => {
                     self.bump();
-                    options.push(self.parse_option_body(&[
-                        ExpectedToken::COMMA,
-                        ExpectedToken::RIGHT_BRACKET,
-                    ])?);
+                    options.push(self.parse_option_body()?);
                 }
                 Some((Token::RightBracket, _)) => break self.bump(),
                 _ => self.unexpected_token("',' or ']'")?,
@@ -982,7 +978,7 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::OPTION)?;
 
-        let body = self.parse_option_body(&[ExpectedToken::SEMICOLON])?;
+        let body = self.parse_option_body()?;
 
         let end = self.expect_eq(Token::Semicolon)?;
         let comments = self.parse_trailing_comment(leading_comments);
@@ -994,7 +990,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_option_body(&mut self, terminators: &[ExpectedToken]) -> Result<ast::OptionBody, ()> {
+    fn parse_option_body(&mut self) -> Result<ast::OptionBody, ()> {
         let mut name = vec![self.parse_option_name_part()?];
 
         loop {
@@ -1038,9 +1034,7 @@ impl<'a> Parser<'a> {
                 let end = self.expect_eq(Token::RightBrace)?;
                 ast::OptionValue::Aggregate(value, join_span(start, end))
             }
-            Some((Token::Ident(_), _)) => {
-                ast::OptionValue::FullIdent(self.parse_full_ident(terminators)?)
-            }
+            Some((Token::Ident(_), _)) => ast::OptionValue::Ident(self.parse_ident()?),
             _ => self.unexpected_token("a constant")?,
         };
 

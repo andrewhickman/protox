@@ -29,14 +29,10 @@ Ok(
                             },
                         ),
                     ],
-                    value: FullIdent(
-                        FullIdent {
-                            parts: [
-                                Ident {
-                                    value: "SPEED",
-                                    span: 50..55,
-                                },
-                            ],
+                    value: Ident(
+                        Ident {
+                            value: "SPEED",
+                            span: 50..55,
                         },
                     ),
                 },

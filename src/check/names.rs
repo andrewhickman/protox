@@ -194,7 +194,7 @@ impl NameMap {
             let mut context = context;
 
             loop {
-                let mut full_name = make_absolute_name(context, name);
+                let full_name = make_absolute_name(context, name);
                 if let Some(def) = self.get(&full_name[1..]) {
                     return Some((Cow::Owned(full_name), def));
                 }

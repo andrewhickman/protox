@@ -856,7 +856,7 @@ impl<'a> Context<'a> {
                         number = *field_number;
                         ty = *field_ty;
                         type_name_context = Some(namespace.to_owned());
-                        type_name = field_type_name.as_deref().map(Cow::Borrowed);
+                        type_name = field_type_name.clone().map(Cow::Owned);
                     } else {
                         self.errors.push(CheckError::OptionUnknownField {
                             name: name.to_string(),
@@ -1073,22 +1073,17 @@ impl<'a> Context<'a> {
 
     fn check_option_value_bool(&mut self, value: &ast::OptionValue) -> Result<bool, ()> {
         match value {
-            ast::OptionValue::FullIdent(ident) if ident.parts.len() == 1 => {
-                match ident.parts[0].value.as_str() {
-                    "false" => return Ok(false),
-                    "true" => return Ok(true),
-                    _ => (),
-                }
+            ast::OptionValue::Ident(ident) if ident.value.as_str() == "false" => Ok(false),
+            ast::OptionValue::Ident(ident) if ident.value.as_str() == "true" => Ok(true),
+            _ => {
+                self.errors.push(CheckError::OptionValueInvalidType {
+                    expected: "either 'true' or 'false'".to_owned(),
+                    actual: value.to_string(),
+                    span: value.span(),
+                });
+                Err(())
             }
-            _ => (),
         }
-
-        self.errors.push(CheckError::OptionValueInvalidType {
-            expected: "either 'true' or 'false'".to_owned(),
-            actual: value.to_string(),
-            span: value.span(),
-        });
-        Err(())
     }
 
     fn check_option_value_string(&mut self, value: &ast::OptionValue) -> Result<String, ()> {

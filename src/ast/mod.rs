@@ -88,7 +88,7 @@ pub(crate) struct String {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum OptionValue {
-    FullIdent(FullIdent),
+    Ident(Ident),
     Int(Int),
     Float(Float),
     String(String),
@@ -396,7 +396,7 @@ impl TypeName {
 impl OptionValue {
     pub fn span(&self) -> Span {
         match self {
-            OptionValue::FullIdent(ident) => ident.span(),
+            OptionValue::Ident(ident) => ident.span.clone(),
             OptionValue::Int(int) => int.span.clone(),
             OptionValue::Float(float) => float.span.clone(),
             OptionValue::String(string) => string.span.clone(),
@@ -714,7 +714,7 @@ impl fmt::Display for TypeName {
 impl fmt::Display for OptionValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            OptionValue::FullIdent(ident) => ident.fmt(f),
+            OptionValue::Ident(ident) => ident.fmt(f),
             OptionValue::Int(int) => int.fmt(f),
             OptionValue::Float(float) => float.fmt(f),
             OptionValue::String(string) => string.fmt(f),

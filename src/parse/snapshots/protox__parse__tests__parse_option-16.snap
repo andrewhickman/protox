@@ -13,14 +13,10 @@ Ok(
                     },
                 ),
             ],
-            value: FullIdent(
-                FullIdent {
-                    parts: [
-                        Ident {
-                            value: "message",
-                            span: 22..29,
-                        },
-                    ],
+            value: Ident(
+                Ident {
+                    value: "message",
+                    span: 22..29,
                 },
             ),
         },
