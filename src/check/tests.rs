@@ -1070,7 +1070,6 @@ message Foo {
 
 */
 
-
 /*
 
 syntax = "proto2";
@@ -1093,7 +1092,6 @@ message Foo {
 }
 
 */
-
 
 /*
 
@@ -1120,7 +1118,6 @@ message Foo {
 
 
 */
-
 
 /*
 

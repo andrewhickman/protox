@@ -176,4 +176,32 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("failed to resolve type name '{name}' for option")]
+    OptionInvalidTypeName {
+        name: String,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("expected option value to be {expected}, but found '{actual}'")]
+    OptionValueInvalidType {
+        expected: String,
+        actual: String,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("expected option value to be {expected}, but the value is out of range")]
+    #[help("the value must be between {min} and {max}, inclusive")]
+    OptionValueOutOfRange {
+        expected: String,
+        actual: String,
+        min: String,
+        max: String,
+        #[label("defined here")]
+        span: Span,
+    },
+    #[error("option value is not valid utf-8")]
+    OptionValueInvalidUtf8 {
+        #[label("defined here")]
+        span: Span,
+    },
 }

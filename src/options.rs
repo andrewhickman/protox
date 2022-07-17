@@ -103,7 +103,11 @@ impl OptionSet {
     }
 
     pub fn get_message_mut(&mut self, number: i32) -> &mut OptionSet {
-        match self.fields.entry(number as u32).or_insert_with(|| Value::Message(OptionSet::new())) {
+        match self
+            .fields
+            .entry(number as u32)
+            .or_insert_with(|| Value::Message(OptionSet::new()))
+        {
             Value::Message(message) => message,
             _ => panic!("type mismatch"),
         }

@@ -330,6 +330,30 @@ impl Int {
             i32::try_from(self.value).ok()
         }
     }
+
+    pub fn as_i64(&self) -> std::option::Option<i64> {
+        if self.negative {
+            self.value.checked_neg().and_then(|n| i64::try_from(n).ok())
+        } else {
+            i64::try_from(self.value).ok()
+        }
+    }
+
+    pub fn as_u32(&self) -> std::option::Option<u32> {
+        if self.negative {
+            None
+        } else {
+            u32::try_from(self.value).ok()
+        }
+    }
+
+    pub fn as_u64(&self) -> std::option::Option<u64> {
+        if self.negative {
+            None
+        } else {
+            Some(self.value)
+        }
+    }
 }
 
 impl String {
@@ -708,7 +732,11 @@ impl fmt::Display for Int {
 
 impl fmt::Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
+        if self.value.fract() == 0.0 {
+            write!(f, "{:.1}", self.value)
+        } else {
+            write!(f, "{}", self.value)
+        }
     }
 }
 

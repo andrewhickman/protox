@@ -8,6 +8,7 @@ use std::{
 
 use logos::Span;
 use miette::NamedSource;
+use prost::Message;
 
 use crate::{
     ast,
@@ -18,7 +19,7 @@ use crate::{
         IncludeFileResolver,
     },
     parse, transcode_file,
-    types::FileDescriptorProto,
+    types::{FileDescriptorProto, FileDescriptorSet},
     MAX_FILE_LEN,
 };
 
@@ -226,6 +227,29 @@ impl Compiler {
         };
 
         prost_types::FileDescriptorSet { file }
+    }
+
+    /// Convert all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet) and encodes it.
+    ///
+    /// This is equivalent to `file_descriptor_set()?.encode_to_vec()`, with the exception that extension
+    /// options are included.
+    pub fn encode_file_descriptor_set(&self) -> Vec<u8> {
+        let file = if self.include_imports {
+            self.file_map
+                .files
+                .iter()
+                .map(|f| f.descriptor.clone())
+                .collect()
+        } else {
+            self.file_map
+                .files
+                .iter()
+                .filter(|f| f.is_root)
+                .map(|f| f.descriptor.clone())
+                .collect()
+        };
+
+        FileDescriptorSet { file }.encode_to_vec()
     }
 
     pub(crate) fn into_parsed_file_map(self) -> ParsedFileMap {
