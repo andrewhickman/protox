@@ -204,4 +204,11 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("'{value_name}' is not a valid value for enum '{enum_name}'")]
+    OptionValueInvalidEnum {
+        value_name: String,
+        enum_name: String,
+        #[label("defined here")]
+        span: Span,
+    },
 }

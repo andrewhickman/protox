@@ -851,7 +851,7 @@ impl<'a> Context<'a> {
                         type_name: field_type_name,
                         extendee: None,
                         ..
-                    }) = self.get_option_field(&full_name)
+                    }) = self.get_option_def(&full_name)
                     {
                         number = *field_number;
                         ty = *field_ty;
@@ -960,20 +960,6 @@ impl<'a> Context<'a> {
 
         result.set(number, value);
         Ok(())
-    }
-
-    fn get_option_field(&self, name: &str) -> Option<&DefinitionKind> {
-        if let Some(name_map) = &self.name_map {
-            if let Some(def) = name_map.get(name) {
-                return Some(def);
-            }
-        }
-
-        if name.starts_with("google.protobuf.") {
-            return NameMap::google_descriptor().get(name);
-        }
-
-        None
     }
 
     fn check_option_value_f64(&mut self, value: &ast::OptionValue) -> Result<f64, ()> {
@@ -1132,6 +1118,58 @@ impl<'a> Context<'a> {
             None => "",
         };
 
-        todo!()
+        match value {
+            ast::OptionValue::Ident(ident) => {
+                match self.resolve_option_def(context, &make_name(type_namespace, &ident.value)) {
+                    Some(DefinitionKind::EnumValue { number }) => Ok(*number),
+                    _ => {
+                        self.errors.push(CheckError::OptionValueInvalidEnum {
+                            value_name: ident.value.clone(),
+                            enum_name: type_name.to_owned(),
+                            span: ident.span.clone(),
+                        });
+                        Err(())
+                    }
+                }
+            }
+            _ => {
+                self.errors.push(CheckError::OptionValueInvalidType {
+                    expected: "an enum value identifier".to_owned(),
+                    actual: value.to_string(),
+                    span: value.span(),
+                });
+                Err(())
+            }
+        }
+    }
+
+    fn get_option_def(&self, name: &str) -> Option<&DefinitionKind> {
+        if let Some(name_map) = &self.name_map {
+            if let Some(def) = name_map.get(name) {
+                return Some(def);
+            }
+        }
+
+        if name.starts_with("google.protobuf.") {
+            return NameMap::google_descriptor().get(name);
+        }
+
+        None
+    }
+
+    fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
+        if let Some(name_map) = &self.name_map {
+            if let Some((_, def)) = name_map.resolve(context, name) {
+                return Some(def);
+            }
+        }
+
+        if name.starts_with("google.protobuf.") {
+            if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
+                return Some(def);
+            }
+        }
+
+        None
     }
 }

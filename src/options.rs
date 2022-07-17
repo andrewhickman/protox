@@ -4,54 +4,97 @@ use bytes::{Buf, BufMut};
 use prost::encoding::{DecodeContext, WireType};
 use prost::{DecodeError, Message};
 
+#[allow(unused)]
 pub(crate) const FILE_JAVA_PACKAGE: i32 = 1;
+#[allow(unused)]
 pub(crate) const FILE_JAVA_OUTER_CLASSNAME: i32 = 8;
+#[allow(unused)]
 pub(crate) const FILE_JAVA_MULTIPLE_FILES: i32 = 10;
+#[allow(unused)]
 pub(crate) const FILE_JAVA_GENERATE_EQUALS_AND_HASH: i32 = 20;
+#[allow(unused)]
 pub(crate) const FILE_JAVA_STRING_CHECK_UTF8: i32 = 27;
+#[allow(unused)]
 pub(crate) const FILE_OPTIMIZE_FOR: i32 = 9;
+#[allow(unused)]
 pub(crate) const FILE_GO_PACKAGE: i32 = 11;
+#[allow(unused)]
 pub(crate) const FILE_CC_GENERIC_SERVICES: i32 = 16;
+#[allow(unused)]
 pub(crate) const FILE_JAVA_GENERIC_SERVICES: i32 = 17;
+#[allow(unused)]
 pub(crate) const FILE_PY_GENERIC_SERVICES: i32 = 18;
+#[allow(unused)]
 pub(crate) const FILE_PHP_GENERIC_SERVICES: i32 = 42;
+#[allow(unused)]
 pub(crate) const FILE_DEPRECATED: i32 = 23;
+#[allow(unused)]
 pub(crate) const FILE_CC_ENABLE_ARENAS: i32 = 31;
+#[allow(unused)]
 pub(crate) const FILE_OBJC_CLASS_PREFIX: i32 = 36;
+#[allow(unused)]
 pub(crate) const FILE_CSHARP_NAMESPACE: i32 = 37;
+#[allow(unused)]
 pub(crate) const FILE_SWIFT_PREFIX: i32 = 39;
+#[allow(unused)]
 pub(crate) const FILE_PHP_CLASS_PREFIX: i32 = 40;
+#[allow(unused)]
 pub(crate) const FILE_PHP_NAMESPACE: i32 = 41;
+#[allow(unused)]
 pub(crate) const FILE_PHP_METADATA_NAMESPACE: i32 = 44;
+#[allow(unused)]
 pub(crate) const FILE_RUBY_PACKAGE: i32 = 45;
+#[allow(unused)]
 pub(crate) const FILE_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const MESSAGE_MESSAGE_SET_WIRE_FORMAT: i32 = 1;
+#[allow(unused)]
 pub(crate) const MESSAGE_NO_STANDARD_DESCRIPTOR_ACCESSOR: i32 = 2;
+#[allow(unused)]
 pub(crate) const MESSAGE_DEPRECATED: i32 = 3;
+#[allow(unused)]
 pub(crate) const MESSAGE_MAP_ENTRY: i32 = 7;
+#[allow(unused)]
 pub(crate) const MESSAGE_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const FIELD_CTYPE: i32 = 1;
+#[allow(unused)]
 pub(crate) const FIELD_PACKED: i32 = 2;
+#[allow(unused)]
 pub(crate) const FIELD_JSTYPE: i32 = 6;
+#[allow(unused)]
 pub(crate) const FIELD_LAZY: i32 = 5;
+#[allow(unused)]
 pub(crate) const FIELD_DEPRECATED: i32 = 3;
+#[allow(unused)]
 pub(crate) const FIELD_WEAK: i32 = 10;
+#[allow(unused)]
 pub(crate) const FIELD_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const ENUM_ALLOW_ALIAS: i32 = 2;
+#[allow(unused)]
 pub(crate) const ENUM_DEPRECATED: i32 = 3;
+#[allow(unused)]
 pub(crate) const ENUM_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const ENUM_VALUE_DEPRECATED: i32 = 1;
+#[allow(unused)]
 pub(crate) const ENUM_VALUE_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const SERVICE_DEPRECATED: i32 = 33;
+#[allow(unused)]
 pub(crate) const SERVICE_UNINTERPRETED_OPTION: i32 = 999;
 
+#[allow(unused)]
 pub(crate) const METHOD_DEPRECATED: i32 = 33;
+#[allow(unused)]
 pub(crate) const METHOD_IDEMPOTENCY_LEVEL: i32 = 34;
+#[allow(unused)]
 pub(crate) const METHOD_UNINTERPRETED_OPTION: i32 = 999;
 
 #[derive(Debug, Default, Clone, PartialEq)]
