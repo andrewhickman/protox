@@ -1155,7 +1155,6 @@ impl<'a> Context<'a> {
             }
         }
 
-
         if result.is_empty() {
             None
         } else {
