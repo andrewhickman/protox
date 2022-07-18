@@ -78,8 +78,6 @@ impl EqFloat {
 impl Eq for EqFloat {}
 
 impl<'a> Token<'a> {
-    pub const FALSE: Token<'static> = Token::Ident("false");
-    pub const TRUE: Token<'static> = Token::Ident("true");
     pub const SYNTAX: Token<'static> = Token::Ident("syntax");
     pub const PACKAGE: Token<'static> = Token::Ident("package");
     pub const IMPORT: Token<'static> = Token::Ident("import");
@@ -505,9 +503,9 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
-        assert_eq!(lexer.next().unwrap(), Token::TRUE);
+        assert_eq!(lexer.next().unwrap(), Token::Ident("true"));
         assert_eq!(lexer.next().unwrap(), Token::Newline);
-        assert_eq!(lexer.next().unwrap(), Token::FALSE);
+        assert_eq!(lexer.next().unwrap(), Token::Ident("false"));
         assert_eq!(
             lexer.next().unwrap(),
             Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into())

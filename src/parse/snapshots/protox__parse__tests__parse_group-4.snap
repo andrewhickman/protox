@@ -40,9 +40,9 @@ Ok(
                                 },
                             ),
                         ],
-                        value: Bool(
-                            Bool {
-                                value: true,
+                        value: Ident(
+                            Ident {
+                                value: "true",
                                 span: 35..39,
                             },
                         ),

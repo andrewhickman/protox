@@ -74,12 +74,6 @@ pub(crate) struct Float {
     pub span: Span,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Bool {
-    pub value: bool,
-    pub span: Span,
-}
-
 #[derive(Clone, PartialEq)]
 pub(crate) struct String {
     pub value: Vec<u8>,
@@ -92,7 +86,6 @@ pub(crate) enum OptionValue {
     Int(Int),
     Float(Float),
     String(String),
-    Bool(Bool),
     Aggregate(text_format::Message, Span),
 }
 
@@ -400,7 +393,6 @@ impl OptionValue {
             OptionValue::Int(int) => int.span.clone(),
             OptionValue::Float(float) => float.span.clone(),
             OptionValue::String(string) => string.span.clone(),
-            OptionValue::Bool(b) => b.span.clone(),
             OptionValue::Aggregate(_, span) => span.clone(),
         }
     }
@@ -420,12 +412,9 @@ impl MessageBody {
 
 impl Field {
     pub fn default_value(&self) -> std::option::Option<&OptionBody> {
-        self.options.as_ref().and_then(|options| {
-            options
-                .options
-                .iter()
-                .find(|o| o.is("default"))
-        })
+        self.options
+            .as_ref()
+            .and_then(|options| options.options.iter().find(|o| o.is("default")))
     }
 
     pub fn is_map(&self) -> bool {
@@ -610,7 +599,6 @@ impl fmt::Display for OptionValue {
             OptionValue::Int(int) => int.fmt(f),
             OptionValue::Float(float) => float.fmt(f),
             OptionValue::String(string) => string.fmt(f),
-            OptionValue::Bool(bool) => bool.fmt(f),
             OptionValue::Aggregate(message, _) => message.fmt(f),
         }
     }
@@ -660,11 +648,5 @@ impl fmt::Display for String {
         }
 
         Ok(())
-    }
-}
-
-impl fmt::Display for Bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
     }
 }

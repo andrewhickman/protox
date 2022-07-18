@@ -1508,7 +1508,7 @@ impl<'a> Context<'a> {
             return NameMap::google_descriptor().get(name);
         }
 
-        return None;
+        None
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {

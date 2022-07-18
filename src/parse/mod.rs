@@ -1020,14 +1020,6 @@ impl<'a> Parser<'a> {
                 self.parse_int_or_float(false)?
             }
             Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
-            Some((Token::FALSE, span)) => {
-                self.bump();
-                ast::OptionValue::Bool(ast::Bool { value: false, span })
-            }
-            Some((Token::TRUE, span)) => {
-                self.bump();
-                ast::OptionValue::Bool(ast::Bool { value: true, span })
-            }
             Some((Token::LeftBrace, start)) => {
                 self.bump();
                 let value = self.parse_text_format_message(&[ExpectedToken::RIGHT_BRACE])?;

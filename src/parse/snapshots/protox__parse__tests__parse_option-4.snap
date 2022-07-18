@@ -24,9 +24,9 @@ Ok(
                     },
                 ),
             ],
-            value: Bool(
-                Bool {
-                    value: true,
+            value: Ident(
+                Ident {
+                    value: "true",
                     span: 19..23,
                 },
             ),
