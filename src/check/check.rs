@@ -33,6 +33,7 @@ use super::{
 impl<'a> ir::File<'a> {
     pub fn check(
         &self,
+        file_name: Option<&str>,
         name_map: Option<&NameMap>,
         source: Option<&str>,
     ) -> Result<FileDescriptorProto, Vec<CheckError>> {
@@ -44,6 +45,7 @@ impl<'a> ir::File<'a> {
             path: Vec::new(),
             locations: Vec::new(),
             lines: source.map(LineResolver::new),
+            is_google_descriptor: file_name == Some("google/protobuf/descriptor.proto"),
         };
 
         let file = context.check_file(self);
@@ -59,6 +61,7 @@ impl<'a> ir::File<'a> {
 
         if context.errors.is_empty() {
             Ok(FileDescriptorProto {
+                name: file_name.map(ToOwned::to_owned),
                 source_code_info,
                 ..file
             })
@@ -76,6 +79,7 @@ struct Context<'a> {
     path: Vec<i32>,
     locations: Vec<Location>,
     lines: Option<LineResolver>,
+    is_google_descriptor: bool,
 }
 
 enum Scope {
@@ -1121,11 +1125,7 @@ impl<'a> Context<'a> {
         self.check_options("google.protobuf.MethodOptions", options)
     }
 
-    fn check_options(
-        &mut self,
-        message_name: &str,
-        options: &[ast::Option],
-    ) -> Option<OptionSet> {
+    fn check_options(&mut self, message_name: &str, options: &[ast::Option]) -> Option<OptionSet> {
         let mut result = None;
 
         for option in options {
@@ -1301,7 +1301,10 @@ impl<'a> Context<'a> {
         };
 
         self.add_location_for(&numbers, option_span);
-        result.set(*numbers.last().expect("expected at least one field access"), value);
+        result.set(
+            *numbers.last().expect("expected at least one field access"),
+            value,
+        );
         Ok(())
     }
 
@@ -1490,7 +1493,11 @@ impl<'a> Context<'a> {
             }
         }
 
-        return NameMap::google_descriptor().get(name);
+        if !self.is_google_descriptor {
+            return NameMap::google_descriptor().get(name);
+        }
+
+        return None;
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
@@ -1500,8 +1507,10 @@ impl<'a> Context<'a> {
             }
         }
 
-        if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
-            return Some(def);
+        if !self.is_google_descriptor {
+            if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
+                return Some(def);
+            }
         }
 
         None

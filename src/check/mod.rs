@@ -25,12 +25,7 @@ pub(crate) fn check(
     source: Option<&str>,
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
     let ir = ir::File::build(ast);
-    let file_descriptor = ir.check(None, source)?;
-
-    Ok(FileDescriptorProto {
-        name: name.map(ToOwned::to_owned),
-        ..file_descriptor
-    })
+    ir.check(name, None, source)
 }
 
 pub(crate) fn check_with_names(
@@ -41,15 +36,9 @@ pub(crate) fn check_with_names(
 ) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
     let ir = ir::File::build(ast);
     let name_map = NameMap::from_ir(&ir, file_map)?;
-    let file_descriptor = ir.check(Some(&name_map), source)?;
+    let file_descriptor = ir.check(name, Some(&name_map), source)?;
 
-    Ok((
-        FileDescriptorProto {
-            name: name.map(ToOwned::to_owned),
-            ..file_descriptor
-        },
-        name_map,
-    ))
+    Ok((file_descriptor, name_map))
 }
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
