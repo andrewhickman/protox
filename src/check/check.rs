@@ -1126,16 +1126,19 @@ impl<'a> Context<'a> {
     }
 
     fn check_options(&mut self, message_name: &str, options: &[ast::Option]) -> Option<OptionSet> {
-        let mut result = None;
+        let mut result = OptionSet::new();
 
         for option in options {
             self.add_location(option.span.clone());
 
-            let message = result.get_or_insert_with(OptionSet::new);
-            let _ = self.check_option(message, message_name, &option.body, option.span.clone());
+            let _ = self.check_option(&mut result, message_name, &option.body, option.span.clone());
         }
 
-        result
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
     }
 
     fn check_option_list(
@@ -1143,17 +1146,21 @@ impl<'a> Context<'a> {
         message_name: &str,
         options: Option<&ast::OptionList>,
     ) -> Option<OptionSet> {
-        let mut result = None;
+        let mut result = OptionSet::new();
 
         if let Some(options) = options {
             self.add_location(options.span.clone());
             for option in &options.options {
-                let message = result.get_or_insert_with(OptionSet::new);
-                let _ = self.check_option(message, message_name, option, option.span());
+                let _ = self.check_option(&mut result, message_name, option, option.span());
             }
         }
 
-        result
+
+        if result.is_empty() {
+            None
+        } else {
+            Some(result)
+        }
     }
 
     fn check_option(
@@ -1164,6 +1171,11 @@ impl<'a> Context<'a> {
         option_span: Span,
     ) -> Result<(), ()> {
         use field_descriptor_proto::Type;
+
+        // Special cases for things which use option syntax but aren't options
+        if namespace == "google.protobuf.FieldOptions" && option.is("default") {
+            return Ok(());
+        }
 
         let mut numbers = vec![];
         let mut ty = None;

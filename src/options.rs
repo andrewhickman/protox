@@ -145,6 +145,10 @@ impl OptionSet {
         Default::default()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+
     pub fn get_message_mut(&mut self, number: i32) -> &mut OptionSet {
         match self
             .fields

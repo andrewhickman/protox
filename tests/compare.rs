@@ -22,8 +22,8 @@ fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
 
-    // std::fs::write("expected.yml", &expected);
-    // std::fs::write("actual.yml", &actual);
+    std::fs::write("expected.yml", &expected);
+    std::fs::write("actual.yml", &actual);
 
     assert_serde_eq!(actual, expected);
 }
@@ -93,7 +93,7 @@ macro_rules! compare {
     };
 }
 
-// compare!(bytes_default);
+compare!(bytes_default);
 compare!(generate_map_entry_message);
 compare!(generate_group_message);
 compare!(generate_synthetic_oneof_ordering);

@@ -424,7 +424,7 @@ impl Field {
             options
                 .options
                 .iter()
-                .find(|o| matches!(o.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == "default"))
+                .find(|o| o.is("default"))
         })
     }
 
@@ -447,9 +447,7 @@ impl Field {
             Cow::Borrowed(self.name.value.as_str())
         }
     }
-}
 
-impl Field {
     pub fn synthetic_oneof_name(&self) -> std::string::String {
         if self.name.value.starts_with('_') {
             format!("X{}", &self.name.value)
@@ -523,6 +521,10 @@ impl OptionNamePart {
 }
 
 impl OptionBody {
+    pub fn is(&self, name: &str) -> bool {
+        matches!(self.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == name)
+    }
+
     pub fn name_span(&self) -> Span {
         debug_assert!(!self.name.is_empty());
         join_span(
