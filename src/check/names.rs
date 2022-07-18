@@ -206,13 +206,6 @@ impl NameMap {
             }
         }
     }
-
-    pub(crate) fn has_google_descriptor(&self) -> bool {
-        match self.map.get("google.protobuf.DescriptorProto") {
-            Some(entry) => entry.file.as_deref() == Some("google/protobuf/descriptor.proto"),
-            _ => false,
-        }
-    }
 }
 
 struct NamePass {
