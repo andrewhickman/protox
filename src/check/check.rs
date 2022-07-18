@@ -1274,10 +1274,11 @@ impl<'a> Context<'a> {
             None | Some(Type::Message | Type::Group) => {
                 if let Some(name_map) = &self.name_map {
                     let type_name = type_name.as_deref().unwrap_or_default();
-                    match name_map
-                        .resolve(type_name_context.as_deref().unwrap_or_default(), type_name)
-                    {
-                        Some((_, DefinitionKind::Message)) => {
+                    match self.resolve_option_def(
+                        type_name_context.as_deref().unwrap_or_default(),
+                        type_name,
+                    ) {
+                        Some(DefinitionKind::Message) => {
                             let value = self.check_option_value_message(
                                 &option.value,
                                 type_name,
@@ -1289,7 +1290,7 @@ impl<'a> Context<'a> {
                                 options::Value::Message(value)
                             }
                         }
-                        Some((_, DefinitionKind::Enum)) => {
+                        Some(DefinitionKind::Enum) => {
                             let value = self.check_option_value_enum(
                                 &option.value,
                                 type_name_context.as_deref().unwrap_or_default(),

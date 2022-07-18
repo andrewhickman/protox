@@ -163,7 +163,7 @@ pub(crate) enum CheckError {
     #[error("failed to resolve type name '{name}' for option")]
     OptionInvalidTypeName {
         name: String,
-        #[label("defined here")]
+        #[label("used here")]
         span: Span,
     },
     #[error("expected option value to be {expected}, but found '{actual}'")]
