@@ -13,6 +13,8 @@ mod error;
 mod lines;
 mod options;
 mod parse;
+#[cfg(test)]
+mod tests;
 mod types;
 
 use std::fmt;
