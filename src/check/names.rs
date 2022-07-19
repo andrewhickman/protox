@@ -556,7 +556,10 @@ impl Diagnostic for DuplicateNameError {
                         Some("first defined here…".to_owned()),
                         first.clone(),
                     ),
-                    LabeledSpan::new_with_span(Some("…and again here".to_owned()), second.clone()),
+                    LabeledSpan::new_with_span(
+                        Some("…and defined again here".to_owned()),
+                        second.clone(),
+                    ),
                 ]
                 .into_iter(),
             )),

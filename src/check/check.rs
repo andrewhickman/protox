@@ -459,11 +459,15 @@ impl<'a> Context<'a> {
             self.path.pop();
         };
 
-        if let ir::MessageSource::Map(_) = &message.ast {
-            // TODO this might panic if user defines their own google.protobuf.MessageOptions.
+        if let ir::MessageSource::Map(map) = &message.ast {
             options
                 .get_or_insert_with(Default::default)
-                .set(options::MESSAGE_MAP_ENTRY, options::Value::Bool(true));
+                .set(
+                    options::MESSAGE_MAP_ENTRY,
+                    options::Value::Bool(true),
+                    map.ty_span(),
+                )
+                .expect("cannot set options on generated message");
         };
 
         self.exit();
@@ -1184,7 +1188,7 @@ impl<'a> Context<'a> {
         option: &ast::OptionBody,
         option_span: Span,
     ) -> Result<(), ()> {
-        use field_descriptor_proto::Type;
+        use field_descriptor_proto::{Label, Type};
 
         // Special cases for things which use option syntax but aren't options
         if namespace == "google.protobuf.FieldOptions" && option.is("default") {
@@ -1197,6 +1201,7 @@ impl<'a> Context<'a> {
 
         let mut numbers = vec![];
         let mut ty = None;
+        let mut is_repeated = false;
         let mut type_name = Some(Cow::Borrowed(namespace));
         let mut type_name_context = None;
 
@@ -1204,14 +1209,15 @@ impl<'a> Context<'a> {
             let namespace = match (ty, &type_name) {
                 (None | Some(Type::Message | Type::Group), Some(name)) => name.as_ref(),
                 _ => {
-                    self.errors
-                        .push(CheckError::OptionScalarFieldAccess { span: part.span() });
+                    self.errors.push(CheckError::OptionScalarFieldAccess {
+                        span: option.name_span(),
+                    });
                     return Err(());
                 }
             };
 
             if let Some(&number) = numbers.last() {
-                result = result.get_message_mut(number);
+                result = result.get_message_mut(number, part.span());
             }
 
             match part {
@@ -1219,6 +1225,7 @@ impl<'a> Context<'a> {
                     let full_name = make_name(namespace, name);
                     if let Some(DefinitionKind::Field {
                         number: field_number,
+                        label,
                         ty: field_ty,
                         type_name: field_type_name,
                         extendee: None,
@@ -1227,6 +1234,7 @@ impl<'a> Context<'a> {
                     {
                         numbers.push(*field_number);
                         ty = *field_ty;
+                        is_repeated = matches!(label, Some(Label::Repeated));
                         type_name_context = Some(namespace.to_owned());
                         type_name = field_type_name.clone().map(Cow::Owned);
                     } else {
@@ -1250,10 +1258,24 @@ impl<'a> Context<'a> {
         )?;
 
         self.add_location_for(&numbers, option_span);
-        result.set(
+        if is_repeated {
+            result.set_repeated(
+                *numbers.last().expect("expected at least one field access"),
+                value,
+                option.name_span(),
+            )
+        } else if let Err(first) = result.set(
             *numbers.last().expect("expected at least one field access"),
             value,
-        );
+            option.name_span(),
+        ) {
+            self.errors.push(CheckError::OptionAlreadySet {
+                name: option.name_string(),
+                first,
+                second: option.name_span(),
+            })
+        }
+
         Ok(())
     }
 

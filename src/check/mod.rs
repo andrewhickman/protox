@@ -171,6 +171,14 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Span,
     },
+    #[error("option '{name}' is already set")]
+    OptionAlreadySet {
+        name: String,
+        #[label("first set here…")]
+        first: Span,
+        #[label("…and set again here")]
+        second: Span,
+    },
     #[error("expected value to be {expected}, but found '{actual}'")]
     ValueInvalidType {
         expected: String,

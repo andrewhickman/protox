@@ -1,6 +1,7 @@
 use std::collections::btree_map::{self, BTreeMap};
 
 use bytes::{Buf, BufMut};
+use logos::Span;
 use prost::encoding::{DecodeContext, WireType};
 use prost::{DecodeError, Message};
 
@@ -99,7 +100,7 @@ pub(crate) const METHOD_UNINTERPRETED_OPTION: i32 = 999;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct OptionSet {
-    fields: BTreeMap<u32, Value>,
+    fields: BTreeMap<u32, (Value, Span)>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -149,161 +150,139 @@ impl OptionSet {
         self.fields.is_empty()
     }
 
-    pub fn get_message_mut(&mut self, number: i32) -> &mut OptionSet {
+    pub fn get_message_mut(&mut self, number: i32, span: Span) -> &mut OptionSet {
         match self
             .fields
             .entry(number as u32)
-            .or_insert_with(|| Value::Message(OptionSet::new()))
+            .or_insert_with(|| (Value::Message(OptionSet::new()), span))
         {
-            Value::Message(message) => message,
+            (Value::Message(message), _) => message,
             _ => panic!("type mismatch"),
         }
     }
 
-    pub fn set(&mut self, key: i32, value: Value) -> bool {
+    pub fn set(&mut self, key: i32, value: Value, span: Span) -> Result<(), Span> {
         match self.fields.entry(key as u32) {
             btree_map::Entry::Vacant(entry) => {
-                entry.insert(value);
-                true
+                entry.insert((value, span));
+                Ok(())
+            }
+            btree_map::Entry::Occupied(entry) => Err(entry.get().1.clone()),
+        }
+    }
+
+    pub fn set_repeated(&mut self, key: i32, value: Value, span: Span) {
+        match self.fields.entry(key as u32) {
+            btree_map::Entry::Vacant(entry) => {
+                let value = match value {
+                    Value::Float(value) => Value::RepeatedFloat(vec![value]),
+                    Value::Double(value) => Value::RepeatedDouble(vec![value]),
+                    Value::Bool(value) => Value::RepeatedBool(vec![value]),
+                    Value::Int32(value) => Value::RepeatedInt32(vec![value]),
+                    Value::Int64(value) => Value::RepeatedInt64(vec![value]),
+                    Value::Uint32(value) => Value::RepeatedUint32(vec![value]),
+                    Value::Uint64(value) => Value::RepeatedUint64(vec![value]),
+                    Value::Fixed32(value) => Value::RepeatedFixed32(vec![value]),
+                    Value::Fixed64(value) => Value::RepeatedFixed64(vec![value]),
+                    Value::Sint32(value) => Value::RepeatedSint32(vec![value]),
+                    Value::Sint64(value) => Value::RepeatedSint64(vec![value]),
+                    Value::Sfixed32(value) => Value::RepeatedSfixed32(vec![value]),
+                    Value::Sfixed64(value) => Value::RepeatedSfixed64(vec![value]),
+                    Value::String(value) => Value::RepeatedString(vec![value]),
+                    Value::Bytes(value) => Value::RepeatedBytes(vec![value]),
+                    Value::Message(value) => Value::RepeatedMessage(vec![value]),
+                    Value::Group(value) => Value::RepeatedGroup(vec![value]),
+                    Value::RepeatedFloat(_)
+                    | Value::RepeatedDouble(_)
+                    | Value::RepeatedBool(_)
+                    | Value::RepeatedInt32(_)
+                    | Value::RepeatedInt64(_)
+                    | Value::RepeatedUint32(_)
+                    | Value::RepeatedUint64(_)
+                    | Value::RepeatedFixed32(_)
+                    | Value::RepeatedFixed64(_)
+                    | Value::RepeatedSint32(_)
+                    | Value::RepeatedSint64(_)
+                    | Value::RepeatedSfixed32(_)
+                    | Value::RepeatedSfixed64(_)
+                    | Value::RepeatedString(_)
+                    | Value::RepeatedBytes(_)
+                    | Value::RepeatedMessage(_)
+                    | Value::RepeatedGroup(_) => value,
+                };
+
+                entry.insert((value, span));
             }
             btree_map::Entry::Occupied(mut entry) => match (entry.get_mut(), value) {
-                (Value::RepeatedFloat(list), Value::Float(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedFloat(list), _), Value::Float(value)) => list.push(value),
+                ((Value::RepeatedDouble(list), _), Value::Double(value)) => list.push(value),
+                ((Value::RepeatedBool(list), _), Value::Bool(value)) => list.push(value),
+                ((Value::RepeatedInt32(list), _), Value::Int32(value)) => list.push(value),
+                ((Value::RepeatedInt64(list), _), Value::Int64(value)) => list.push(value),
+                ((Value::RepeatedUint32(list), _), Value::Uint32(value)) => list.push(value),
+                ((Value::RepeatedUint64(list), _), Value::Uint64(value)) => list.push(value),
+                ((Value::RepeatedFixed32(list), _), Value::Fixed32(value)) => list.push(value),
+                ((Value::RepeatedFixed64(list), _), Value::Fixed64(value)) => list.push(value),
+                ((Value::RepeatedSint32(list), _), Value::Sint32(value)) => list.push(value),
+                ((Value::RepeatedSint64(list), _), Value::Sint64(value)) => list.push(value),
+                ((Value::RepeatedSfixed32(list), _), Value::Sfixed32(value)) => list.push(value),
+                ((Value::RepeatedSfixed64(list), _), Value::Sfixed64(value)) => list.push(value),
+                ((Value::RepeatedString(list), _), Value::String(value)) => list.push(value),
+                ((Value::RepeatedBytes(list), _), Value::Bytes(value)) => list.push(value),
+                ((Value::RepeatedMessage(list), _), Value::Message(value)) => list.push(value),
+                ((Value::RepeatedGroup(list), _), Value::Group(value)) => list.push(value),
+                ((Value::RepeatedFloat(list), _), Value::RepeatedFloat(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedDouble(list), Value::Double(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedDouble(list), _), Value::RepeatedDouble(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedBool(list), Value::Bool(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedBool(list), _), Value::RepeatedBool(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedInt32(list), Value::Int32(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedInt32(list), _), Value::RepeatedInt32(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedInt64(list), Value::Int64(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedInt64(list), _), Value::RepeatedInt64(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedUint32(list), Value::Uint32(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedUint32(list), _), Value::RepeatedUint32(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedUint64(list), Value::Uint64(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedUint64(list), _), Value::RepeatedUint64(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedFixed32(list), Value::Fixed32(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedFixed32(list), _), Value::RepeatedFixed32(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedFixed64(list), Value::Fixed64(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedFixed64(list), _), Value::RepeatedFixed64(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedSint32(list), Value::Sint32(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedSint32(list), _), Value::RepeatedSint32(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedSint64(list), Value::Sint64(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedSint64(list), _), Value::RepeatedSint64(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedSfixed32(list), Value::Sfixed32(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedSfixed32(list), _), Value::RepeatedSfixed32(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedSfixed64(list), Value::Sfixed64(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedSfixed64(list), _), Value::RepeatedSfixed64(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedString(list), Value::String(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedString(list), _), Value::RepeatedString(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedBytes(list), Value::Bytes(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedBytes(list), _), Value::RepeatedBytes(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedMessage(list), Value::Message(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedMessage(list), _), Value::RepeatedMessage(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedGroup(list), Value::Group(value)) => {
-                    list.push(value);
-                    true
+                ((Value::RepeatedGroup(list), _), Value::RepeatedGroup(values)) => {
+                    list.extend(values)
                 }
-                (Value::RepeatedFloat(list), Value::RepeatedFloat(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedDouble(list), Value::RepeatedDouble(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedBool(list), Value::RepeatedBool(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedInt32(list), Value::RepeatedInt32(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedInt64(list), Value::RepeatedInt64(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedUint32(list), Value::RepeatedUint32(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedUint64(list), Value::RepeatedUint64(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedFixed32(list), Value::RepeatedFixed32(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedFixed64(list), Value::RepeatedFixed64(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedSint32(list), Value::RepeatedSint32(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedSint64(list), Value::RepeatedSint64(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedSfixed32(list), Value::RepeatedSfixed32(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedSfixed64(list), Value::RepeatedSfixed64(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedString(list), Value::RepeatedString(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedBytes(list), Value::RepeatedBytes(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedMessage(list), Value::RepeatedMessage(values)) => {
-                    list.extend(values);
-                    true
-                }
-                (Value::RepeatedGroup(list), Value::RepeatedGroup(values)) => {
-                    list.extend(values);
-                    true
-                }
-                _ => false,
+                _ => panic!("mismatched types"),
             },
         }
     }
@@ -317,72 +296,72 @@ impl Message for OptionSet {
     {
         for (&tag, field) in &self.fields {
             match field {
-                Value::Float(value) => prost::encoding::float::encode(tag, value, buf),
-                Value::Double(value) => prost::encoding::double::encode(tag, value, buf),
-                Value::Bool(value) => prost::encoding::bool::encode(tag, value, buf),
-                Value::Int32(value) => prost::encoding::int32::encode(tag, value, buf),
-                Value::Int64(value) => prost::encoding::int64::encode(tag, value, buf),
-                Value::Uint32(value) => prost::encoding::uint32::encode(tag, value, buf),
-                Value::Uint64(value) => prost::encoding::uint64::encode(tag, value, buf),
-                Value::Fixed32(value) => prost::encoding::fixed32::encode(tag, value, buf),
-                Value::Fixed64(value) => prost::encoding::fixed64::encode(tag, value, buf),
-                Value::Sint32(value) => prost::encoding::sint32::encode(tag, value, buf),
-                Value::Sint64(value) => prost::encoding::sint64::encode(tag, value, buf),
-                Value::Sfixed32(value) => prost::encoding::sfixed32::encode(tag, value, buf),
-                Value::Sfixed64(value) => prost::encoding::sfixed64::encode(tag, value, buf),
-                Value::String(value) => prost::encoding::string::encode(tag, value, buf),
-                Value::Bytes(value) => prost::encoding::bytes::encode(tag, value, buf),
-                Value::Message(value) => prost::encoding::message::encode(tag, value, buf),
-                Value::Group(value) => prost::encoding::group::encode(tag, value, buf),
-                Value::RepeatedFloat(values) => {
+                (Value::Float(value), _) => prost::encoding::float::encode(tag, value, buf),
+                (Value::Double(value), _) => prost::encoding::double::encode(tag, value, buf),
+                (Value::Bool(value), _) => prost::encoding::bool::encode(tag, value, buf),
+                (Value::Int32(value), _) => prost::encoding::int32::encode(tag, value, buf),
+                (Value::Int64(value), _) => prost::encoding::int64::encode(tag, value, buf),
+                (Value::Uint32(value), _) => prost::encoding::uint32::encode(tag, value, buf),
+                (Value::Uint64(value), _) => prost::encoding::uint64::encode(tag, value, buf),
+                (Value::Fixed32(value), _) => prost::encoding::fixed32::encode(tag, value, buf),
+                (Value::Fixed64(value), _) => prost::encoding::fixed64::encode(tag, value, buf),
+                (Value::Sint32(value), _) => prost::encoding::sint32::encode(tag, value, buf),
+                (Value::Sint64(value), _) => prost::encoding::sint64::encode(tag, value, buf),
+                (Value::Sfixed32(value), _) => prost::encoding::sfixed32::encode(tag, value, buf),
+                (Value::Sfixed64(value), _) => prost::encoding::sfixed64::encode(tag, value, buf),
+                (Value::String(value), _) => prost::encoding::string::encode(tag, value, buf),
+                (Value::Bytes(value), _) => prost::encoding::bytes::encode(tag, value, buf),
+                (Value::Message(value), _) => prost::encoding::message::encode(tag, value, buf),
+                (Value::Group(value), _) => prost::encoding::group::encode(tag, value, buf),
+                (Value::RepeatedFloat(values), _) => {
                     prost::encoding::float::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedDouble(values) => {
+                (Value::RepeatedDouble(values), _) => {
                     prost::encoding::double::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedBool(values) => {
+                (Value::RepeatedBool(values), _) => {
                     prost::encoding::bool::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedInt32(values) => {
+                (Value::RepeatedInt32(values), _) => {
                     prost::encoding::int32::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedInt64(values) => {
+                (Value::RepeatedInt64(values), _) => {
                     prost::encoding::int64::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedUint32(values) => {
+                (Value::RepeatedUint32(values), _) => {
                     prost::encoding::uint32::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedUint64(values) => {
+                (Value::RepeatedUint64(values), _) => {
                     prost::encoding::uint64::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedFixed32(values) => {
+                (Value::RepeatedFixed32(values), _) => {
                     prost::encoding::fixed32::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedFixed64(values) => {
+                (Value::RepeatedFixed64(values), _) => {
                     prost::encoding::fixed64::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedSint32(values) => {
+                (Value::RepeatedSint32(values), _) => {
                     prost::encoding::sint32::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedSint64(values) => {
+                (Value::RepeatedSint64(values), _) => {
                     prost::encoding::sint64::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedSfixed32(values) => {
+                (Value::RepeatedSfixed32(values), _) => {
                     prost::encoding::sfixed32::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedSfixed64(values) => {
+                (Value::RepeatedSfixed64(values), _) => {
                     prost::encoding::sfixed64::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedString(values) => {
+                (Value::RepeatedString(values), _) => {
                     prost::encoding::string::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedBytes(values) => {
+                (Value::RepeatedBytes(values), _) => {
                     prost::encoding::bytes::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedMessage(values) => {
+                (Value::RepeatedMessage(values), _) => {
                     prost::encoding::message::encode_repeated(tag, values, buf)
                 }
-                Value::RepeatedGroup(values) => {
+                (Value::RepeatedGroup(values), _) => {
                     prost::encoding::group::encode_repeated(tag, values, buf)
                 }
             }
@@ -393,72 +372,94 @@ impl Message for OptionSet {
         let mut len = 0;
         for (&tag, field) in &self.fields {
             match field {
-                Value::Float(value) => len += prost::encoding::float::encoded_len(tag, value),
-                Value::Double(value) => len += prost::encoding::double::encoded_len(tag, value),
-                Value::Bool(value) => len += prost::encoding::bool::encoded_len(tag, value),
-                Value::Int32(value) => len += prost::encoding::int32::encoded_len(tag, value),
-                Value::Int64(value) => len += prost::encoding::int64::encoded_len(tag, value),
-                Value::Uint32(value) => len += prost::encoding::uint32::encoded_len(tag, value),
-                Value::Uint64(value) => len += prost::encoding::uint64::encoded_len(tag, value),
-                Value::Fixed32(value) => len += prost::encoding::fixed32::encoded_len(tag, value),
-                Value::Fixed64(value) => len += prost::encoding::fixed64::encoded_len(tag, value),
-                Value::Sint32(value) => len += prost::encoding::sint32::encoded_len(tag, value),
-                Value::Sint64(value) => len += prost::encoding::sint64::encoded_len(tag, value),
-                Value::Sfixed32(value) => len += prost::encoding::sfixed32::encoded_len(tag, value),
-                Value::Sfixed64(value) => len += prost::encoding::sfixed64::encoded_len(tag, value),
-                Value::String(value) => len += prost::encoding::string::encoded_len(tag, value),
-                Value::Bytes(value) => len += prost::encoding::bytes::encoded_len(tag, value),
-                Value::Message(value) => len += prost::encoding::message::encoded_len(tag, value),
-                Value::Group(value) => len += prost::encoding::group::encoded_len(tag, value),
-                Value::RepeatedFloat(values) => {
+                (Value::Float(value), _) => len += prost::encoding::float::encoded_len(tag, value),
+                (Value::Double(value), _) => {
+                    len += prost::encoding::double::encoded_len(tag, value)
+                }
+                (Value::Bool(value), _) => len += prost::encoding::bool::encoded_len(tag, value),
+                (Value::Int32(value), _) => len += prost::encoding::int32::encoded_len(tag, value),
+                (Value::Int64(value), _) => len += prost::encoding::int64::encoded_len(tag, value),
+                (Value::Uint32(value), _) => {
+                    len += prost::encoding::uint32::encoded_len(tag, value)
+                }
+                (Value::Uint64(value), _) => {
+                    len += prost::encoding::uint64::encoded_len(tag, value)
+                }
+                (Value::Fixed32(value), _) => {
+                    len += prost::encoding::fixed32::encoded_len(tag, value)
+                }
+                (Value::Fixed64(value), _) => {
+                    len += prost::encoding::fixed64::encoded_len(tag, value)
+                }
+                (Value::Sint32(value), _) => {
+                    len += prost::encoding::sint32::encoded_len(tag, value)
+                }
+                (Value::Sint64(value), _) => {
+                    len += prost::encoding::sint64::encoded_len(tag, value)
+                }
+                (Value::Sfixed32(value), _) => {
+                    len += prost::encoding::sfixed32::encoded_len(tag, value)
+                }
+                (Value::Sfixed64(value), _) => {
+                    len += prost::encoding::sfixed64::encoded_len(tag, value)
+                }
+                (Value::String(value), _) => {
+                    len += prost::encoding::string::encoded_len(tag, value)
+                }
+                (Value::Bytes(value), _) => len += prost::encoding::bytes::encoded_len(tag, value),
+                (Value::Message(value), _) => {
+                    len += prost::encoding::message::encoded_len(tag, value)
+                }
+                (Value::Group(value), _) => len += prost::encoding::group::encoded_len(tag, value),
+                (Value::RepeatedFloat(values), _) => {
                     len += prost::encoding::float::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedDouble(values) => {
+                (Value::RepeatedDouble(values), _) => {
                     len += prost::encoding::double::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedBool(values) => {
+                (Value::RepeatedBool(values), _) => {
                     len += prost::encoding::bool::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedInt32(values) => {
+                (Value::RepeatedInt32(values), _) => {
                     len += prost::encoding::int32::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedInt64(values) => {
+                (Value::RepeatedInt64(values), _) => {
                     len += prost::encoding::int64::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedUint32(values) => {
+                (Value::RepeatedUint32(values), _) => {
                     len += prost::encoding::uint32::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedUint64(values) => {
+                (Value::RepeatedUint64(values), _) => {
                     len += prost::encoding::uint64::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedFixed32(values) => {
+                (Value::RepeatedFixed32(values), _) => {
                     len += prost::encoding::fixed32::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedFixed64(values) => {
+                (Value::RepeatedFixed64(values), _) => {
                     len += prost::encoding::fixed64::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedSint32(values) => {
+                (Value::RepeatedSint32(values), _) => {
                     len += prost::encoding::sint32::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedSint64(values) => {
+                (Value::RepeatedSint64(values), _) => {
                     len += prost::encoding::sint64::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedSfixed32(values) => {
+                (Value::RepeatedSfixed32(values), _) => {
                     len += prost::encoding::sfixed32::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedSfixed64(values) => {
+                (Value::RepeatedSfixed64(values), _) => {
                     len += prost::encoding::sfixed64::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedString(values) => {
+                (Value::RepeatedString(values), _) => {
                     len += prost::encoding::string::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedBytes(values) => {
+                (Value::RepeatedBytes(values), _) => {
                     len += prost::encoding::bytes::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedMessage(values) => {
+                (Value::RepeatedMessage(values), _) => {
                     len += prost::encoding::message::encoded_len_repeated(tag, values)
                 }
-                Value::RepeatedGroup(values) => {
+                (Value::RepeatedGroup(values), _) => {
                     len += prost::encoding::group::encoded_len_repeated(tag, values)
                 }
             }

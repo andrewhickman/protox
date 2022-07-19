@@ -488,9 +488,7 @@ fn proto3_default_value() {
                 optional int32 foo = 1 [default = "foo"];
             }"#
         ),
-        vec![Proto3DefaultValue {
-            span: 103..118,
-        }],
+        vec![Proto3DefaultValue { span: 103..118 }],
     );
 }
 
@@ -653,122 +651,239 @@ fn field_default_invalid_type() {
                 optional string foo = 1 [default = '\xFF'];
             }"#
         ),
-        vec![StringValueInvalidUtf8 {
-            span: 82..88,
+        vec![StringValueInvalidUtf8 { span: 82..88 }],
+    );
+}
+
+#[test]
+#[ignore]
+fn message_field_json_name() {
+    // custom json name with option
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn map_field_with_label() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn map_field_invalid_type() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn message_field_duplicate_number() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn message_reserved_range_extrema() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn message_reserved_range_invalid() {
+    // empty
+    // end < start
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn message_reserved_range_overlap() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn message_reserved_range_overlap_with_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_required_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_map_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_group_field() {
+    // allow
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_field_number_not_in_extensions() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_duplicate_field_number() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_oneof_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn extend_non_options_type_proto3() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn repeated_field_default_value() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn proto3_group_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn proto3_required_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn proto2_field_missing_label() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn oneof_field_with_label() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn oneof_map_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn oneof_group_field() {
+    // allow
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn oneof_oneof_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn empty_oneof() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn enum_value_extrema() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn enum_reserved_range_extrema() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn enum_reserved_range_invalid() {
+    // empty
+    // end < start
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn enum_reserved_range_overlap_with_value() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn enum_duplicate_number() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn proto2_enum_in_proto3_message() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn proto3_enum_default() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn option_unknown_field() {
+    todo!()
+}
+
+#[test]
+#[ignore]
+fn option_unknown_extension() {
+    todo!()
+}
+
+#[test]
+fn option_already_set() {
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                optional int32 foo = 1 [deprecated = true, deprecated = false];
+            }"#
+        ),
+        vec![OptionAlreadySet {
+            name: "deprecated".to_owned(),
+            first: 103..113,
+            second: 122..132
         }],
     );
 }
 
 #[test]
-fn message_field_json_name() {
-    // custom json name with option
+#[ignore]
+fn option_map_entry_set_explicitly() {
+    todo!()
 }
-
-#[test]
-fn map_field_with_label() {}
-
-#[test]
-fn map_field_invalid_type() {}
-
-#[test]
-fn message_field_duplicate_number() {}
-
-#[test]
-fn message_reserved_range_extrema() {}
-
-#[test]
-fn message_reserved_range_invalid() {
-    // empty
-    // end < start
-}
-
-#[test]
-fn message_reserved_range_overlap() {}
-
-#[test]
-fn message_reserved_range_overlap_with_field() {}
-
-#[test]
-fn extend_required_field() {}
-
-#[test]
-fn extend_map_field() {}
-
-#[test]
-fn extend_group_field() {
-    // allow
-}
-
-#[test]
-fn extend_field_number_not_in_extensions() {}
-
-#[test]
-fn extend_duplicate_field_number() {}
-
-#[test]
-fn extend_oneof_field() {}
-
-#[test]
-fn extend_non_options_type_proto3() {}
-
-#[test]
-fn repeated_field_default_value() {}
-
-#[test]
-fn proto3_group_field() {}
-
-#[test]
-fn proto3_required_field() {}
-
-#[test]
-fn proto2_field_missing_label() {}
-
-#[test]
-fn oneof_field_with_label() {}
-
-#[test]
-fn oneof_map_field() {}
-
-#[test]
-fn oneof_group_field() {
-    // allow
-}
-
-#[test]
-fn oneof_oneof_field() {}
-
-#[test]
-fn empty_oneof() {}
-
-#[test]
-fn enum_value_extrema() {}
-
-#[test]
-fn enum_reserved_range_extrema() {}
-
-#[test]
-fn enum_reserved_range_invalid() {
-    // empty
-    // end < start
-}
-
-#[test]
-fn enum_reserved_range_overlap_with_value() {}
-
-#[test]
-fn enum_duplicate_number() {}
-
-#[test]
-fn proto2_enum_in_proto3_message() {}
-
-#[test]
-fn proto3_enum_default() {}
-
-#[test]
-fn option_unknown_field() {}
-
-#[test]
-fn option_unknown_extension() {}
 
 /*
 syntax = 'proto2';

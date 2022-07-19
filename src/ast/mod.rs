@@ -458,6 +458,14 @@ impl Field {
             }),
         }
     }
+
+    pub fn ty_span(&self) -> Span {
+        match &self.kind {
+            FieldKind::Normal { ty_span, .. }
+            | FieldKind::Group { ty_span, .. }
+            | FieldKind::Map { ty_span, .. } => ty_span.clone(),
+        }
+    }
 }
 
 impl Ty {
@@ -516,6 +524,19 @@ impl OptionBody {
 
     pub fn is_simple(&self) -> bool {
         matches!(self.name.as_slice(), [OptionNamePart::Ident(_)])
+    }
+
+    pub fn name_string(&self) -> std::string::String {
+        let mut result = std::string::String::new();
+
+        for part in &self.name {
+            match part {
+                OptionNamePart::Ident(ident) => write!(result, "{}", ident).unwrap(),
+                OptionNamePart::Extension(ident, _) => write!(result, "{}", ident).unwrap(),
+            }
+        }
+
+        result
     }
 
     pub fn name_span(&self) -> Span {
