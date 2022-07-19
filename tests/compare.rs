@@ -93,7 +93,7 @@ macro_rules! compare {
     };
 }
 
-compare!(bytes_default);
+compare!(field_defaults);
 compare!(generate_map_entry_message);
 compare!(generate_group_message);
 compare!(generate_synthetic_oneof_ordering);

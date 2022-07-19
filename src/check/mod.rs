@@ -106,6 +106,11 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
+    #[error("default values are not allowed in proto3")]
+    Proto3DefaultValue {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("{kind} fields are not allowed in extensions")]
     InvalidExtendFieldKind {
         kind: &'static str,
@@ -166,16 +171,16 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Span,
     },
-    #[error("expected option value to be {expected}, but found '{actual}'")]
-    OptionValueInvalidType {
+    #[error("expected value to be {expected}, but found '{actual}'")]
+    ValueInvalidType {
         expected: String,
         actual: String,
         #[label("defined here")]
         span: Span,
     },
-    #[error("expected option value to be {expected}, but the value is out of range")]
-    #[help("the value must be between {min} and {max}, inclusive")]
-    OptionValueOutOfRange {
+    #[error("expected value to be {expected}, but the value is out of range")]
+    #[diagnostic(help("the value must be between {min} and {max} inclusive"))]
+    IntegerValueOutOfRange {
         expected: String,
         actual: String,
         min: String,
@@ -183,13 +188,13 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Span,
     },
-    #[error("option value is not valid utf-8")]
-    OptionValueInvalidUtf8 {
+    #[error("expected a string, but the value is not valid utf-8")]
+    StringValueInvalidUtf8 {
         #[label("defined here")]
         span: Span,
     },
     #[error("'{value_name}' is not a valid value for enum '{enum_name}'")]
-    OptionValueInvalidEnum {
+    InvalidEnumValue {
         value_name: String,
         enum_name: String,
         #[label("defined here")]

@@ -56,7 +56,7 @@ Ok(
                                 Int {
                                     negative: true,
                                     value: 1,
-                                    span: 55..56,
+                                    span: 54..56,
                                 },
                             ),
                         },

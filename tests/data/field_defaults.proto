@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+message Foo {
+    optional double double = 1 [default = 4.2];
+    optional float float = 2 [default = 2.4e-2];
+    optional int32 int32 = 3 [default = -1];
+    optional int64 int64 = 4 [default = -3221225470];
+    optional uint32 uint32 = 5 [default = 0];
+    optional uint64 uint64 = 6 [default = 3221225470];
+    optional sint32 sint32 = 7 [default = -5];
+    optional sint64 sint64 = 8 [default = 42];
+    optional fixed32 fixed32 = 9 [default = 5];
+    optional fixed64 fixed64 = 10 [default = 7];
+    optional sfixed32 sfixed32 = 11 [default = -100];
+    optional sfixed64 sfixed64 = 12 [default = 10];
+    optional bool bool = 13 [default = true];
+    optional string string = 14 [default = "hello"];
+    optional bytes bytes = 15 [default = "abc\366\xFE\a\b\f\n\r\t\v\\\'\"\x00"];
+    optional Enum enum = 16 [default = ZERO];
+}
+
+enum Enum {
+    ZERO = 0;
+}

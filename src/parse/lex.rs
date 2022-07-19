@@ -171,7 +171,7 @@ fn int<'a>(lex: &mut Lexer<'a, Token<'a>>, radix: u32, prefix_len: usize) -> Res
     debug_assert!(lex.slice().len() > prefix_len);
     let span = lex.span().start + prefix_len..lex.span().end;
 
-    if matches!(lex.remainder().chars().next(), Some(ch) if ch.is_ascii_alphabetic()) {
+    if matches!(lex.remainder().chars().next(), Some(ch) if ch.is_ascii_alphabetic() || ch == '_') {
         let mut end = span.end + 1;
         while end < lex.source().len() && lex.source().as_bytes()[end].is_ascii_alphabetic() {
             end += 1;
@@ -905,7 +905,7 @@ mod tests {
             ]
         );
 
-        let mut lexer = Token::lexer("foo: 10bar: 20");
+        let mut lexer = Token::lexer("foo: 10bar: 20_foo");
         assert_eq!(
             lexer.by_ref().collect::<Vec<_>>(),
             vec![
@@ -915,11 +915,15 @@ mod tests {
                 Token::Ident("bar"),
                 Token::Colon,
                 Token::IntLiteral(20),
+                Token::Ident("_foo"),
             ]
         );
         assert_eq!(
             lexer.extras.errors,
-            vec![ParseError::NoSpaceBetweenIntAndIdent { span: 5..10 }]
+            vec![
+                ParseError::NoSpaceBetweenIntAndIdent { span: 5..10 },
+                ParseError::NoSpaceBetweenIntAndIdent { span: 12..18 },
+            ]
         );
     }
 

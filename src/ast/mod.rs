@@ -318,7 +318,7 @@ impl Default for Syntax {
 impl Int {
     pub fn as_i32(&self) -> std::option::Option<i32> {
         if self.negative {
-            self.value.checked_neg().and_then(|n| i32::try_from(n).ok())
+            i32::try_from(self.value).ok()?.checked_neg()
         } else {
             i32::try_from(self.value).ok()
         }
@@ -326,7 +326,7 @@ impl Int {
 
     pub fn as_i64(&self) -> std::option::Option<i64> {
         if self.negative {
-            self.value.checked_neg().and_then(|n| i64::try_from(n).ok())
+            i64::try_from(self.value).ok()?.checked_neg()
         } else {
             i64::try_from(self.value).ok()
         }
@@ -514,6 +514,10 @@ impl OptionBody {
         matches!(self.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == name)
     }
 
+    pub fn is_simple(&self) -> bool {
+        matches!(self.name.as_slice(), [OptionNamePart::Ident(_)])
+    }
+
     pub fn name_span(&self) -> Span {
         debug_assert!(!self.name.is_empty());
         join_span(
@@ -606,7 +610,11 @@ impl fmt::Display for OptionValue {
 
 impl fmt::Display for Int {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.value.fmt(f)
+        if self.negative {
+            write!(f, "-{}", self.value)
+        } else {
+            write!(f, "{}", self.value)
+        }
     }
 }
 

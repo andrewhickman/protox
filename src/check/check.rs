@@ -13,7 +13,7 @@ use crate::{
     lines::LineResolver,
     make_name,
     options::{self, OptionSet},
-    parse_namespace, s,
+    parse_namespace,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
         enum_descriptor_proto::EnumReservedRange,
@@ -468,7 +468,7 @@ impl<'a> Context<'a> {
 
         self.exit();
         DescriptorProto {
-            name: s(message.ast.name()),
+            name: Some(message.ast.name().into_owned()),
             field,
             nested_type,
             extension,
@@ -495,7 +495,7 @@ impl<'a> Context<'a> {
             });
         }
         let descriptor = match &field.ast {
-            ir::FieldSource::Field(ast) => self.check_field(ast, ty),
+            ir::FieldSource::Field(ast) => self.check_field(ast, ty, type_name.as_deref()),
             ir::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
             ir::FieldSource::MapValue(..) => self.check_map_value(),
         };
@@ -518,6 +518,7 @@ impl<'a> Context<'a> {
         &mut self,
         field: &ast::Field,
         ty: Option<field_descriptor_proto::Type>,
+        type_name: Option<&str>,
     ) -> FieldDescriptorProto {
         const NAME: i32 = 1;
         const NUMBER: i32 = 3;
@@ -560,7 +561,7 @@ impl<'a> Context<'a> {
         let options = self.check_field_options(field.options.as_ref());
         self.path.pop();
 
-        let default_value = self.check_field_default_value(field, ty);
+        let default_value = self.check_field_default_value(field, ty, type_name);
         if let Some(default_value) = &field.default_value() {
             self.add_location_for(&[DEFAULT_VALUE], default_value.value.span());
         }
@@ -715,10 +716,14 @@ impl<'a> Context<'a> {
         &mut self,
         field: &ast::Field,
         ty: Option<field_descriptor_proto::Type>,
+        type_name: Option<&str>,
     ) -> Option<String> {
-        // TODO check type
         if let Some(option) = field.default_value() {
-            if field.is_map() {
+            if self.syntax != ast::Syntax::Proto2 {
+                self.errors.push(CheckError::Proto3DefaultValue {
+                    span: option.span(),
+                })
+            } else if field.is_map() {
                 self.errors.push(CheckError::InvalidDefault {
                     kind: "map",
                     span: option.span(),
@@ -733,6 +738,14 @@ impl<'a> Context<'a> {
                     kind: "message",
                     span: option.span(),
                 })
+            } else if matches!(field.label, Some((ast::FieldLabel::Repeated, _))) {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "repeated",
+                    span: option.span(),
+                })
+            } else if self.name_map.is_some() || type_name.is_none() {
+                let scope_name = self.scope_name().to_owned();
+                let _ = self.check_option_value(ty, option, &scope_name, type_name);
             }
 
             Some(option.value.to_string())
@@ -782,7 +795,7 @@ impl<'a> Context<'a> {
                 self.path.pop();
 
                 OneofDescriptorProto {
-                    name: s(&oneof.name.value),
+                    name: Some(oneof.name.value.clone()),
                     options,
                 }
             }
@@ -815,6 +828,8 @@ impl<'a> Context<'a> {
             let json_name = Some(to_json_name(&name));
             let number = self.check_field_number(&field.number);
             let (ty, type_name) = self.check_type(&field.ty(), field.is_group());
+
+            let desc = self.check_field(field, ty, type_name.as_deref());
             result.push(FieldDescriptorProto {
                 name: Some(name.into_owned()),
                 json_name,
@@ -822,7 +837,7 @@ impl<'a> Context<'a> {
                 r#type: ty.map(|ty| ty as i32),
                 type_name,
                 extendee: Some(extendee.clone()),
-                ..self.check_field(field, ty)
+                ..desc
             });
             self.path.pop();
         }
@@ -838,7 +853,7 @@ impl<'a> Context<'a> {
 
         self.add_comments(e.span.clone(), e.comments.clone());
         self.add_location_for(&[NAME], e.name.span.clone());
-        let name = s(&e.name.value);
+        let name = Some(e.name.value.clone());
 
         self.path.extend(&[VALUE, 0]);
         let value = e
@@ -900,7 +915,7 @@ impl<'a> Context<'a> {
 
         self.add_comments(value.span.clone(), value.comments.clone());
         self.add_location_for(&[NAME], value.name.span.clone());
-        let name = s(&value.name.value);
+        let name = Some(value.name.value.clone());
 
         self.add_location_for(&[NUMBER], value.number.span.clone());
         let number = self.check_enum_number(&value.number);
@@ -923,7 +938,7 @@ impl<'a> Context<'a> {
 
         self.add_comments(service.span.clone(), service.comments.clone());
         self.add_location_for(&[NAME], service.name.span.clone());
-        let name = s(&service.name.value);
+        let name = Some(service.name.value.clone());
 
         self.path.extend(&[METHOD, 0]);
         let method = service
@@ -958,7 +973,7 @@ impl<'a> Context<'a> {
 
         self.add_comments(method.span.clone(), method.comments.clone());
         self.add_location_for(&[NAME], method.name.span.clone());
-        let name = s(&method.name);
+        let name = Some(method.name.value.clone());
 
         self.add_location_for(&[INPUT_TYPE], method.input_ty.span());
         let (input_type, kind) = self.resolve_type_name(&method.input_ty);
@@ -1176,6 +1191,10 @@ impl<'a> Context<'a> {
             return Ok(());
         }
 
+        if self.name_map.is_none() && !option.is_simple() {
+            todo!("set uninterpreted_option")
+        }
+
         let mut numbers = vec![];
         let mut ty = None;
         let mut type_name = Some(Cow::Borrowed(namespace));
@@ -1223,7 +1242,31 @@ impl<'a> Context<'a> {
             }
         }
 
-        let value = match ty {
+        let value = self.check_option_value(
+            ty,
+            option,
+            type_name_context.as_deref().unwrap_or_default(),
+            type_name.as_deref(),
+        )?;
+
+        self.add_location_for(&numbers, option_span);
+        result.set(
+            *numbers.last().expect("expected at least one field access"),
+            value,
+        );
+        Ok(())
+    }
+
+    fn check_option_value(
+        &mut self,
+        ty: Option<field_descriptor_proto::Type>,
+        option: &ast::OptionBody,
+        type_name_context: &str,
+        type_name: Option<&str>,
+    ) -> Result<options::Value, ()> {
+        use field_descriptor_proto::Type;
+
+        Ok(match ty {
             Some(Type::Double) => {
                 options::Value::Double(self.check_option_value_f64(&option.value)?)
             }
@@ -1266,65 +1309,47 @@ impl<'a> Context<'a> {
             Some(Type::Enum) => {
                 let value = self.check_option_value_enum(
                     &option.value,
-                    type_name_context.as_deref().unwrap_or_default(),
-                    type_name.as_deref().unwrap_or_default(),
+                    type_name_context,
+                    type_name.unwrap_or_default(),
                 )?;
                 options::Value::Int32(value)
             }
             None | Some(Type::Message | Type::Group) => {
-                if let Some(name_map) = &self.name_map {
-                    let type_name = type_name.as_deref().unwrap_or_default();
-                    match self.resolve_option_def(
-                        type_name_context.as_deref().unwrap_or_default(),
-                        type_name,
-                    ) {
-                        Some(DefinitionKind::Message) => {
-                            let value = self.check_option_value_message(
-                                &option.value,
-                                type_name,
-                                name_map,
-                            )?;
-                            if ty == Some(Type::Group) {
-                                options::Value::Group(value)
-                            } else {
-                                options::Value::Message(value)
-                            }
-                        }
-                        Some(DefinitionKind::Enum) => {
-                            let value = self.check_option_value_enum(
-                                &option.value,
-                                type_name_context.as_deref().unwrap_or_default(),
-                                type_name,
-                            )?;
-                            options::Value::Int32(value)
-                        }
-                        Some(_) | None => {
-                            self.errors.push(CheckError::OptionInvalidTypeName {
-                                name: type_name.to_owned(),
-                                span: option.name_span(),
-                            });
-                            return Err(());
+                let type_name = type_name.unwrap_or_default();
+                match self.resolve_option_def(type_name_context, type_name) {
+                    Some(DefinitionKind::Message) => {
+                        let value = self.check_option_value_message(&option.value, type_name)?;
+                        if ty == Some(Type::Group) {
+                            options::Value::Group(value)
+                        } else {
+                            options::Value::Message(value)
                         }
                     }
-                } else {
-                    return Ok(());
+                    Some(DefinitionKind::Enum) => {
+                        let value = self.check_option_value_enum(
+                            &option.value,
+                            type_name_context,
+                            type_name,
+                        )?;
+                        options::Value::Int32(value)
+                    }
+                    Some(_) | None => {
+                        self.errors.push(CheckError::OptionInvalidTypeName {
+                            name: type_name.to_owned(),
+                            span: option.name_span(),
+                        });
+                        return Err(());
+                    }
                 }
             }
-        };
-
-        self.add_location_for(&numbers, option_span);
-        result.set(
-            *numbers.last().expect("expected at least one field access"),
-            value,
-        );
-        Ok(())
+        })
     }
 
     fn check_option_value_f64(&mut self, value: &ast::OptionValue) -> Result<f64, ()> {
         match value {
             ast::OptionValue::Float(float) => Ok(float.value),
             _ => {
-                self.errors.push(CheckError::OptionValueInvalidType {
+                self.errors.push(CheckError::ValueInvalidType {
                     expected: "a float".to_owned(),
                     actual: value.to_string(),
                     span: value.span(),
@@ -1338,7 +1363,7 @@ impl<'a> Context<'a> {
         match self.check_option_value_int(value)?.as_i32() {
             Some(value) => Ok(value),
             None => {
-                self.errors.push(CheckError::OptionValueOutOfRange {
+                self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "a signed 32-bit integer".to_owned(),
                     actual: value.to_string(),
                     min: i32::MIN.to_string(),
@@ -1354,7 +1379,7 @@ impl<'a> Context<'a> {
         match self.check_option_value_int(value)?.as_i64() {
             Some(value) => Ok(value),
             None => {
-                self.errors.push(CheckError::OptionValueOutOfRange {
+                self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "a signed 64-bit integer".to_owned(),
                     actual: value.to_string(),
                     min: i64::MIN.to_string(),
@@ -1370,7 +1395,7 @@ impl<'a> Context<'a> {
         match self.check_option_value_int(value)?.as_u32() {
             Some(value) => Ok(value),
             None => {
-                self.errors.push(CheckError::OptionValueOutOfRange {
+                self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "an unsigned 32-bit integer".to_owned(),
                     actual: value.to_string(),
                     min: u32::MIN.to_string(),
@@ -1386,7 +1411,7 @@ impl<'a> Context<'a> {
         match self.check_option_value_int(value)?.as_u64() {
             Some(value) => Ok(value),
             None => {
-                self.errors.push(CheckError::OptionValueOutOfRange {
+                self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "an unsigned 64-bit integer".to_owned(),
                     actual: value.to_string(),
                     min: u64::MIN.to_string(),
@@ -1405,7 +1430,7 @@ impl<'a> Context<'a> {
         match value {
             ast::OptionValue::Int(int) => Ok(int),
             _ => {
-                self.errors.push(CheckError::OptionValueInvalidType {
+                self.errors.push(CheckError::ValueInvalidType {
                     expected: "an integer".to_owned(),
                     actual: value.to_string(),
                     span: value.span(),
@@ -1420,7 +1445,7 @@ impl<'a> Context<'a> {
             ast::OptionValue::Ident(ident) if ident.value.as_str() == "false" => Ok(false),
             ast::OptionValue::Ident(ident) if ident.value.as_str() == "true" => Ok(true),
             _ => {
-                self.errors.push(CheckError::OptionValueInvalidType {
+                self.errors.push(CheckError::ValueInvalidType {
                     expected: "either 'true' or 'false'".to_owned(),
                     actual: value.to_string(),
                     span: value.span(),
@@ -1436,7 +1461,7 @@ impl<'a> Context<'a> {
             Ok(string) => Ok(string),
             Err(_) => {
                 self.errors
-                    .push(CheckError::OptionValueInvalidUtf8 { span: value.span() });
+                    .push(CheckError::StringValueInvalidUtf8 { span: value.span() });
                 Err(())
             }
         }
@@ -1446,7 +1471,7 @@ impl<'a> Context<'a> {
         match value {
             ast::OptionValue::String(string) => Ok(string.value.clone()),
             _ => {
-                self.errors.push(CheckError::OptionValueInvalidType {
+                self.errors.push(CheckError::ValueInvalidType {
                     expected: "a string".to_owned(),
                     actual: value.to_string(),
                     span: value.span(),
@@ -1460,7 +1485,6 @@ impl<'a> Context<'a> {
         &mut self,
         _value: &ast::OptionValue,
         _type_name: &str,
-        _name_map: &NameMap,
     ) -> Result<OptionSet, ()> {
         todo!()
     }
@@ -1478,7 +1502,7 @@ impl<'a> Context<'a> {
                 match self.resolve_option_def(context, &make_name(type_namespace, &ident.value)) {
                     Some(DefinitionKind::EnumValue { number }) => Ok(*number),
                     _ => {
-                        self.errors.push(CheckError::OptionValueInvalidEnum {
+                        self.errors.push(CheckError::InvalidEnumValue {
                             value_name: ident.value.clone(),
                             enum_name: type_name.to_owned(),
                             span: ident.span.clone(),
@@ -1488,7 +1512,7 @@ impl<'a> Context<'a> {
                 }
             }
             _ => {
-                self.errors.push(CheckError::OptionValueInvalidType {
+                self.errors.push(CheckError::ValueInvalidType {
                     expected: "an enum value identifier".to_owned(),
                     actual: value.to_string(),
                     span: value.span(),

@@ -1,3 +1,0 @@
-message Foo {
-    optional bytes bytes = 1 [default = "abc\366\xFE\a\b\f\n\r\t\v\\\'\"\x00"];
-}

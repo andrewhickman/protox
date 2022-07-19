@@ -206,10 +206,6 @@ fn index_to_i32(index: usize) -> i32 {
     index.try_into().unwrap()
 }
 
-fn s(s: impl ToString) -> Option<String> {
-    Some(s.to_string())
-}
-
 fn join_span(start: Span, end: Span) -> Span {
     start.start..end.end
 }

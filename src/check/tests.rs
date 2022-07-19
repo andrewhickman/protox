@@ -478,8 +478,185 @@ fn name_collision() {
 }
 
 #[test]
-fn message_field_default_value() {
-    // bytes/string etc
+fn proto3_default_value() {
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                optional int32 foo = 1 [default = "foo"];
+            }"#
+        ),
+        vec![Proto3DefaultValue {
+            span: 103..118,
+        }],
+    );
+}
+
+#[test]
+fn field_default_value() {
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional Message foo = 1 [default = ""];
+            }"#
+        ),
+        vec![InvalidDefault {
+            kind: "message",
+            span: 73..85,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                map<uint32, sfixed64> foo = 1 [default = ""];
+            }"#
+        ),
+        vec![InvalidDefault {
+            kind: "map",
+            span: 78..90,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional group Foo = 1 [default = ""] {};
+            }"#
+        ),
+        vec![InvalidDefault {
+            kind: "group",
+            span: 71..83,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                repeated int32 foo = 1 [default = ""];
+            }"#
+        ),
+        vec![InvalidDefault {
+            kind: "repeated",
+            span: 71..83,
+        }],
+    );
+}
+
+#[test]
+fn enum_field_invalid_default() {
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional Foo foo = 1 [ONE = 1];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        vec![OptionUnknownField {
+            name: "ONE".to_owned(),
+            namespace: "google.protobuf.FieldOptions".to_owned(),
+            span: 69..72,
+        }],
+    );
+}
+
+#[test]
+fn field_default_invalid_type() {
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional int32 foo = 1 [default = "foo"];
+            }"#
+        ),
+        vec![ValueInvalidType {
+            expected: "an integer".to_owned(),
+            actual: "foo".to_owned(),
+            span: 81..86,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional uint32 foo = 1 [default = -100];
+            }"#
+        ),
+        vec![IntegerValueOutOfRange {
+            expected: "an unsigned 32-bit integer".to_owned(),
+            actual: "-100".to_owned(),
+            min: "0".to_owned(),
+            max: "4294967295".to_owned(),
+            span: 82..86,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional int32 foo = 1 [default = 2147483648];
+            }"#
+        ),
+        vec![IntegerValueOutOfRange {
+            expected: "a signed 32-bit integer".to_owned(),
+            actual: "2147483648".to_owned(),
+            min: "-2147483648".to_owned(),
+            max: "2147483647".to_owned(),
+            span: 81..91,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional Foo foo = 1 [default = 1];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        vec![ValueInvalidType {
+            expected: "an enum value identifier".to_owned(),
+            actual: "1".to_owned(),
+            span: 79..80,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional bool foo = 1 [default = FALSE];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        vec![ValueInvalidType {
+            expected: "either 'true' or 'false'".to_owned(),
+            actual: "FALSE".to_owned(),
+            span: 80..85,
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional string foo = 1 [default = '\xFF'];
+            }"#
+        ),
+        vec![StringValueInvalidUtf8 {
+            span: 82..88,
+        }],
+    );
 }
 
 #[test]
@@ -491,13 +668,7 @@ fn message_field_json_name() {
 fn map_field_with_label() {}
 
 #[test]
-fn map_field_with_default() {}
-
-#[test]
 fn map_field_invalid_type() {}
-
-#[test]
-fn message_field_with_default() {}
 
 #[test]
 fn message_field_duplicate_number() {}
@@ -516,9 +687,6 @@ fn message_reserved_range_overlap() {}
 
 #[test]
 fn message_reserved_range_overlap_with_field() {}
-
-#[test]
-fn group_field_with_default() {}
 
 #[test]
 fn extend_required_field() {}

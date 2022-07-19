@@ -1008,16 +1008,16 @@ impl<'a> Parser<'a> {
         }
 
         let value = match self.peek() {
-            Some((Token::Plus, _)) => {
+            Some((Token::Plus, span)) => {
                 self.bump();
-                self.parse_int_or_float(false)?
+                self.parse_int_or_float(false, span)?
             }
-            Some((Token::Minus, _)) => {
+            Some((Token::Minus, span)) => {
                 self.bump();
-                self.parse_int_or_float(true)?
+                self.parse_int_or_float(true, span)?
             }
-            Some((Token::IntLiteral(_) | Token::FloatLiteral(_), _)) => {
-                self.parse_int_or_float(false)?
+            Some((Token::IntLiteral(_) | Token::FloatLiteral(_), span)) => {
+                self.parse_int_or_float(false, span)?
             }
             Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
             Some((Token::LeftBrace, start)) => {
@@ -1046,21 +1046,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_int_or_float(&mut self, negate: bool) -> Result<ast::OptionValue, ()> {
+    fn parse_int_or_float(&mut self, negate: bool, start: Span) -> Result<ast::OptionValue, ()> {
         match self.peek() {
-            Some((Token::IntLiteral(value), span)) => {
+            Some((Token::IntLiteral(value), end)) => {
                 self.bump();
                 Ok(ast::OptionValue::Int(ast::Int {
                     value,
-                    span,
+                    span: join_span(start, end),
                     negative: negate,
                 }))
             }
-            Some((Token::FloatLiteral(EqFloat(value)), span)) => {
+            Some((Token::FloatLiteral(EqFloat(value)), end)) => {
                 self.bump();
                 Ok(ast::OptionValue::Float(ast::Float {
                     value: if negate { -value } else { value },
-                    span,
+                    span: join_span(start, end),
                 }))
             }
             _ => self.unexpected_token("numeric literal")?,
