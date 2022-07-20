@@ -137,8 +137,13 @@ impl Error {
         &self.kind
     }
 
-    pub(crate) fn is_file_not_found(&self) -> bool {
-        matches!(&*self.kind, ErrorKind::ImportNotFound { .. })
+    /// Returns true if this is an instance of [`Error::file_not_found()`]
+    pub fn is_file_not_found(&self) -> bool {
+        match &*self.kind {
+            ErrorKind::ImportNotFound { .. } => true,
+            ErrorKind::OpenFile { err, .. } => err.kind() == io::ErrorKind::NotFound,
+            _ => false,
+        }
     }
 
     pub(crate) fn parse_errors(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
@@ -165,11 +170,9 @@ impl Error {
         import_span: Option<impl Into<SourceSpan>>,
     ) -> Self {
         match &mut *self.kind {
-            ErrorKind::OpenFile { src, span, .. } => {
-                *src = import_src.into();
-                *span = import_span.map(Into::into);
-            }
-            ErrorKind::ImportNotFound { src, span, .. } => {
+            ErrorKind::OpenFile { src, span, .. }
+            | ErrorKind::ImportNotFound { src, span, .. }
+            | ErrorKind::FileTooLarge { src, span, .. } => {
                 *src = import_src.into();
                 *span = import_span.map(Into::into);
             }

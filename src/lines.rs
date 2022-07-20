@@ -2,24 +2,28 @@ use logos::Span;
 
 use crate::index_to_i32;
 
+#[derive(Debug, Clone)]
 pub(crate) struct LineResolver {
-    lines: Vec<usize>,
+    lines: Vec<i32>,
 }
 
 impl LineResolver {
     pub fn new(source_code: &str) -> Self {
         let lines = source_code
             .match_indices('\n')
-            .map(|(index, _)| index + 1)
+            .map(|(index, _)| index_to_i32(index + 1))
             .collect();
         LineResolver { lines }
     }
 
-    pub fn resolve(&self, offset: usize) -> (usize, usize) {
-        match self.lines.binary_search(&offset) {
-            Ok(index) => (index + 1, 0),
-            Err(0) => (0, offset),
-            Err(index) => (index, offset - self.lines[index - 1]),
+    pub fn resolve(&self, offset: usize) -> (i32, i32) {
+        match self.lines.binary_search(&index_to_i32(offset)) {
+            Ok(index) => (index_to_i32(index + 1), 0),
+            Err(0) => (0, index_to_i32(offset)),
+            Err(index) => (
+                index_to_i32(index),
+                index_to_i32(offset) - self.lines[index - 1],
+            ),
         }
     }
 
@@ -28,19 +32,25 @@ impl LineResolver {
         let (end_line, end_col) = self.resolve(span.end);
 
         if start_line == end_line {
-            vec![
-                index_to_i32(start_line),
-                index_to_i32(start_col),
-                index_to_i32(end_col),
-            ]
+            vec![start_line, start_col, end_col]
         } else {
-            vec![
-                index_to_i32(start_line),
-                index_to_i32(start_col),
-                index_to_i32(end_line),
-                index_to_i32(end_col),
-            ]
+            vec![start_line, start_col, end_line, end_col]
         }
+    }
+
+    pub fn resolve_proto_span(&self, span: &[i32]) -> Option<Span> {
+        let (start_line, start_col, end_line, end_col) = match span {
+            &[start_line, start_col, end_col] => (start_line, start_col, start_line, end_col),
+            &[start_line, start_col, end_line, end_col] => {
+                (start_line, start_col, end_line, end_col)
+            }
+            _ => return None,
+        };
+
+        let start = *self.lines.get(start_line as usize)? + start_col;
+        let end = *self.lines.get(end_line as usize)? + end_col;
+
+        Some((start as usize)..(end as usize))
     }
 }
 
@@ -59,4 +69,46 @@ fn resolve_line_number() {
     assert_eq!(resolver.resolve(13), (2, 1));
     assert_eq!(resolver.resolve(14), (2, 2));
     assert_eq!(resolver.resolve(15), (2, 3));
+}
+
+#[test]
+fn roundtrip_span() {
+    let resolver = LineResolver::new("hello\nworld\nfoo");
+
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(0..5))
+            .unwrap(),
+        0..5
+    );
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(4..6))
+            .unwrap(),
+        4..6
+    );
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(7..11))
+            .unwrap(),
+        7..11
+    );
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(10..12))
+            .unwrap(),
+        10..12
+    );
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(13..15))
+            .unwrap(),
+        13..15
+    );
+    assert_eq!(
+        resolver
+            .resolve_proto_span(&resolver.resolve_span(14..14))
+            .unwrap(),
+        14..14
+    );
 }

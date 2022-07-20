@@ -4,11 +4,10 @@ use logos::Span;
 use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::{ast, compile::ParsedFileMap, types::FileDescriptorProto};
+use crate::{ast, lines::LineResolver, types::FileDescriptorProto};
 
-#[allow(clippy::module_inception)]
-mod check;
-mod ir;
+// mod resolve;
+// mod generate;
 mod names;
 #[cfg(test)]
 mod tests;
@@ -19,26 +18,20 @@ const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 use self::names::DuplicateNameError;
 pub(crate) use self::names::NameMap;
 
-pub(crate) fn check(
-    ast: &ast::File,
-    name: Option<&str>,
-    source: Option<&str>,
+/// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
+pub(crate) fn generate(
+    _ast: ast::File,
+    _lines: &LineResolver,
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    let ir = ir::File::build(ast);
-    ir.check(name, None, source)
+    todo!()
 }
 
-pub(crate) fn check_with_names(
-    ast: &ast::File,
-    name: Option<&str>,
-    source: Option<&str>,
-    file_map: &ParsedFileMap,
-) -> Result<(FileDescriptorProto, NameMap), Vec<CheckError>> {
-    let ir = ir::File::build(ast);
-    let name_map = NameMap::from_ir(&ir, file_map)?;
-    let file_descriptor = ir.check(name, Some(&name_map), source)?;
-
-    Ok((file_descriptor, name_map))
+/// Resolve and check relative type names and options.
+pub(crate) fn resolve(
+    _file: &mut FileDescriptorProto,
+    _names: &NameMap,
+) -> Result<(), Vec<CheckError>> {
+    todo!()
 }
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]

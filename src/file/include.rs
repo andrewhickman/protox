@@ -1,13 +1,6 @@
-use std::{
-    fs,
-    io::{self, Read},
-    path::{self, Path, PathBuf},
-};
+use std::path::{self, Path, PathBuf};
 
-use crate::{
-    error::{DynSourceCode, ErrorKind},
-    Error, MAX_FILE_LEN,
-};
+use crate::{error::ErrorKind, Error};
 
 use super::{File, FileResolver};
 
@@ -70,37 +63,12 @@ impl FileResolver for IncludeFileResolver {
     /// ```
     fn open_file(&self, name: &str) -> Result<File, Error> {
         let path = self.include.join(name);
-
-        let map_io_err = |err: io::Error| -> Error {
-            if err.kind() == io::ErrorKind::NotFound {
+        File::read(&path).map_err(|err| {
+            if err.is_file_not_found() {
                 Error::file_not_found(name)
             } else {
-                Error::from_kind(ErrorKind::OpenFile {
-                    path: path.to_owned(),
-                    err,
-                    src: DynSourceCode::default(),
-                    span: None,
-                })
+                err
             }
-        };
-
-        let file = fs::File::open(&path).map_err(map_io_err)?;
-        let metadata = file.metadata().map_err(map_io_err)?;
-
-        if metadata.len() > MAX_FILE_LEN {
-            return Err(Error::from_kind(ErrorKind::FileTooLarge {
-                src: DynSourceCode::default(),
-                span: None,
-            }));
-        }
-
-        let mut buf = String::with_capacity(metadata.len() as usize);
-        file.take(MAX_FILE_LEN)
-            .read_to_string(&mut buf)
-            .map_err(map_io_err)?;
-        Ok(File {
-            content: buf,
-            path: Some(path),
         })
     }
 }
@@ -126,10 +94,7 @@ pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
     Some(name)
 }
 
-pub(crate) fn check_shadow(
-    actual_path: &Option<PathBuf>,
-    expected_path: &Path,
-) -> Result<(), Error> {
+pub(crate) fn check_shadow(actual_path: Option<&Path>, expected_path: &Path) -> Result<(), Error> {
     // actual_path is expected to be an include path concatenated with `expected_path`
     if let Some(actual_path) = actual_path {
         if !ends_with(actual_path, expected_path) {

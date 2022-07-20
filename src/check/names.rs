@@ -11,7 +11,6 @@ use miette::{Diagnostic, LabeledSpan};
 use once_cell::sync::Lazy;
 
 use crate::{
-    ast,
     compile::{ParsedFile, ParsedFileMap},
     file::GoogleFileResolver,
     index_to_i32, make_absolute_name, make_name, parse_namespace,
@@ -22,7 +21,7 @@ use crate::{
     Compiler,
 };
 
-use super::{ir, CheckError};
+use super::CheckError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DuplicateNameError {
@@ -74,23 +73,6 @@ pub(crate) enum DefinitionKind {
 }
 
 impl NameMap {
-    pub fn from_ir(ir: &ir::File, file_map: &ParsedFileMap) -> Result<NameMap, Vec<CheckError>> {
-        let mut ctx = NamePass {
-            name_map: NameMap::new(),
-            errors: Vec::new(),
-            scope: Vec::new(),
-        };
-
-        ctx.add_file(ir, file_map);
-        debug_assert!(ctx.scope.is_empty());
-
-        if ctx.errors.is_empty() {
-            Ok(ctx.name_map)
-        } else {
-            Err(ctx.errors)
-        }
-    }
-
     pub fn from_proto(
         file: &FileDescriptorProto,
         file_map: &ParsedFileMap,
@@ -252,163 +234,6 @@ impl NamePass {
 
     fn exit(&mut self) {
         self.scope.pop().expect("unbalanced scope stack");
-    }
-
-    fn add_file(&mut self, file: &ir::File, file_map: &ParsedFileMap) {
-        for import in &file.ast.imports {
-            let file = &file_map[import.value.as_str()];
-            self.merge_names(
-                file,
-                matches!(import.kind, Some((ast::ImportKind::Public, _))),
-            );
-        }
-
-        if let Some(package) = &file.ast.package {
-            for part in &package.name.parts {
-                self.add_name(
-                    &part.value,
-                    DefinitionKind::Package,
-                    Some(package.name.span().start..part.span.end),
-                );
-                self.enter(&part.value);
-            }
-        }
-
-        for message in &file.messages {
-            self.add_message(message);
-        }
-
-        for item in &file.ast.items {
-            match item {
-                ast::FileItem::Message(_) => continue,
-                ast::FileItem::Enum(enu) => self.add_enum(enu),
-                ast::FileItem::Extend(extend) => self.add_extend(extend),
-                ast::FileItem::Service(service) => self.add_service(service),
-            }
-        }
-
-        if let Some(package) = &file.ast.package {
-            for _ in &package.name.parts {
-                self.exit();
-            }
-        }
-    }
-
-    fn add_message(&mut self, message: &ir::Message) {
-        let name = message.ast.name();
-        self.add_name(
-            name.as_ref(),
-            DefinitionKind::Message,
-            Some(message.ast.name_span()),
-        );
-        self.enter(name);
-
-        for field in &message.fields {
-            let ty = field.ast.ty();
-            self.add_name(
-                field.ast.name(),
-                DefinitionKind::Field {
-                    ty: ty.proto_ty(),
-                    type_name: ty.ty_name(),
-                    number: field.ast.number().as_i32().unwrap_or(0),
-                    label: field.ast.label().map(|l| l.proto_label()),
-                    oneof_index: field.oneof_index,
-                    extendee: None,
-                },
-                Some(field.ast.name_span()),
-            );
-        }
-
-        for oneof in &message.oneofs {
-            let (name, span) = match oneof.ast {
-                ir::OneofSource::Oneof(oneof) => (
-                    Cow::Borrowed(oneof.name.value.as_str()),
-                    oneof.name.span.clone(),
-                ),
-                ir::OneofSource::Field(field) => (
-                    Cow::Owned(field.synthetic_oneof_name()),
-                    field.name.span.clone(),
-                ),
-            };
-
-            self.add_name(name, DefinitionKind::Oneof, Some(span));
-        }
-
-        for nested_message in &message.messages {
-            self.add_message(nested_message);
-        }
-
-        if let Some(body) = message.ast.body() {
-            for item in &body.items {
-                match item {
-                    ast::MessageItem::Enum(enu) => {
-                        self.add_enum(enu);
-                    }
-                    ast::MessageItem::Extend(extend) => {
-                        self.add_extend(extend);
-                    }
-                    ast::MessageItem::Field(_)
-                    | ast::MessageItem::Message(_)
-                    | ast::MessageItem::Oneof(_) => continue,
-                }
-            }
-        }
-
-        self.exit();
-    }
-
-    fn add_extend(&mut self, extend: &ast::Extend) {
-        for field in &extend.fields {
-            let ty = field.ty();
-            self.add_name(
-                field.field_name(),
-                DefinitionKind::Field {
-                    ty: ty.proto_ty(),
-                    type_name: ty.ty_name(),
-                    number: field.number.as_i32().unwrap_or(0),
-                    label: field.label.clone().map(|(l, _)| l.proto_label()),
-                    oneof_index: None,
-                    extendee: Some(extend.extendee.to_string()),
-                },
-                Some(field.name.span.clone()),
-            );
-        }
-    }
-
-    fn add_enum(&mut self, enu: &ast::Enum) {
-        self.add_name(
-            &enu.name.value,
-            DefinitionKind::Enum,
-            Some(enu.name.span.clone()),
-        );
-
-        for value in &enu.values {
-            self.add_name(
-                &value.name.value,
-                DefinitionKind::EnumValue {
-                    number: value.number.as_i32().unwrap_or(0),
-                },
-                Some(value.name.span.clone()),
-            )
-        }
-    }
-
-    fn add_service(&mut self, service: &ast::Service) {
-        self.add_name(
-            &service.name.value,
-            DefinitionKind::Service,
-            Some(service.name.span.clone()),
-        );
-
-        self.enter(&service.name.value);
-        for method in &service.methods {
-            self.add_name(
-                &method.name.value,
-                DefinitionKind::Method,
-                Some(method.name.span.clone()),
-            );
-        }
-        self.exit();
     }
 
     fn add_file_descriptor_proto(&mut self, file: &FileDescriptorProto, file_map: &ParsedFileMap) {

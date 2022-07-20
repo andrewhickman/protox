@@ -21,8 +21,12 @@ use std::fmt;
 use std::sync::Arc;
 use std::{convert::TryInto, path::Path};
 
+use lines::LineResolver;
 use logos::Span;
+use miette::SourceSpan;
 use prost::Message;
+
+use crate::types::{FileDescriptorProto, SourceCodeInfo};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -192,12 +196,14 @@ pub fn compile(
 /// })
 /// ```
 pub fn parse(source: &str) -> Result<prost_types::FileDescriptorProto, Error> {
+    parse_internal(source, &LineResolver::new(source))
+        .map(|file| transcode_file(&file, &mut Vec::new()))
+}
+
+fn parse_internal(source: &str, lines: &LineResolver) -> Result<FileDescriptorProto, Error> {
     let ast =
         parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;
-    match check::check(&ast, None, Some(source)) {
-        Ok(file) => Ok(transcode_file(&file, &mut Vec::new())),
-        Err(errors) => Err(Error::check_errors(errors, Arc::from(source))),
-    }
+    check::generate(ast, lines).map_err(|errors| Error::check_errors(errors, Arc::from(source)))
 }
 
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
@@ -232,6 +238,29 @@ fn parse_namespace(name: &str) -> &str {
     match name.rsplit_once('.') {
         Some((namespace, _)) => namespace,
         None => "",
+    }
+}
+
+fn get_span(
+    lines: &Option<LineResolver>,
+    source: &Option<SourceCodeInfo>,
+    path: &[i32],
+) -> Option<SourceSpan> {
+    match (lines, source) {
+        (Some(lines), Some(source)) => {
+            match source
+                .location
+                .binary_search_by(|location| location.path.as_slice().cmp(path))
+            {
+                Ok(index) => Some(
+                    lines
+                        .resolve_proto_span(&source.location[index].span)?
+                        .into(),
+                ),
+                Err(_) => None,
+            }
+        }
+        _ => None,
     }
 }
 

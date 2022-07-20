@@ -8,11 +8,13 @@ use crate::{
     Error,
 };
 
+/// An implementation of [`FileResolver`] which resolves files from a compiled [`FileDescriptorSet`](prost_types::FileDescriptorSet).
 pub struct DescriptorSetFileResolver {
     set: FileDescriptorSet,
 }
 
 impl DescriptorSetFileResolver {
+    /// Create an instance of [`DescriptorSetFileResolver`] from the file descriptor set.
     pub fn new(set: prost_types::FileDescriptorSet) -> Self {
         DescriptorSetFileResolver {
             set: transcode_file(&set, &mut Vec::new()),
@@ -20,9 +22,9 @@ impl DescriptorSetFileResolver {
     }
 
     /// Create an instance of [`DescriptorSetFileResolver`] by deserializing a [`FileDescriptorSet`](prost_types::FileDescriptorSet)
-    /// the given bytes.
+    /// from the given bytes.
     ///
-    /// Unlike when going through [`new()`], extension options are preserved.
+    /// Unlike when going through [`new()`](DescriptorSetFileResolver::new), extension options are preserved.
     pub fn decode<B>(buf: B) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -35,12 +37,13 @@ impl DescriptorSetFileResolver {
 
 impl FileResolver for DescriptorSetFileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error> {
-        for file in &self.set {
+        for file in &self.set.file {
             if file.name() == name {
                 return Ok(File {
                     path: None,
-                    content: None,
-                    descriptor: file.encode_to_vec(),
+                    lines: None,
+                    source: None,
+                    descriptor: file.clone(),
                 });
             }
         }

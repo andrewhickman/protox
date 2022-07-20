@@ -3,24 +3,20 @@ use std::{
     fmt::{self, Write},
     ops::{Index, IndexMut},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
-use logos::Span;
-use miette::NamedSource;
+use miette::{NamedSource, SourceSpan};
 use prost::Message;
 
 use crate::{
-    ast,
-    check::{check_with_names, NameMap},
+    check::{self, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
     file::{
-        check_shadow, path_to_file_name, ChainFileResolver, FileResolver, GoogleFileResolver,
+        check_shadow, path_to_file_name, ChainFileResolver, File, FileResolver, GoogleFileResolver,
         IncludeFileResolver,
     },
-    parse, transcode_file,
+    get_span, index_to_i32, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
-    MAX_FILE_LEN,
 };
 
 #[cfg(test)]
@@ -118,7 +114,7 @@ impl Compiler {
         };
 
         if let Some(parsed_file) = self.file_map.get_mut(&name) {
-            check_shadow(&parsed_file.path, relative_path)?;
+            check_shadow(parsed_file.path.as_deref(), relative_path)?;
             parsed_file.is_root = true;
             return Ok(self);
         }
@@ -132,42 +128,30 @@ impl Compiler {
                 err
             }
         })?;
-        check_shadow(&file.path, relative_path)?;
-
-        if file.content.len() > (MAX_FILE_LEN as usize) {
-            return Err(Error::from_kind(ErrorKind::FileTooLarge {
-                src: DynSourceCode::default(),
-                span: None,
-            }));
-        }
-
-        let source: Arc<str> = file.content.into();
-        let ast = match parse::parse(&source) {
-            Ok(ast) => ast,
-            Err(errors) => {
-                return Err(Error::parse_errors(
-                    errors,
-                    make_source(&name, &file.path, source),
-                ));
-            }
-        };
+        check_shadow(file.path(), relative_path)?;
 
         let mut import_stack = vec![name.clone()];
-        for import in &ast.imports {
+        for (index, import) in file.descriptor.dependency.iter().enumerate() {
             self.add_import(
-                &import.value,
-                Some(import.span.clone()),
+                import,
+                get_span(
+                    &file.lines,
+                    &file.descriptor.source_code_info,
+                    &[3, index_to_i32(index)],
+                ),
                 &mut import_stack,
-                make_source(&name, &file.path, source.clone()),
+                make_source(&name, file.path(), file.source()),
             )?;
         }
+        drop(import_stack);
 
-        let (descriptor, name_map) = self.check_file(&name, &ast, source, &file.path)?;
+        let path = file.path.clone();
+        let (descriptor, name_map) = self.check_file(&name, file)?;
 
         self.file_map.add(ParsedFile {
             descriptor,
             name_map,
-            path: file.path,
+            path,
             is_root: true,
         });
         Ok(self)
@@ -227,7 +211,7 @@ impl Compiler {
     fn add_import(
         &mut self,
         file_name: &str,
-        span: Option<Span>,
+        span: Option<SourceSpan>,
         import_stack: &mut Vec<String>,
         import_src: DynSourceCode,
     ) -> Result<(), Error> {
@@ -246,44 +230,32 @@ impl Compiler {
         }
 
         let file = match self.resolver.open_file(file_name) {
-            Ok(file) if file.content.len() > (MAX_FILE_LEN as usize) => {
-                return Err(Error::from_kind(ErrorKind::FileTooLarge {
-                    src: import_src,
-                    span: span.map(Into::into),
-                }));
-            }
             Ok(file) => file,
             Err(err) => return Err(err.add_import_context(import_src, span)),
         };
 
-        let source: Arc<str> = file.content.into();
-        let ast = match parse::parse(&source) {
-            Ok(ast) => ast,
-            Err(errors) => {
-                return Err(Error::parse_errors(
-                    errors,
-                    make_source(file_name, &file.path, source),
-                ));
-            }
-        };
-
         import_stack.push(file_name.to_owned());
-        for import in &ast.imports {
+        for (index, import) in file.descriptor.dependency.iter().enumerate() {
             self.add_import(
-                &import.value,
-                Some(import.span.clone()),
+                import,
+                get_span(
+                    &file.lines,
+                    &file.descriptor.source_code_info,
+                    &[3, index_to_i32(index)],
+                ),
                 import_stack,
-                make_source(&import.value, &file.path, source.clone()),
+                make_source(file_name, file.path(), file.source()),
             )?;
         }
         import_stack.pop();
 
-        let (descriptor, name_map) = self.check_file(file_name, &ast, source, &file.path)?;
+        let path = file.path.clone();
+        let (descriptor, name_map) = self.check_file(file_name, file)?;
 
         self.file_map.add(ParsedFile {
             descriptor,
             name_map,
-            path: file.path,
+            path,
             is_root: false,
         });
         Ok(())
@@ -291,19 +263,18 @@ impl Compiler {
 
     fn check_file(
         &self,
-        name: &str,
-        ast: &ast::File,
-        source: Arc<str>,
-        path: &Option<PathBuf>,
+        file_name: &str,
+        file: File,
     ) -> Result<(FileDescriptorProto, NameMap), Error> {
-        let source_info = if self.include_source_info {
-            Some(source.as_ref())
-        } else {
-            None
-        };
+        let path = file.path.as_deref();
+        let source = file.source.as_deref();
+        let name_map = NameMap::from_proto(&file.descriptor, &self.file_map)
+            .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
+        let mut descriptor = file.descriptor;
+        check::resolve(&mut descriptor, &name_map)
+            .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
 
-        check_with_names(ast, Some(name), source_info, &self.file_map)
-            .map_err(|errors| Error::check_errors(errors, make_source(name, path, source)))
+        Ok((descriptor, name_map))
     }
 }
 
@@ -360,11 +331,15 @@ impl<'a> IndexMut<&'a str> for ParsedFileMap {
     }
 }
 
-fn make_source(name: &str, path: &Option<PathBuf>, source: Arc<str>) -> DynSourceCode {
-    let name = match path {
-        Some(path) => path.display().to_string(),
-        None => name.to_owned(),
-    };
+fn make_source(name: &str, path: Option<&Path>, source: Option<&str>) -> DynSourceCode {
+    if let Some(source) = source {
+        let name = match path {
+            Some(path) => path.display().to_string(),
+            None => name.to_owned(),
+        };
 
-    NamedSource::new(name, source).into()
+        NamedSource::new(name, source.to_owned()).into()
+    } else {
+        DynSourceCode::default()
+    }
 }

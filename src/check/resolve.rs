@@ -26,11 +26,11 @@ use crate::{
 };
 
 use super::{
-    ir, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
+    generate, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
     RESERVED_MESSAGE_FIELD_NUMBERS,
 };
 
-impl<'a> ir::File<'a> {
+impl<'a> generate::File<'a> {
     pub fn check(
         &self,
         file_name: Option<&str>,
@@ -192,7 +192,7 @@ impl<'a> Context<'a> {
         matches!(self.scope.last(), Some(Scope::Oneof { synthetic: true }))
     }
 
-    fn check_file(&mut self, file: &ir::File) -> FileDescriptorProto {
+    fn check_file(&mut self, file: &generate::File) -> FileDescriptorProto {
         const PACKAGE: i32 = 2;
         const DEPENDENCY: i32 = 3;
         const PUBLIC_DEPENDENCY: i32 = 10;
@@ -326,7 +326,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_message(&mut self, message: &ir::Message) -> DescriptorProto {
+    fn check_message(&mut self, message: &generate::Message) -> DescriptorProto {
         const NAME: i32 = 1;
         const FIELD: i32 = 2;
         const EXTENSION: i32 = 6;
@@ -343,15 +343,15 @@ impl<'a> Context<'a> {
         });
 
         match message.ast {
-            ir::MessageSource::Message(message) => {
+            generate::MessageSource::Message(message) => {
                 self.add_comments(message.span.clone(), message.comments.clone());
                 self.add_location_for(&[NAME], message.name.span.clone());
             }
-            ir::MessageSource::Group(field, _) => {
+            generate::MessageSource::Group(field, _) => {
                 self.add_comments(field.span.clone(), field.comments.clone());
                 self.add_location_for(&[NAME], field.name.span.clone());
             }
-            ir::MessageSource::Map(_) => (),
+            generate::MessageSource::Map(_) => (),
         }
 
         self.path.extend(&[FIELD, 0]);
@@ -459,7 +459,7 @@ impl<'a> Context<'a> {
             self.path.pop();
         };
 
-        if let ir::MessageSource::Map(map) = &message.ast {
+        if let generate::MessageSource::Map(map) = &message.ast {
             options
                 .get_or_insert_with(Default::default)
                 .set(
@@ -485,7 +485,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_message_field(&mut self, field: &ir::Field) -> FieldDescriptorProto {
+    fn check_message_field(&mut self, field: &generate::Field) -> FieldDescriptorProto {
         let name = field.ast.name();
         let json_name = Some(to_json_name(&name));
         let number = self.check_field_number(&field.ast.number());
@@ -499,9 +499,9 @@ impl<'a> Context<'a> {
             });
         }
         let descriptor = match &field.ast {
-            ir::FieldSource::Field(ast) => self.check_field(ast, ty, type_name.as_deref()),
-            ir::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
-            ir::FieldSource::MapValue(..) => self.check_map_value(),
+            generate::FieldSource::Field(ast) => self.check_field(ast, ty, type_name.as_deref()),
+            generate::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
+            generate::FieldSource::MapValue(..) => self.check_map_value(),
         };
         if oneof_index.is_some() {
             self.exit();
@@ -760,7 +760,7 @@ impl<'a> Context<'a> {
 
     fn check_message_field_camel_case_names<'b>(
         &mut self,
-        fields: impl Iterator<Item = &'b ir::Field<'b>>,
+        fields: impl Iterator<Item = &'b generate::Field<'b>>,
     ) {
         if self.syntax != ast::Syntax::Proto2 {
             let mut names: HashMap<String, (String, Span)> = HashMap::new();
@@ -785,12 +785,12 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_oneof(&mut self, oneof: &ir::Oneof) -> OneofDescriptorProto {
+    fn check_oneof(&mut self, oneof: &generate::Oneof) -> OneofDescriptorProto {
         const NAME: i32 = 1;
         const OPTIONS: i32 = 2;
 
         match oneof.ast {
-            ir::OneofSource::Oneof(oneof) => {
+            generate::OneofSource::Oneof(oneof) => {
                 self.add_location(oneof.span.clone());
                 self.add_location_for(&[NAME], oneof.name.span.clone());
 
@@ -803,7 +803,7 @@ impl<'a> Context<'a> {
                     options,
                 }
             }
-            ir::OneofSource::Field(field) => OneofDescriptorProto {
+            generate::OneofSource::Field(field) => OneofDescriptorProto {
                 name: Some(field.synthetic_oneof_name()),
                 options: None,
             },

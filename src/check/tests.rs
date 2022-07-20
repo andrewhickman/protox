@@ -16,10 +16,7 @@ struct TestFileResolver {
 
 impl FileResolver for TestFileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error> {
-        Ok(File {
-            path: None,
-            content: self.files[name].clone(),
-        })
+        File::from_source(self.files[name].as_str())
     }
 }
 

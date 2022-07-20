@@ -39,7 +39,7 @@ pub(crate) const COMPILER_PLUGIN: &str = include_proto!("compiler/plugin.proto")
 
 impl FileResolver for GoogleFileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error> {
-        let content = match name {
+        let source = match name {
             "google/protobuf/any.proto" => ANY,
             "google/protobuf/api.proto" => API,
             "google/protobuf/descriptor.proto" => DESCRIPTOR,
@@ -55,9 +55,6 @@ impl FileResolver for GoogleFileResolver {
             _ => return Err(Error::file_not_found(name)),
         };
 
-        Ok(File {
-            path: None,
-            content: content.to_owned(),
-        })
+        File::from_source(source)
     }
 }
