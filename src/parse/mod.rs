@@ -162,7 +162,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_file(&mut self) -> Result<ast::File, ()> {
-        let mut file_span = Span::default();
+        let mut file_span = self.lexer.source().len()..0;
+
         let mut syntax = ast::Syntax::default();
         let mut syntax_span = None;
         match self.peek() {

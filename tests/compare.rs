@@ -93,6 +93,8 @@ macro_rules! compare {
     };
 }
 
+compare!(empty_file);
+compare!(empty_file_with_comment);
 compare!(field_defaults);
 compare!(generate_map_entry_message);
 compare!(generate_group_message);
