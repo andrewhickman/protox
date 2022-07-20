@@ -748,6 +748,12 @@ fn extend_non_options_type_proto3() {
 
 #[test]
 #[ignore]
+fn extend_synthetic_oneof() {
+    todo!()
+}
+
+#[test]
+#[ignore]
 fn repeated_field_default_value() {
     todo!()
 }

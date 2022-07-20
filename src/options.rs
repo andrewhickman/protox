@@ -161,10 +161,10 @@ impl OptionSet {
         }
     }
 
-    pub fn set(&mut self, key: i32, value: Value, span: Span) -> Result<(), Span> {
+    pub fn set(&mut self, key: i32, value: Value) -> Result<(), Span> {
         match self.fields.entry(key as u32) {
             btree_map::Entry::Vacant(entry) => {
-                entry.insert((value, span));
+                entry.insert((value, Span::default()));
                 Ok(())
             }
             btree_map::Entry::Occupied(entry) => Err(entry.get().1.clone()),

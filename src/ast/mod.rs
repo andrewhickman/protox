@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     convert::TryFrom,
     fmt::{self, Write},
+    mem,
     ops::Range,
     vec,
 };
@@ -399,22 +400,36 @@ impl OptionValue {
 }
 
 impl MessageBody {
-    pub fn oneofs(&self) -> impl Iterator<Item = &'_ Oneof> {
-        self.items.iter().filter_map(|item| {
-            if let MessageItem::Oneof(oneof) = item {
-                Some(oneof)
-            } else {
-                None
+    pub fn drain_oneofs(&mut self) -> impl Iterator<Item = Oneof> {
+        // Ideally we'd use drain_filter here but its unstable :(
+        let mut oneofs = Vec::new();
+        self.items.retain_mut(|item| match item {
+            MessageItem::Oneof(oneof) => {
+                oneofs.push(Oneof {
+                    name: mem::replace(&mut oneof.name, Ident::new("", 0..0)),
+                    options: mem::take(&mut oneof.options),
+                    fields: mem::take(&mut oneof.fields),
+                    comments: mem::take(&mut oneof.comments),
+                    span: mem::take(&mut oneof.span),
+                });
+                false
             }
-        })
+            _ => true,
+        });
+
+        oneofs.into_iter()
     }
 }
 
 impl Field {
-    pub fn default_value(&self) -> std::option::Option<&OptionBody> {
-        self.options
-            .as_ref()
-            .and_then(|options| options.options.iter().find(|o| o.is("default")))
+    pub fn take_default_value(&mut self) -> std::option::Option<OptionBody> {
+        if let Some(options) = &mut self.options {
+            if let Some(index) = options.options.iter().position(|o| o.is("default")) {
+                return Some(options.options.remove(index));
+            }
+        }
+
+        None
     }
 
     pub fn is_map(&self) -> bool {
@@ -423,10 +438,6 @@ impl Field {
 
     pub fn is_group(&self) -> bool {
         matches!(&self.kind, FieldKind::Group { .. })
-    }
-
-    pub fn map_message_name(&self) -> std::string::String {
-        to_pascal_case(&self.name.value) + "Entry"
     }
 
     pub fn field_name(&self) -> Cow<'_, str> {
@@ -454,7 +465,13 @@ impl Field {
             }),
             FieldKind::Map { .. } => Ty::Named(TypeName {
                 leading_dot: None,
-                name: FullIdent::from(Ident::new(self.map_message_name(), self.name.span.clone())),
+                name: FullIdent::from(Ident::new(
+                    {
+                        let ref this = self;
+                        to_pascal_case(&this.name.value) + "Entry"
+                    },
+                    self.name.span.clone(),
+                )),
             }),
         }
     }

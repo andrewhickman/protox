@@ -13,6 +13,7 @@ mod error;
 mod lines;
 mod options;
 mod parse;
+mod tag;
 #[cfg(test)]
 mod tests;
 mod types;

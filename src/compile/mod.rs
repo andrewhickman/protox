@@ -15,7 +15,7 @@ use crate::{
         check_shadow, path_to_file_name, ChainFileResolver, File, FileResolver, GoogleFileResolver,
         IncludeFileResolver,
     },
-    get_span, index_to_i32, transcode_file,
+    get_span, index_to_i32, tag, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
 };
 
@@ -137,7 +137,7 @@ impl Compiler {
                 get_span(
                     &file.lines,
                     &file.descriptor.source_code_info,
-                    &[3, index_to_i32(index)],
+                    &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 &mut import_stack,
                 make_source(&name, file.path(), file.source()),
@@ -241,7 +241,7 @@ impl Compiler {
                 get_span(
                     &file.lines,
                     &file.descriptor.source_code_info,
-                    &[3, index_to_i32(index)],
+                    &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 import_stack,
                 make_source(file_name, file.path(), file.source()),
@@ -270,7 +270,12 @@ impl Compiler {
         let source = file.source.as_deref();
         let name_map = NameMap::from_proto(&file.descriptor, &self.file_map)
             .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
+
         let mut descriptor = file.descriptor;
+        if descriptor.name().is_empty() {
+            descriptor.name = Some(file_name.to_owned());
+        }
+
         check::resolve(&mut descriptor, &name_map)
             .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
 

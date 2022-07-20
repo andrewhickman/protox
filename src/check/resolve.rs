@@ -76,8 +76,6 @@ struct Context<'a> {
     name_map: Option<&'a NameMap>,
     scope: Vec<Scope>,
     errors: Vec<CheckError>,
-    path: Vec<i32>,
-    locations: Vec<Location>,
     lines: Option<LineResolver>,
     is_google_descriptor: bool,
 }
@@ -96,51 +94,6 @@ impl<'a> Context<'a> {
 
     fn exit(&mut self) {
         self.scope.pop().expect("unbalanced scope stack");
-    }
-
-    fn add_location(&mut self, span: Span) {
-        if let Some(lines) = &self.lines {
-            let span = lines.resolve_span(span);
-            self.locations.push(Location {
-                path: self.path.clone(),
-                span,
-                ..Default::default()
-            });
-        }
-    }
-
-    fn add_comments(&mut self, span: Span, comments: ast::Comments) {
-        if let Some(lines) = &self.lines {
-            let span = lines.resolve_span(span);
-            self.locations.push(Location {
-                path: self.path.clone(),
-                span,
-                leading_comments: comments.leading_comment,
-                trailing_comments: comments.trailing_comment,
-                leading_detached_comments: comments.leading_detached_comments,
-            });
-        }
-    }
-
-    fn add_location_for(&mut self, path_items: &[i32], span: Span) {
-        self.path.extend_from_slice(path_items);
-        self.add_location(span);
-        self.pop_path(path_items.len());
-    }
-
-    fn add_comments_for(&mut self, path_items: &[i32], span: Span, comments: ast::Comments) {
-        self.path.extend_from_slice(path_items);
-        self.add_comments(span, comments);
-        self.pop_path(path_items.len());
-    }
-
-    fn pop_path(&mut self, n: usize) {
-        self.path.truncate(self.path.len() - n);
-    }
-
-    fn replace_path(&mut self, path_items: &[i32]) {
-        self.pop_path(path_items.len());
-        self.path.extend(path_items);
     }
 
     fn scope_name(&self) -> &str {
@@ -193,17 +146,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_file(&mut self, file: &generate::File) -> FileDescriptorProto {
-        const PACKAGE: i32 = 2;
-        const DEPENDENCY: i32 = 3;
-        const PUBLIC_DEPENDENCY: i32 = 10;
-        const WEAK_DEPENDENCY: i32 = 11;
-        const MESSAGE_TYPE: i32 = 4;
-        const ENUM_TYPE: i32 = 5;
-        const SERVICE: i32 = 6;
-        const EXTENSION: i32 = 7;
-        const OPTIONS: i32 = 8;
-        const SYNTAX: i32 = 12;
-
         self.add_location(file.ast.span.clone());
 
         if let Some(package) = &file.ast.package {
@@ -327,17 +269,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_message(&mut self, message: &generate::Message) -> DescriptorProto {
-        const NAME: i32 = 1;
-        const FIELD: i32 = 2;
-        const EXTENSION: i32 = 6;
-        const NESTED_TYPE: i32 = 3;
-        const ENUM_TYPE: i32 = 4;
-        const EXTENSION_RANGE: i32 = 5;
-        const OPTIONS: i32 = 7;
-        const ONEOF_DECL: i32 = 8;
-        const RESERVED_RANGE: i32 = 9;
-        const RESERVED_NAME: i32 = 10;
-
         self.enter(Scope::Message {
             full_name: self.full_name(&message.ast.name()),
         });
@@ -524,14 +455,6 @@ impl<'a> Context<'a> {
         ty: Option<field_descriptor_proto::Type>,
         type_name: Option<&str>,
     ) -> FieldDescriptorProto {
-        const NAME: i32 = 1;
-        const NUMBER: i32 = 3;
-        const LABEL: i32 = 4;
-        const TYPE: i32 = 5;
-        const TYPE_NAME: i32 = 6;
-        const DEFAULT_VALUE: i32 = 7;
-        const OPTIONS: i32 = 8;
-
         self.add_comments(field.span.clone(), field.comments.clone());
 
         self.add_location_for(&[NAME], field.name.span.clone());
@@ -786,9 +709,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_oneof(&mut self, oneof: &generate::Oneof) -> OneofDescriptorProto {
-        const NAME: i32 = 1;
-        const OPTIONS: i32 = 2;
-
         match oneof.ast {
             generate::OneofSource::Oneof(oneof) => {
                 self.add_location(oneof.span.clone());
@@ -849,12 +769,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_enum(&mut self, e: &ast::Enum) -> EnumDescriptorProto {
-        const NAME: i32 = 1;
-        const VALUE: i32 = 2;
-        const OPTIONS: i32 = 3;
-        const RESERVED_RANGE: i32 = 4;
-        const RESERVED_NAME: i32 = 5;
-
         self.add_comments(e.span.clone(), e.comments.clone());
         self.add_location_for(&[NAME], e.name.span.clone());
         let name = Some(e.name.value.clone());
@@ -913,10 +827,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_enum_value(&mut self, value: &ast::EnumValue) -> EnumValueDescriptorProto {
-        const NAME: i32 = 1;
-        const NUMBER: i32 = 2;
-        const OPTIONS: i32 = 3;
-
         self.add_comments(value.span.clone(), value.comments.clone());
         self.add_location_for(&[NAME], value.name.span.clone());
         let name = Some(value.name.value.clone());
@@ -936,10 +846,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_service(&mut self, service: &ast::Service) -> ServiceDescriptorProto {
-        const NAME: i32 = 1;
-        const METHOD: i32 = 2;
-        const OPTIONS: i32 = 3;
-
         self.add_comments(service.span.clone(), service.comments.clone());
         self.add_location_for(&[NAME], service.name.span.clone());
         let name = Some(service.name.value.clone());
@@ -968,12 +874,6 @@ impl<'a> Context<'a> {
     }
 
     fn check_method(&mut self, method: &ast::Method) -> MethodDescriptorProto {
-        const NAME: i32 = 1;
-        const INPUT_TYPE: i32 = 2;
-        const OUTPUT_TYPE: i32 = 3;
-        const OPTIONS: i32 = 4;
-        const CLIENT_STREAMING: i32 = 5;
-        const SERVER_STREAMING: i32 = 6;
 
         self.add_comments(method.span.clone(), method.comments.clone());
         self.add_location_for(&[NAME], method.name.span.clone());

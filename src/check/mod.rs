@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::{ast, lines::LineResolver, types::FileDescriptorProto};
 
 // mod resolve;
-// mod generate;
+mod generate;
 mod names;
 #[cfg(test)]
 mod tests;
@@ -20,10 +20,10 @@ pub(crate) use self::names::NameMap;
 
 /// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
 pub(crate) fn generate(
-    _ast: ast::File,
-    _lines: &LineResolver,
+    ast: ast::File,
+    lines: &LineResolver,
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    todo!()
+    generate::generate(ast, lines)
 }
 
 /// Resolve and check relative type names and options.
