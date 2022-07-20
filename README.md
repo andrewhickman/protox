@@ -7,3 +7,17 @@
 [dl]: https://docs.rs/protox/
 
 # protox
+
+  ------------------------ FileResolver ---
+  | parse                                 |
+  |   |                                   |
+  | build "ir" (FileDescriptorProto)      |
+  |   |                                   |
+  -----------------------------------------
+      |
+    get names (NameMap / DescriptorMap)
+      |
+    check imports
+      |
+    check FileDescriptorProto + mutate to resolve names etc
+

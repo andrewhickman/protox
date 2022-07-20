@@ -1,10 +1,12 @@
 //! Handling of protobuf source files
 
 mod chain;
+mod descriptor_set;
 mod google;
 mod include;
 
 pub use chain::ChainFileResolver;
+pub use descriptor_set::DescriptorSetFileResolver;
 pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
 
@@ -38,7 +40,12 @@ pub struct File {
     /// If this is a physical file on the filesystem, the path to the file.
     pub path: Option<PathBuf>,
     /// The full content of the file as a UTF-8 string.
-    pub content: String,
+    ///
+    /// This is optional and used for better error messages.
+    pub content: Option<String>,
+    /// A [`FileDescriptorProto`](prost_types::FileDescriptorProto) containing the
+    /// parsed representation of the file, encoded to bytes.
+    pub descriptor: Vec<u8>,
 }
 
 impl<T> FileResolver for Box<T>

@@ -173,38 +173,6 @@ impl Compiler {
         Ok(self)
     }
 
-    // TODO:
-    // - should the added descriptor be returned with include_imports?
-    // - how do we handle resolution of relative type names etc?
-
-    #[doc(hidden)]
-    pub fn add_file_descriptor_proto(
-        &mut self,
-        descriptor: prost_types::FileDescriptorProto,
-    ) -> Result<&mut Self, Error> {
-        if self.file_map.file_names.contains_key(descriptor.name()) {
-            return Ok(self);
-        }
-
-        let descriptor: FileDescriptorProto = transcode_file(&descriptor, &mut Vec::new());
-
-        let mut import_stack = vec![descriptor.name().to_owned()];
-        for import in &descriptor.dependency {
-            self.add_import(import, None, &mut import_stack, DynSourceCode::default())?;
-        }
-
-        let name_map = NameMap::from_proto(&descriptor, &self.file_map)
-            .map_err(|errors| Error::check_errors(errors, DynSourceCode::default()))?;
-
-        self.file_map.add(ParsedFile {
-            descriptor,
-            name_map,
-            path: None,
-            is_root: true, // TODO should this be configurable?
-        });
-        Ok(self)
-    }
-
     /// Convert all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet).
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
