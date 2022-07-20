@@ -24,8 +24,8 @@ include = [
     "protobuf/src/google/protobuf/struct.proto",
     "protobuf/src/google/protobuf/timestamp.proto",
     "protobuf/src/google/protobuf/type.proto",
-    "protobuf/src/google/protobuf/womrappers.proto",
-    "protobuf/src/google/protobuf/cpiler/plugin.proto",
+    "protobuf/src/google/protobuf/wrappers.proto",
+    "protobuf/src/google/protobuf/compiler/plugin.proto",
 ]
 
 [[bin]]
@@ -51,7 +51,10 @@ assert_fs = "1.0.7"
 insta = "1.15.0"
 proptest = "1.0.0"
 prost-build = { version = "0.10.4", features = ["vendored"] }
-prost-reflect = { version = "0.8.1", features = ["serde", "reflect-well-known-types"] }
+prost-reflect = { version = "0.8.1", features = [
+    "serde",
+    "reflect-well-known-types"
+] }
 scopeguard = "1.1.0"
 serde_yaml = "0.8.25"
 similar-asserts = { version = "1.2.0", features = ["serde"] }
