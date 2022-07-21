@@ -888,6 +888,12 @@ fn option_map_entry_set_explicitly() {
     todo!()
 }
 
+#[test]
+#[ignore]
+fn public_import() {
+    todo!()
+}
+
 /*
 syntax = 'proto2';
 

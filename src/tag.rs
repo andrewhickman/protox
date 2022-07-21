@@ -22,6 +22,12 @@ pub(crate) mod message {
     pub(crate) const ONEOF_DECL: i32 = 8;
     pub(crate) const RESERVED_RANGE: i32 = 9;
     pub(crate) const RESERVED_NAME: i32 = 10;
+
+    pub(crate) mod extension_range {
+        pub(crate) const START: i32 = 1;
+        pub(crate) const END: i32 = 2;
+        pub(crate) const OPTIONS: i32 = 3;
+    }
 }
 
 pub(crate) mod field {

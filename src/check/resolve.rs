@@ -515,98 +515,9 @@ impl<'a> Context<'a> {
         };
 
         if let ast::FieldKind::Map { .. } = &field.kind {
-            if self.in_oneof() {
-                self.errors.push(CheckError::InvalidOneofFieldKind {
-                    kind: "map",
-                    span: field.span.clone(),
-                });
-                return None;
-            } else if self.in_extend() {
-                self.errors.push(CheckError::InvalidExtendFieldKind {
-                    kind: "map",
-                    span: field.span.clone(),
-                });
-                return None;
-            } else if label.is_some() {
-                self.errors.push(CheckError::MapFieldWithLabel { span });
-                return None;
-            } else {
-                return Some(field_descriptor_proto::Label::Repeated);
-            }
         } else if let ast::FieldKind::Group { .. } = &field.kind {
-            if self.syntax != ast::Syntax::Proto2 {
-                self.errors.push(CheckError::Proto3GroupField {
-                    span: field.span.clone(),
-                });
-                return None;
-            }
         }
 
-        match (self.in_extend(), self.in_oneof(), label) {
-            (true, true, _) => unreachable!(),
-            (true, false, Some(ast::FieldLabel::Required)) => {
-                self.errors.push(CheckError::RequiredExtendField { span });
-                None
-            }
-            (false, true, Some(_)) => {
-                self.errors.push(CheckError::OneofFieldWithLabel { span });
-                None
-            }
-            (_, false, None) if self.syntax == ast::Syntax::Proto2 => {
-                self.errors
-                    .push(CheckError::Proto2FieldMissingLabel { span });
-                None
-            }
-            (_, _, Some(ast::FieldLabel::Required)) if self.syntax == ast::Syntax::Proto3 => {
-                self.errors.push(CheckError::Proto3RequiredField { span });
-                None
-            }
-            (_, _, Some(ast::FieldLabel::Required)) => {
-                Some(field_descriptor_proto::Label::Required)
-            }
-            (_, _, Some(ast::FieldLabel::Repeated)) => {
-                Some(field_descriptor_proto::Label::Repeated)
-            }
-            (_, _, Some(ast::FieldLabel::Optional) | None) => {
-                Some(field_descriptor_proto::Label::Optional)
-            }
-        }
-    }
-
-    fn check_map_key(&mut self, ty: &ast::Ty, span: Span) -> FieldDescriptorProto {
-        match ty {
-            ast::Ty::Double => Some(field_descriptor_proto::Type::Double),
-            ast::Ty::Float => Some(field_descriptor_proto::Type::Float),
-            ast::Ty::Int32 => Some(field_descriptor_proto::Type::Int32),
-            ast::Ty::Int64 => Some(field_descriptor_proto::Type::Int64),
-            ast::Ty::Uint32 => Some(field_descriptor_proto::Type::Uint32),
-            ast::Ty::Uint64 => Some(field_descriptor_proto::Type::Uint64),
-            ast::Ty::Sint32 => Some(field_descriptor_proto::Type::Sint32),
-            ast::Ty::Sint64 => Some(field_descriptor_proto::Type::Sint64),
-            ast::Ty::Fixed32 => Some(field_descriptor_proto::Type::Fixed32),
-            ast::Ty::Fixed64 => Some(field_descriptor_proto::Type::Fixed64),
-            ast::Ty::Sfixed32 => Some(field_descriptor_proto::Type::Sfixed32),
-            ast::Ty::Sfixed64 => Some(field_descriptor_proto::Type::Sfixed64),
-            ast::Ty::Bool => Some(field_descriptor_proto::Type::Bool),
-            ast::Ty::String => Some(field_descriptor_proto::Type::String),
-            _ => {
-                self.errors
-                    .push(CheckError::InvalidMapFieldKeyType { span });
-                None
-            }
-        };
-
-        FieldDescriptorProto {
-            label: Some(field_descriptor_proto::Label::Optional as i32),
-            ..Default::default()
-        }
-    }
-
-    fn check_map_value(&mut self) -> FieldDescriptorProto {
-        FieldDescriptorProto {
-            label: Some(field_descriptor_proto::Label::Optional as i32),
-            ..Default::default()
-        }
     }
 
     fn check_type(
@@ -646,36 +557,6 @@ impl<'a> Context<'a> {
         type_name: Option<&str>,
     ) -> Option<String> {
         if let Some(option) = field.default_value() {
-            if self.syntax != ast::Syntax::Proto2 {
-                self.errors.push(CheckError::Proto3DefaultValue {
-                    span: option.span(),
-                })
-            } else if field.is_map() {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "map",
-                    span: option.span(),
-                })
-            } else if ty == Some(field_descriptor_proto::Type::Group) {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "group",
-                    span: option.span(),
-                })
-            } else if ty == Some(field_descriptor_proto::Type::Message) {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "message",
-                    span: option.span(),
-                })
-            } else if matches!(field.label, Some((ast::FieldLabel::Repeated, _))) {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "repeated",
-                    span: option.span(),
-                })
-            } else if self.name_map.is_some() || type_name.is_none() {
-                let scope_name = self.scope_name().to_owned();
-                let _ = self.check_option_value(ty, option, &scope_name, type_name);
-            }
-
-            Some(option.value.to_string())
         } else {
             None
         }
@@ -917,91 +798,6 @@ impl<'a> Context<'a> {
             options,
             client_streaming: Some(method.client_streaming.is_some()),
             server_streaming: Some(method.server_streaming.is_some()),
-        }
-    }
-
-    fn check_message_reserved_range(&mut self, range: &ast::ReservedRange) -> ReservedRange {
-        let start = self.check_field_number(&range.start);
-        let end = match &range.end {
-            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
-            ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
-        };
-
-        ReservedRange { start, end }
-    }
-
-    fn check_message_extension_range(
-        &mut self,
-        range: &ast::ReservedRange,
-        options: Option<&ast::OptionList>,
-    ) -> ExtensionRange {
-        const START: i32 = 1;
-        const END: i32 = 2;
-        const OPTIONS: i32 = 3;
-
-        self.add_location(range.span());
-        self.add_location_for(&[START], range.start_span());
-        self.add_location_for(&[END], range.end_span());
-
-        self.path.push(OPTIONS);
-        let options = self.check_extension_range_options(options);
-        self.path.pop();
-
-        let start = self.check_field_number(&range.start);
-        let end = match &range.end {
-            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
-            ast::ReservedRangeEnd::Int(value) => self.check_field_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
-        };
-
-        ExtensionRange {
-            start,
-            end,
-            options,
-        }
-    }
-
-    fn check_enum_reserved_range(&mut self, range: &ast::ReservedRange) -> EnumReservedRange {
-        let start = self.check_enum_number(&range.start);
-        let end = match &range.end {
-            ast::ReservedRangeEnd::None => start,
-            ast::ReservedRangeEnd::Int(value) => self.check_enum_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(i32::MAX),
-        };
-
-        EnumReservedRange { start, end }
-    }
-
-    fn check_field_number(&mut self, int: &ast::Int) -> Option<i32> {
-        match int.as_i32() {
-            Some(number @ 1..=MAX_MESSAGE_FIELD_NUMBER) => {
-                if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
-                    self.errors.push(CheckError::ReservedMessageNumber {
-                        span: int.span.clone(),
-                    });
-                }
-
-                Some(number)
-            }
-            _ => {
-                self.errors.push(CheckError::InvalidMessageNumber {
-                    span: int.span.clone(),
-                });
-                None
-            }
-        }
-    }
-
-    fn check_enum_number(&mut self, int: &ast::Int) -> Option<i32> {
-        match int.as_i32() {
-            Some(number) => Some(number),
-            None => {
-                self.errors.push(CheckError::InvalidEnumNumber {
-                    span: int.span.clone(),
-                });
-                None
-            }
         }
     }
 

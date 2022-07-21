@@ -387,18 +387,6 @@ impl TypeName {
     }
 }
 
-impl OptionValue {
-    pub fn span(&self) -> Span {
-        match self {
-            OptionValue::Ident(ident) => ident.span.clone(),
-            OptionValue::Int(int) => int.span.clone(),
-            OptionValue::Float(float) => float.span.clone(),
-            OptionValue::String(string) => string.span.clone(),
-            OptionValue::Aggregate(_, span) => span.clone(),
-        }
-    }
-}
-
 impl MessageBody {
     pub fn drain_oneofs(&mut self) -> impl Iterator<Item = Oneof> {
         // Ideally we'd use drain_filter here but its unstable :(
@@ -422,16 +410,6 @@ impl MessageBody {
 }
 
 impl Field {
-    pub fn take_default_value(&mut self) -> std::option::Option<OptionBody> {
-        if let Some(options) = &mut self.options {
-            if let Some(index) = options.options.iter().position(|o| o.is("default")) {
-                return Some(options.options.remove(index));
-            }
-        }
-
-        None
-    }
-
     pub fn is_map(&self) -> bool {
         matches!(&self.kind, FieldKind::Map { .. })
     }
@@ -445,14 +423,6 @@ impl Field {
             Cow::Owned(self.name.value.to_ascii_lowercase())
         } else {
             Cow::Borrowed(self.name.value.as_str())
-        }
-    }
-
-    pub fn synthetic_oneof_name(&self) -> std::string::String {
-        if self.name.value.starts_with('_') {
-            format!("X{}", &self.name.value)
-        } else {
-            format!("_{}", &self.name.value)
         }
     }
 
@@ -525,6 +495,20 @@ impl FieldLabel {
     }
 }
 
+impl OptionList {
+    pub fn take_default_value(
+        options: &mut std::option::Option<OptionList>,
+    ) -> std::option::Option<OptionBody> {
+        if let Some(options) = options {
+            if let Some(index) = options.options.iter().position(|o| o.is("default")) {
+                return Some(options.options.remove(index));
+            }
+        }
+
+        None
+    }
+}
+
 impl OptionNamePart {
     pub fn span(&self) -> Span {
         match self {
@@ -566,6 +550,18 @@ impl OptionBody {
 
     pub fn span(&self) -> Span {
         join_span(self.name_span(), self.value.span())
+    }
+}
+
+impl OptionValue {
+    pub fn span(&self) -> Span {
+        match self {
+            OptionValue::Ident(ident) => ident.span.clone(),
+            OptionValue::Int(int) => int.span.clone(),
+            OptionValue::Float(float) => float.span.clone(),
+            OptionValue::String(string) => string.span.clone(),
+            OptionValue::Aggregate(_, span) => span.clone(),
+        }
     }
 }
 
