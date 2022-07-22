@@ -9,6 +9,7 @@ use crate::{
 };
 
 /// An implementation of [`FileResolver`] which resolves files from a compiled [`FileDescriptorSet`](prost_types::FileDescriptorSet).
+#[derive(Debug)]
 pub struct DescriptorSetFileResolver {
     set: FileDescriptorSet,
 }

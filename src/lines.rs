@@ -39,9 +39,9 @@ impl LineResolver {
     }
 
     pub fn resolve_proto_span(&self, span: &[i32]) -> Option<Span> {
-        let (start_line, start_col, end_line, end_col) = match span {
-            &[start_line, start_col, end_col] => (start_line, start_col, start_line, end_col),
-            &[start_line, start_col, end_line, end_col] => {
+        let (start_line, start_col, end_line, end_col) = match *span {
+            [start_line, start_col, end_col] => (start_line, start_col, start_line, end_col),
+            [start_line, start_col, end_line, end_col] => {
                 (start_line, start_col, end_line, end_col)
             }
             _ => return None,

@@ -436,10 +436,7 @@ impl Field {
             FieldKind::Map { .. } => Ty::Named(TypeName {
                 leading_dot: None,
                 name: FullIdent::from(Ident::new(
-                    {
-                        let ref this = self;
-                        to_pascal_case(&this.name.value) + "Entry"
-                    },
+                    to_pascal_case(&self.name.value) + "Entry",
                     self.name.span.clone(),
                 )),
             }),

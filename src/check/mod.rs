@@ -31,7 +31,7 @@ pub(crate) fn resolve(
     _file: &mut FileDescriptorProto,
     _names: &NameMap,
 ) -> Result<(), Vec<CheckError>> {
-    todo!()
+    Ok(())
 }
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]

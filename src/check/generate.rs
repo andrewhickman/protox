@@ -1,4 +1,5 @@
 use logos::Span;
+use prost_types::UninterpretedOption;
 
 use crate::{
     ast,
@@ -9,8 +10,9 @@ use crate::{
     tag,
     types::{
         descriptor_proto, enum_descriptor_proto, field_descriptor_proto,
-        source_code_info::Location, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
-        FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
+        source_code_info::Location, uninterpreted_option, DescriptorProto, EnumDescriptorProto,
+        EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
+        OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
     },
 };
 
@@ -320,6 +322,7 @@ impl<'a> Context<'a> {
         oneofs: &mut Vec<OneofDescriptorProto>,
         scope: FieldScope,
     ) -> FieldDescriptorProto {
+        self.add_location_for(&[tag::field::NUMBER], ast.number.span.clone());
         let number = self.generate_message_number(ast.number.clone());
         if let Some(number) = number {
             if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
@@ -496,7 +499,7 @@ impl<'a> Context<'a> {
         let json_name = Some(to_json_name(&name));
 
         self.path.extend(&[field_tag, index_to_i32(field_index)]);
-        self.path.push(tag::file::OPTIONS);
+        self.path.push(tag::field::OPTIONS);
         let options = self.generate_options_list(ast.options);
         self.path.pop();
         self.pop_path(2);
@@ -542,15 +545,19 @@ impl<'a> Context<'a> {
                 self.errors.push(CheckError::Proto3RequiredField { span });
                 None
             }
-            (_, Some((ast::FieldLabel::Required, _))) => {
+            (_, Some((ast::FieldLabel::Required, span))) => {
+                self.add_location_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Required)
             }
-            (_, Some((ast::FieldLabel::Repeated, _))) => {
+            (_, Some((ast::FieldLabel::Repeated, span))) => {
+                self.add_location_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Repeated)
             }
-            (_, Some((ast::FieldLabel::Optional, _)) | None) => {
+            (_, Some((ast::FieldLabel::Optional, span))) => {
+                self.add_location_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Optional)
             }
+            (_, None) => None,
         }
     }
 
@@ -677,17 +684,85 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn generate_enum_descriptor(&mut self, enum_: ast::Enum) -> EnumDescriptorProto {
-        todo!()
+    fn generate_enum_descriptor(&mut self, ast: ast::Enum) -> EnumDescriptorProto {
+        self.add_comments(ast.span, ast.comments);
+        self.add_location_for(&[tag::enum_::NAME], ast.name.span);
+
+        let name = Some(ast.name.value);
+        let mut value = Vec::new();
+        let mut reserved_range = Vec::new();
+        let mut reserved_name = Vec::new();
+
+        for value_ast in ast.values {
+            self.path
+                .extend(&[tag::enum_::VALUE, index_to_i32(value.len())]);
+            value.push(self.generate_enum_value_descriptor(value_ast));
+            self.pop_path(2);
+        }
+
+        for reserved in ast.reserved {
+            match reserved.kind {
+                ast::ReservedKind::Ranges(ranges) => {
+                    self.path.push(tag::enum_::RESERVED_RANGE);
+                    self.add_comments(reserved.span, reserved.comments);
+                    for range in ranges {
+                        self.path.push(index_to_i32(reserved_range.len()));
+                        reserved_range.push(self.generate_enum_reserved_range(range));
+                        self.path.pop();
+                    }
+                    self.path.pop();
+                }
+                ast::ReservedKind::Names(names) => {
+                    self.path.push(tag::enum_::RESERVED_NAME);
+                    self.add_comments(reserved.span, reserved.comments);
+                    for name in names {
+                        self.path.push(index_to_i32(reserved_name.len()));
+                        reserved_name.push(name.value);
+                        self.path.pop();
+                    }
+                    self.path.pop();
+                }
+            }
+        }
+
+        self.path.push(tag::enum_::OPTIONS);
+        let options = self.generate_options(ast.options);
+        self.path.pop();
+
+        EnumDescriptorProto {
+            name,
+            value,
+            options,
+            reserved_range,
+            reserved_name,
+        }
+    }
+
+    fn generate_enum_value_descriptor(&mut self, ast: ast::EnumValue) -> EnumValueDescriptorProto {
+        self.add_comments(ast.span, ast.comments);
+        self.add_location_for(&[tag::enum_value::NAME], ast.name.span);
+        let name = Some(ast.name.value);
+
+        self.add_location_for(&[tag::enum_value::NUMBER], ast.number.span.clone());
+        let number = self.generate_enum_number(ast.number);
+
+        self.path.push(tag::enum_value::NAME);
+        let options = self.generate_options_list(ast.options);
+        self.path.pop();
+
+        EnumValueDescriptorProto {
+            name,
+            number,
+            options,
+        }
     }
 
     fn generate_enum_number(&mut self, ast: ast::Int) -> Option<i32> {
         match ast.as_i32() {
             Some(number) => Some(number),
             None => {
-                self.errors.push(CheckError::InvalidEnumNumber {
-                    span: ast.span.clone(),
-                });
+                self.errors
+                    .push(CheckError::InvalidEnumNumber { span: ast.span });
                 None
             }
         }
@@ -708,15 +783,170 @@ impl<'a> Context<'a> {
     }
 
     fn generate_service_descriptor(&mut self, service: ast::Service) -> ServiceDescriptorProto {
-        todo!()
+        self.add_comments(service.span, service.comments);
+        self.add_location_for(&[tag::service::NAME], service.name.span);
+        let name = Some(service.name.value);
+        let mut method = Vec::new();
+
+        self.path.push(tag::service::METHOD);
+        for method_ast in service.methods {
+            self.path.push(index_to_i32(method.len()));
+            method.push(self.generate_method_descriptor(method_ast));
+            self.path.pop();
+        }
+
+        self.path.push(tag::service::OPTIONS);
+        let options = self.generate_options(service.options);
+        self.path.pop();
+
+        ServiceDescriptorProto {
+            name,
+            method,
+            options,
+        }
     }
 
-    fn generate_options(&mut self, options: Vec<ast::Option>) -> Option<OptionSet> {
-        todo!()
+    fn generate_method_descriptor(&mut self, ast: ast::Method) -> MethodDescriptorProto {
+        self.add_comments(ast.span, ast.comments);
+        self.add_location_for(&[tag::method::NAME], ast.name.span);
+        let name = Some(ast.name.value);
+
+        self.add_location_for(&[tag::method::INPUT_TYPE], ast.input_ty.span());
+        let input_type = ast.input_ty.to_string();
+
+        self.add_location_for(&[tag::method::OUTPUT_TYPE], ast.output_ty.span());
+        let output_type = ast.output_ty.to_string();
+
+        let client_streaming = ast.client_streaming.is_some();
+        if let Some(span) = ast.client_streaming {
+            self.add_location_for(&[tag::method::CLIENT_STREAMING], span);
+        }
+        let server_streaming = ast.server_streaming.is_some();
+        if let Some(span) = ast.server_streaming {
+            self.add_location_for(&[tag::method::SERVER_STREAMING], span);
+        }
+
+        self.path.push(tag::method::OPTIONS);
+        let options = self.generate_options(ast.options);
+        self.path.pop();
+
+        MethodDescriptorProto {
+            name,
+            input_type: Some(input_type),
+            output_type: Some(output_type),
+            options,
+            client_streaming: Some(client_streaming),
+            server_streaming: Some(server_streaming),
+        }
     }
 
-    fn generate_options_list(&mut self, options: Option<ast::OptionList>) -> Option<OptionSet> {
-        todo!()
+    fn generate_options(&mut self, ast: Vec<ast::Option>) -> Option<OptionSet> {
+        let mut options = Vec::new();
+
+        for option_ast in ast {
+            self.add_location(option_ast.span.clone());
+            self.add_comments_for(
+                &[tag::UNINTERPRETED_OPTION, index_to_i32(options.len())],
+                option_ast.span,
+                option_ast.comments,
+            );
+            options.push(self.generate_option(option_ast.body));
+        }
+
+        if options.is_empty() {
+            None
+        } else {
+            Some(OptionSet::uninterpreted(options))
+        }
+    }
+
+    fn generate_options_list(&mut self, ast: Option<ast::OptionList>) -> Option<OptionSet> {
+        let mut options = Vec::new();
+
+        if let Some(ast) = ast {
+            self.add_location(ast.span);
+
+            for option_ast in ast.options {
+                self.add_location_for(
+                    &[tag::UNINTERPRETED_OPTION, index_to_i32(options.len())],
+                    option_ast.span(),
+                );
+                options.push(self.generate_option(option_ast));
+            }
+        }
+
+        if options.is_empty() {
+            None
+        } else {
+            Some(OptionSet::uninterpreted(options))
+        }
+    }
+
+    fn generate_option(&mut self, ast: ast::OptionBody) -> UninterpretedOption {
+        let mut name = Vec::new();
+        for part in ast.name {
+            match part {
+                ast::OptionNamePart::Ident(ident) => name.push(uninterpreted_option::NamePart {
+                    name_part: ident.value,
+                    is_extension: false,
+                }),
+                ast::OptionNamePart::Extension(extension, _) => {
+                    name.push(uninterpreted_option::NamePart {
+                        name_part: extension.to_string(),
+                        is_extension: true,
+                    })
+                }
+            }
+        }
+
+        match ast.value {
+            ast::OptionValue::Ident(ident) => UninterpretedOption {
+                name,
+                identifier_value: Some(ident.value),
+                ..Default::default()
+            },
+            ast::OptionValue::Int(int) => {
+                if int.negative {
+                    let negative_int_value = int.as_i64();
+                    if negative_int_value.is_none() {
+                        self.errors.push(CheckError::IntegerValueOutOfRange {
+                            expected: "a 64-bit integer".to_owned(),
+                            actual: int.to_string(),
+                            min: i64::MIN.to_string(),
+                            max: u64::MAX.to_string(),
+                            span: int.span,
+                        })
+                    }
+
+                    UninterpretedOption {
+                        name,
+                        negative_int_value,
+                        ..Default::default()
+                    }
+                } else {
+                    UninterpretedOption {
+                        name,
+                        positive_int_value: Some(int.value),
+                        ..Default::default()
+                    }
+                }
+            }
+            ast::OptionValue::Float(float) => UninterpretedOption {
+                name,
+                double_value: Some(float.value),
+                ..Default::default()
+            },
+            ast::OptionValue::String(string) => UninterpretedOption {
+                name,
+                string_value: Some(string.value),
+                ..Default::default()
+            },
+            ast::OptionValue::Aggregate(message, _) => UninterpretedOption {
+                name,
+                aggregate_value: Some(message.to_string()),
+                ..Default::default()
+            },
+        }
     }
 
     fn add_location(&mut self, span: Span) {
@@ -754,10 +984,5 @@ impl<'a> Context<'a> {
 
     fn pop_path(&mut self, n: usize) {
         self.path.truncate(self.path.len() - n);
-    }
-
-    fn replace_path(&mut self, path_items: &[i32]) {
-        self.pop_path(path_items.len());
-        self.path.extend(path_items);
     }
 }

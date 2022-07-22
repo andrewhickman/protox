@@ -1,3 +1,5 @@
+pub(crate) const UNINTERPRETED_OPTION: i32 = 999;
+
 pub(crate) mod file {
     pub(crate) const PACKAGE: i32 = 2;
     pub(crate) const DEPENDENCY: i32 = 3;

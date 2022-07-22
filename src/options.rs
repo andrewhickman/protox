@@ -1,9 +1,13 @@
 use std::collections::btree_map::{self, BTreeMap};
+use std::mem;
 
 use bytes::{Buf, BufMut};
 use logos::Span;
 use prost::encoding::{DecodeContext, WireType};
 use prost::{DecodeError, Message};
+
+use crate::tag;
+use crate::types::UninterpretedOption;
 
 #[allow(unused)]
 pub(crate) const FILE_JAVA_PACKAGE: i32 = 1;
@@ -98,9 +102,12 @@ pub(crate) const METHOD_IDEMPOTENCY_LEVEL: i32 = 34;
 #[allow(unused)]
 pub(crate) const METHOD_UNINTERPRETED_OPTION: i32 = 999;
 
+pub(crate) const UNINTERPRETED_OPTION: i32 = tag::UNINTERPRETED_OPTION;
+
 #[derive(Debug, Default, Clone, PartialEq)]
 pub(crate) struct OptionSet {
     fields: BTreeMap<u32, (Value, Span)>,
+    uninterpreted_options: Vec<UninterpretedOption>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -144,6 +151,17 @@ pub(crate) enum Value {
 impl OptionSet {
     pub fn new() -> Self {
         Default::default()
+    }
+
+    pub fn uninterpreted(uninterpreted_options: Vec<UninterpretedOption>) -> Self {
+        OptionSet {
+            fields: BTreeMap::new(),
+            uninterpreted_options: Vec::new(),
+        }
+    }
+
+    pub fn take_uninterpreted(&mut self) -> Vec<UninterpretedOption> {
+        mem::take(&mut self.uninterpreted_options)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -294,6 +312,12 @@ impl Message for OptionSet {
         B: BufMut,
         Self: Sized,
     {
+        prost::encoding::message::encode_repeated(
+            UNINTERPRETED_OPTION as u32,
+            &self.uninterpreted_options,
+            buf,
+        );
+
         for (&tag, field) in &self.fields {
             match field {
                 (Value::Float(value), _) => prost::encoding::float::encode(tag, value, buf),
@@ -370,6 +394,12 @@ impl Message for OptionSet {
 
     fn encoded_len(&self) -> usize {
         let mut len = 0;
+
+        len += prost::encoding::message::encoded_len_repeated(
+            UNINTERPRETED_OPTION as u32,
+            &self.uninterpreted_options,
+        );
+
         for (&tag, field) in &self.fields {
             match field {
                 (Value::Float(value), _) => len += prost::encoding::float::encoded_len(tag, value),
@@ -468,7 +498,7 @@ impl Message for OptionSet {
     }
 
     fn clear(&mut self) {
-        unimplemented!()
+        todo!("need this to parse extension options from bytes")
     }
 
     fn merge_field<B>(
@@ -482,6 +512,6 @@ impl Message for OptionSet {
         B: Buf,
         Self: Sized,
     {
-        unimplemented!()
+        todo!("need this to parse extension options from bytes")
     }
 }
