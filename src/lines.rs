@@ -38,6 +38,14 @@ impl LineResolver {
         }
     }
 
+    pub fn resolve_proto(&self, line: i32, col: i32) -> Option<usize> {
+        if line == 0 {
+            Some(col as usize)
+        } else {
+            Some((self.lines.get((line - 1) as usize)? + col) as usize)
+        }
+    }
+
     pub fn resolve_proto_span(&self, span: &[i32]) -> Option<Span> {
         let (start_line, start_col, end_line, end_col) = match *span {
             [start_line, start_col, end_col] => (start_line, start_col, start_line, end_col),
@@ -47,10 +55,10 @@ impl LineResolver {
             _ => return None,
         };
 
-        let start = *self.lines.get(start_line as usize)? + start_col;
-        let end = *self.lines.get(end_line as usize)? + end_col;
+        let start = self.resolve_proto(start_line, start_col)?;
+        let end = self.resolve_proto(end_line, end_col)?;
 
-        Some((start as usize)..(end as usize))
+        Some(start..end)
     }
 }
 
