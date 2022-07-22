@@ -294,7 +294,7 @@ impl<'a> Context<'a> {
         }
         self.path.pop();
 
-        self.path.push(tag::file::OPTIONS);
+        self.path.push(tag::message::OPTIONS);
         let options = self.generate_options(ast.options);
         self.path.pop();
 
@@ -324,17 +324,19 @@ impl<'a> Context<'a> {
         oneofs: &mut Vec<OneofDescriptorProto>,
         scope: FieldScope,
     ) -> FieldDescriptorProto {
+        self.path.extend(&[field_tag, index_to_i32(field_index)]);
+        self.add_span_for(&[tag::field::NAME], ast.name.span.clone());
         self.add_span_for(&[tag::field::NUMBER], ast.number.span.clone());
         let number = self.generate_message_number(ast.number.clone());
         if let Some(number) = number {
             if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
                 self.errors.push(CheckError::ReservedMessageNumber {
-                    span: ast.number.span,
+                    span: ast.number.span.clone(),
                 });
             }
         }
 
-        let proto3_optional = if self.syntax != ast::Syntax::Proto2
+        let (proto3_optional, oneof_index) = if self.syntax != ast::Syntax::Proto2
             && matches!(ast.label, Some((ast::FieldLabel::Optional, _)))
         {
             if let Some(oneof_tag) = oneof_tag {
@@ -344,17 +346,20 @@ impl<'a> Context<'a> {
                     format!("_{}", &ast.name.value)
                 };
 
-                self.path.extend(&[oneof_tag, index_to_i32(oneofs.len())]);
+                let oneof_index = index_to_i32(oneofs.len());
+                self.path.extend(&[oneof_tag, oneof_index]);
                 oneofs.push(OneofDescriptorProto {
                     name: Some(oneof_name),
                     options: None,
                 });
                 self.pop_path(2);
-            }
 
-            Some(true)
+                (Some(true), Some(oneof_index))
+            } else {
+                (Some(true), None)
+            }
         } else {
-            None
+            (None, None)
         };
 
         let name;
@@ -372,7 +377,6 @@ impl<'a> Context<'a> {
                 type_name = Some(ty.to_string());
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_span_for(&[tag::field::NAME], ast.name.span);
                 self.add_span_for(&[tag::field::TYPE_NAME], ty.span());
             }
             ast::FieldKind::Normal { ty, ty_span } => {
@@ -382,7 +386,6 @@ impl<'a> Context<'a> {
                 type_name = None;
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_span_for(&[tag::field::NAME], ast.name.span);
                 self.add_span_for(&[tag::field::TYPE], ty_span);
             }
             ast::FieldKind::Group { ty_span, body } => {
@@ -397,9 +400,11 @@ impl<'a> Context<'a> {
                     });
                 }
 
+                self.add_span(ast.span.clone());
                 self.add_span_for(&[tag::field::TYPE], ty_span);
                 self.add_span_for(&[tag::field::TYPE_NAME], ast.name.span.clone());
 
+                self.pop_path(2);
                 self.path
                     .extend(&[message_tag, index_to_i32(messages.len())]);
                 self.add_comments(ast.span, ast.comments);
@@ -409,6 +414,7 @@ impl<'a> Context<'a> {
                     ..self.generate_message_body_descriptor(body)
                 });
                 self.pop_path(2);
+                self.path.extend(&[field_tag, index_to_i32(field_index)]);
             }
             ast::FieldKind::Map {
                 ty_span,
@@ -443,7 +449,6 @@ impl<'a> Context<'a> {
                 }
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_span_for(&[tag::field::NAME], ast.name.span);
                 self.add_span_for(&[tag::field::TYPE_NAME], ty_span);
 
                 if !matches!(
@@ -473,15 +478,17 @@ impl<'a> Context<'a> {
                         FieldDescriptorProto {
                             name: Some("key".to_owned()),
                             json_name: Some("key".to_owned()),
+                            label: Some(field_descriptor_proto::Label::Optional as _),
                             number: Some(1),
-                            r#type: key_ty.proto_ty().map(|t| t as i32),
+                            r#type: key_ty.proto_ty().map(|t| t as _),
                             ..Default::default()
                         },
                         FieldDescriptorProto {
                             name: Some("value".to_owned()),
                             json_name: Some("value".to_owned()),
+                            label: Some(field_descriptor_proto::Label::Optional as _),
                             number: Some(2),
-                            r#type: value_ty.proto_ty().map(|t| t as i32),
+                            r#type: value_ty.proto_ty().map(|t| t as _),
                             type_name: value_ty.ty_name(),
                             ..Default::default()
                         },
@@ -500,21 +507,19 @@ impl<'a> Context<'a> {
 
         let json_name = Some(to_json_name(&name));
 
-        self.path.extend(&[field_tag, index_to_i32(field_index)]);
         self.path.push(tag::field::OPTIONS);
         let options = self.generate_options_list(ast.options);
-        self.path.pop();
-        self.pop_path(2);
+        self.pop_path(3);
 
         FieldDescriptorProto {
             name: Some(name),
             number,
-            label: label.map(|l| l as i32),
-            r#type: r#type.map(|t| t as i32),
+            label: label.map(|l| l as _),
+            r#type: r#type.map(|t| t as _),
             type_name,
             extendee: None,
             default_value: None,
-            oneof_index: None,
+            oneof_index,
             json_name,
             options,
             proto3_optional,
@@ -559,7 +564,7 @@ impl<'a> Context<'a> {
                 self.add_span_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Optional)
             }
-            (_, None) => None,
+            (_, None) => Some(field_descriptor_proto::Label::Optional),
         }
     }
 
@@ -580,12 +585,15 @@ impl<'a> Context<'a> {
     ) -> descriptor_proto::ReservedRange {
         let start = self.generate_message_number(range.start);
         let end = match range.end {
-            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::None => start,
             ast::ReservedRangeEnd::Int(value) => self.generate_message_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER),
         };
 
-        descriptor_proto::ReservedRange { start, end }
+        descriptor_proto::ReservedRange {
+            start,
+            end: end.map(|n| n + 1),
+        }
     }
 
     fn generate_message_extension_range(
@@ -603,14 +611,14 @@ impl<'a> Context<'a> {
 
         let start = self.generate_message_number(range.start);
         let end = match range.end {
-            ast::ReservedRangeEnd::None => start.map(|n| n + 1),
+            ast::ReservedRangeEnd::None => start,
             ast::ReservedRangeEnd::Int(value) => self.generate_message_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER + 1),
+            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER),
         };
 
         descriptor_proto::ExtensionRange {
             start,
-            end,
+            end: end.map(|n| n + 1),
             options,
         }
     }
@@ -635,9 +643,7 @@ impl<'a> Context<'a> {
         self.path.pop();
         self.pop_path(2);
 
-        self.path.push(field_tag);
         for field_ast in oneof.fields {
-            self.path.push(index_to_i32(fields.len()));
             fields.push(FieldDescriptorProto {
                 oneof_index: Some(index_to_i32(oneof_index)),
                 ..self.generate_field_descriptor(
@@ -651,9 +657,7 @@ impl<'a> Context<'a> {
                     FieldScope::Oneof,
                 )
             });
-            self.path.pop();
         }
-        self.path.pop();
 
         OneofDescriptorProto {
             name: Some(oneof.name.value),
@@ -669,7 +673,15 @@ impl<'a> Context<'a> {
         message_tag: i32,
         messages: &mut Vec<DescriptorProto>,
     ) {
+        self.path.push(extension_tag);
+        self.add_comments(ast.span, ast.comments);
+        self.path.pop();
+
         for field_ast in ast.fields {
+            self.path.extend(&[extension_tag, index_to_i32(extensions.len())]);
+            self.add_span_for(&[tag::field::EXTENDEE], ast.extendee.span());
+            self.pop_path(2);
+
             extensions.push(FieldDescriptorProto {
                 extendee: Some(ast.extendee.to_string()),
                 ..self.generate_field_descriptor(
@@ -748,7 +760,7 @@ impl<'a> Context<'a> {
         self.add_span_for(&[tag::enum_value::NUMBER], ast.number.span.clone());
         let number = self.generate_enum_number(ast.number);
 
-        self.path.push(tag::enum_value::NAME);
+        self.path.push(tag::enum_value::OPTIONS);
         let options = self.generate_options_list(ast.options);
         self.path.pop();
 

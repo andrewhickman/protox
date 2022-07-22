@@ -156,7 +156,7 @@ impl OptionSet {
     pub fn uninterpreted(uninterpreted_options: Vec<UninterpretedOption>) -> Self {
         OptionSet {
             fields: BTreeMap::new(),
-            uninterpreted_options: Vec::new(),
+            uninterpreted_options,
         }
     }
 

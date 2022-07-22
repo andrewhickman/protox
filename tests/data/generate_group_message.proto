@@ -1,5 +1,6 @@
 syntax = "proto2";
 
 message Foo {
+    // bar
     optional group Bar = 1 {};
 }

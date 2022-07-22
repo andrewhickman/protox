@@ -34,6 +34,7 @@ pub(crate) mod message {
 
 pub(crate) mod field {
     pub(crate) const NAME: i32 = 1;
+    pub(crate) const EXTENDEE: i32 = 2;
     pub(crate) const NUMBER: i32 = 3;
     pub(crate) const LABEL: i32 = 4;
     pub(crate) const TYPE: i32 = 5;

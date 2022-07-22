@@ -1,13 +1,19 @@
 syntax = "proto2";
 
 message Foo {
-    extensions 1, 2;
+    extensions 1, 2 to 3;
 }
 
+// Foo1
 extend Foo {
+    // Foo1.a
     optional int32 a = 1;
 }
 
+// Foo2
 extend Foo {
+    // Foo2.b
     optional int32 b = 2;
+    // Foo2.c
+    optional int32 c = 3;
 }
