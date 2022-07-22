@@ -33,6 +33,8 @@ pub(crate) fn generate(
     let file = ctx.generate_file_descriptor(ast);
 
     if ctx.errors.is_empty() {
+        ctx.locations.sort_unstable_by(|l, r| l.path.cmp(&r.path));
+
         Ok(FileDescriptorProto {
             source_code_info: Some(SourceCodeInfo {
                 location: ctx.locations,
@@ -60,7 +62,7 @@ enum FieldScope {
 
 impl<'a> Context<'a> {
     fn generate_file_descriptor(&mut self, ast: ast::File) -> FileDescriptorProto {
-        self.add_location(ast.span);
+        self.add_span(ast.span);
 
         let package = if let Some(package) = ast.package {
             self.add_comments_for(&[tag::file::PACKAGE], package.span, package.comments);
@@ -84,7 +86,7 @@ impl<'a> Context<'a> {
             dependency.push(import.value.clone());
             match &import.kind {
                 Some((ast::ImportKind::Public, _)) => {
-                    self.add_location_for(
+                    self.add_span_for(
                         &[
                             tag::file::PUBLIC_DEPENDENCY,
                             index_to_i32(public_dependency.len()),
@@ -94,7 +96,7 @@ impl<'a> Context<'a> {
                     public_dependency.push(index);
                 }
                 Some((ast::ImportKind::Weak, _)) => {
-                    self.add_location_for(
+                    self.add_span_for(
                         &[
                             tag::file::WEAK_DEPENDENCY,
                             index_to_i32(public_dependency.len()),
@@ -177,7 +179,7 @@ impl<'a> Context<'a> {
         self.add_comments(ast.span, ast.comments);
 
         let name = Some(ast.name.value.to_string());
-        self.add_location_for(&[tag::message::NAME], ast.name.span);
+        self.add_span_for(&[tag::message::NAME], ast.name.span);
 
         DescriptorProto {
             name,
@@ -322,7 +324,7 @@ impl<'a> Context<'a> {
         oneofs: &mut Vec<OneofDescriptorProto>,
         scope: FieldScope,
     ) -> FieldDescriptorProto {
-        self.add_location_for(&[tag::field::NUMBER], ast.number.span.clone());
+        self.add_span_for(&[tag::field::NUMBER], ast.number.span.clone());
         let number = self.generate_message_number(ast.number.clone());
         if let Some(number) = number {
             if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
@@ -370,8 +372,8 @@ impl<'a> Context<'a> {
                 type_name = Some(ty.to_string());
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_location_for(&[tag::field::NAME], ast.name.span);
-                self.add_location_for(&[tag::field::TYPE_NAME], ty.span());
+                self.add_span_for(&[tag::field::NAME], ast.name.span);
+                self.add_span_for(&[tag::field::TYPE_NAME], ty.span());
             }
             ast::FieldKind::Normal { ty, ty_span } => {
                 name = ast.name.value;
@@ -380,8 +382,8 @@ impl<'a> Context<'a> {
                 type_name = None;
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_location_for(&[tag::field::NAME], ast.name.span);
-                self.add_location_for(&[tag::field::TYPE], ty_span);
+                self.add_span_for(&[tag::field::NAME], ast.name.span);
+                self.add_span_for(&[tag::field::TYPE], ty_span);
             }
             ast::FieldKind::Group { ty_span, body } => {
                 name = ast.name.value.to_ascii_lowercase();
@@ -395,13 +397,13 @@ impl<'a> Context<'a> {
                     });
                 }
 
-                self.add_location_for(&[tag::field::TYPE], ty_span);
-                self.add_location_for(&[tag::field::TYPE_NAME], ast.name.span.clone());
+                self.add_span_for(&[tag::field::TYPE], ty_span);
+                self.add_span_for(&[tag::field::TYPE_NAME], ast.name.span.clone());
 
                 self.path
                     .extend(&[message_tag, index_to_i32(messages.len())]);
                 self.add_comments(ast.span, ast.comments);
-                self.add_location_for(&[tag::message::NAME], ast.name.span);
+                self.add_span_for(&[tag::message::NAME], ast.name.span);
                 messages.push(DescriptorProto {
                     name: type_name.clone(),
                     ..self.generate_message_body_descriptor(body)
@@ -441,8 +443,8 @@ impl<'a> Context<'a> {
                 }
 
                 self.add_comments(ast.span, ast.comments);
-                self.add_location_for(&[tag::field::NAME], ast.name.span);
-                self.add_location_for(&[tag::field::TYPE_NAME], ty_span);
+                self.add_span_for(&[tag::field::NAME], ast.name.span);
+                self.add_span_for(&[tag::field::TYPE_NAME], ty_span);
 
                 if !matches!(
                     key_ty,
@@ -546,15 +548,15 @@ impl<'a> Context<'a> {
                 None
             }
             (_, Some((ast::FieldLabel::Required, span))) => {
-                self.add_location_for(&[tag::field::LABEL], span);
+                self.add_span_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Required)
             }
             (_, Some((ast::FieldLabel::Repeated, span))) => {
-                self.add_location_for(&[tag::field::LABEL], span);
+                self.add_span_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Repeated)
             }
             (_, Some((ast::FieldLabel::Optional, span))) => {
-                self.add_location_for(&[tag::field::LABEL], span);
+                self.add_span_for(&[tag::field::LABEL], span);
                 Some(field_descriptor_proto::Label::Optional)
             }
             (_, None) => None,
@@ -591,9 +593,9 @@ impl<'a> Context<'a> {
         range: ast::ReservedRange,
         options: Option<ast::OptionList>,
     ) -> descriptor_proto::ExtensionRange {
-        self.add_location(range.span());
-        self.add_location_for(&[tag::message::extension_range::START], range.start_span());
-        self.add_location_for(&[tag::message::extension_range::END], range.end_span());
+        self.add_span(range.span());
+        self.add_span_for(&[tag::message::extension_range::START], range.start_span());
+        self.add_span_for(&[tag::message::extension_range::END], range.end_span());
 
         self.path.push(tag::message::extension_range::OPTIONS);
         let options = self.generate_options_list(options);
@@ -625,8 +627,8 @@ impl<'a> Context<'a> {
         fields: &mut Vec<FieldDescriptorProto>,
     ) -> OneofDescriptorProto {
         self.path.extend(&[oneof_tag, index_to_i32(oneof_index)]);
-        self.add_location(oneof.span.clone());
-        self.add_location_for(&[tag::oneof::NAME], oneof.name.span);
+        self.add_span(oneof.span.clone());
+        self.add_span_for(&[tag::oneof::NAME], oneof.name.span);
 
         self.path.push(tag::oneof::OPTIONS);
         let options = self.generate_options(oneof.options);
@@ -686,7 +688,7 @@ impl<'a> Context<'a> {
 
     fn generate_enum_descriptor(&mut self, ast: ast::Enum) -> EnumDescriptorProto {
         self.add_comments(ast.span, ast.comments);
-        self.add_location_for(&[tag::enum_::NAME], ast.name.span);
+        self.add_span_for(&[tag::enum_::NAME], ast.name.span);
 
         let name = Some(ast.name.value);
         let mut value = Vec::new();
@@ -740,10 +742,10 @@ impl<'a> Context<'a> {
 
     fn generate_enum_value_descriptor(&mut self, ast: ast::EnumValue) -> EnumValueDescriptorProto {
         self.add_comments(ast.span, ast.comments);
-        self.add_location_for(&[tag::enum_value::NAME], ast.name.span);
+        self.add_span_for(&[tag::enum_value::NAME], ast.name.span);
         let name = Some(ast.name.value);
 
-        self.add_location_for(&[tag::enum_value::NUMBER], ast.number.span.clone());
+        self.add_span_for(&[tag::enum_value::NUMBER], ast.number.span.clone());
         let number = self.generate_enum_number(ast.number);
 
         self.path.push(tag::enum_value::NAME);
@@ -784,7 +786,7 @@ impl<'a> Context<'a> {
 
     fn generate_service_descriptor(&mut self, service: ast::Service) -> ServiceDescriptorProto {
         self.add_comments(service.span, service.comments);
-        self.add_location_for(&[tag::service::NAME], service.name.span);
+        self.add_span_for(&[tag::service::NAME], service.name.span);
         let name = Some(service.name.value);
         let mut method = Vec::new();
 
@@ -808,22 +810,22 @@ impl<'a> Context<'a> {
 
     fn generate_method_descriptor(&mut self, ast: ast::Method) -> MethodDescriptorProto {
         self.add_comments(ast.span, ast.comments);
-        self.add_location_for(&[tag::method::NAME], ast.name.span);
+        self.add_span_for(&[tag::method::NAME], ast.name.span);
         let name = Some(ast.name.value);
 
-        self.add_location_for(&[tag::method::INPUT_TYPE], ast.input_ty.span());
+        self.add_span_for(&[tag::method::INPUT_TYPE], ast.input_ty.span());
         let input_type = ast.input_ty.to_string();
 
-        self.add_location_for(&[tag::method::OUTPUT_TYPE], ast.output_ty.span());
+        self.add_span_for(&[tag::method::OUTPUT_TYPE], ast.output_ty.span());
         let output_type = ast.output_ty.to_string();
 
         let client_streaming = ast.client_streaming.is_some();
         if let Some(span) = ast.client_streaming {
-            self.add_location_for(&[tag::method::CLIENT_STREAMING], span);
+            self.add_span_for(&[tag::method::CLIENT_STREAMING], span);
         }
         let server_streaming = ast.server_streaming.is_some();
         if let Some(span) = ast.server_streaming {
-            self.add_location_for(&[tag::method::SERVER_STREAMING], span);
+            self.add_span_for(&[tag::method::SERVER_STREAMING], span);
         }
 
         self.path.push(tag::method::OPTIONS);
@@ -844,7 +846,7 @@ impl<'a> Context<'a> {
         let mut options = Vec::new();
 
         for option_ast in ast {
-            self.add_location(option_ast.span.clone());
+            self.add_span(option_ast.span.clone());
             self.add_comments_for(
                 &[tag::UNINTERPRETED_OPTION, index_to_i32(options.len())],
                 option_ast.span,
@@ -864,10 +866,10 @@ impl<'a> Context<'a> {
         let mut options = Vec::new();
 
         if let Some(ast) = ast {
-            self.add_location(ast.span);
+            self.add_span(ast.span);
 
             for option_ast in ast.options {
-                self.add_location_for(
+                self.add_span_for(
                     &[tag::UNINTERPRETED_OPTION, index_to_i32(options.len())],
                     option_ast.span(),
                 );
@@ -949,8 +951,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn add_location(&mut self, span: Span) {
-        // TODO maintain sort order by path_itemd
+    fn add_span(&mut self, span: Span) {
         let span = self.lines.resolve_span(span);
         self.locations.push(Location {
             path: self.path.clone(),
@@ -970,9 +971,9 @@ impl<'a> Context<'a> {
         });
     }
 
-    fn add_location_for(&mut self, path_items: &[i32], span: Span) {
+    fn add_span_for(&mut self, path_items: &[i32], span: Span) {
         self.path.extend_from_slice(path_items);
-        self.add_location(span);
+        self.add_span(span);
         self.pop_path(path_items.len());
     }
 
