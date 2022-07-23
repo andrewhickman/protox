@@ -8,11 +8,12 @@ use crate::{
     case::to_lower_without_underscores,
     index_to_i32,
     lines::LineResolver,
+    options::OptionSet,
     resolve_span, tag,
     types::{
         source_code_info::Location, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
-        MethodDescriptorProto, ServiceDescriptorProto, UninterpretedOption
-    }, options::OptionSet,
+        MethodDescriptorProto, ServiceDescriptorProto, UninterpretedOption,
+    },
 };
 
 use super::{names::DefinitionKind, CheckError, NameMap};
@@ -221,7 +222,8 @@ impl<'a> Context<'a> {
             })
         }
 
-        let output_ty = self.resolve_type_name(&mut method.output_type, &[tag::method::OUTPUT_TYPE]);
+        let output_ty =
+            self.resolve_type_name(&mut method.output_type, &[tag::method::OUTPUT_TYPE]);
         if !matches!(output_ty, None | Some(DefinitionKind::Message)) {
             let span = self.resolve_span(&[tag::method::OUTPUT_TYPE]);
             self.errors.push(CheckError::InvalidMethodTypeName {
@@ -232,16 +234,25 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn take_uninterpreted_options(&mut self, options: &mut Option<OptionSet>) -> Vec<(UninterpretedOption, Option<Location>)> {
+    fn take_uninterpreted_options(
+        &mut self,
+        options: &mut Option<OptionSet>,
+    ) -> Vec<(UninterpretedOption, Option<Location>)> {
         let options = match options {
             Some(options) => options.take_uninterpreted(),
             None => return vec![],
         };
 
-        options.into_iter().enumerate()
+        options
+            .into_iter()
+            .enumerate()
             .map(|(index, option)| {
-                self.path.extend(&[tag::UNINTERPRETED_OPTION, index_to_i32(index)]);
-                let location = match self.locations.binary_search_by(|location| location.path.as_slice().cmp(&self.path)) {
+                self.path
+                    .extend(&[tag::UNINTERPRETED_OPTION, index_to_i32(index)]);
+                let location = match self
+                    .locations
+                    .binary_search_by(|location| location.path.as_slice().cmp(&self.path))
+                {
                     Ok(index) => Some(self.locations.remove(index)),
                     Err(_) => None,
                 };

@@ -172,7 +172,8 @@ fn name_conflict_field_camel_case() {
         message Foo {\
             optional int32 foo = 1;
             optional int32 FOO = 2;
-        }"));
+        }"
+    ));
 }
 
 #[test]

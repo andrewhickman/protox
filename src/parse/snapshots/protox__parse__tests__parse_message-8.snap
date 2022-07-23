@@ -58,12 +58,14 @@ Ok(
                                             },
                                         ),
                                     ],
-                                    value: Ident(
-                                        Ident {
+                                    value: Ident {
+                                        negative: false,
+                                        ident: Ident {
                                             value: "false",
                                             span: 60..65,
                                         },
-                                    ),
+                                        span: 60..65,
+                                    },
                                 },
                             ],
                             span: 46..66,

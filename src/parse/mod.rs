@@ -1012,16 +1012,48 @@ impl<'a> Parser<'a> {
         }
 
         let value = match self.peek() {
-            Some((Token::Plus, span)) => {
+            Some((Token::Minus, start)) => {
                 self.bump();
-                self.parse_int_or_float(false, span)?
+                match self.peek() {
+                    Some((Token::Ident(_), end)) => ast::OptionValue::Ident {
+                        negative: true,
+                        ident: self.parse_ident()?,
+                        span: join_span(start, end),
+                    },
+                    Some((Token::IntLiteral(value), end)) => {
+                        self.bump();
+                        ast::OptionValue::Int(ast::Int {
+                            value,
+                            span: join_span(start, end),
+                            negative: true,
+                        })
+                    }
+                    Some((Token::FloatLiteral(EqFloat(value)), end)) => {
+                        self.bump();
+                        ast::OptionValue::Float(ast::Float {
+                            value: -value,
+                            span: join_span(start, end),
+                        })
+                    }
+                    _ => self.unexpected_token("a numeric literal")?,
+                }
             }
-            Some((Token::Minus, span)) => {
+            Some((Token::Ident(_), span)) => ast::OptionValue::Ident {
+                negative: false,
+                ident: self.parse_ident()?,
+                span,
+            },
+            Some((Token::IntLiteral(value), span)) => {
                 self.bump();
-                self.parse_int_or_float(true, span)?
+                ast::OptionValue::Int(ast::Int {
+                    value,
+                    span,
+                    negative: false,
+                })
             }
-            Some((Token::IntLiteral(_) | Token::FloatLiteral(_), span)) => {
-                self.parse_int_or_float(false, span)?
+            Some((Token::FloatLiteral(EqFloat(value)), span)) => {
+                self.bump();
+                ast::OptionValue::Float(ast::Float { value, span })
             }
             Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
             Some((Token::LeftBrace, start)) => {
@@ -1030,7 +1062,6 @@ impl<'a> Parser<'a> {
                 let end = self.expect_eq(Token::RightBrace)?;
                 ast::OptionValue::Aggregate(value, join_span(start, end))
             }
-            Some((Token::Ident(_), _)) => ast::OptionValue::Ident(self.parse_ident()?),
             _ => self.unexpected_token("a constant")?,
         };
 
@@ -1047,27 +1078,6 @@ impl<'a> Parser<'a> {
                 Ok(ast::OptionNamePart::Extension(ident, join_span(start, end)))
             }
             _ => self.unexpected_token("an identifier or '('"),
-        }
-    }
-
-    fn parse_int_or_float(&mut self, negate: bool, start: Span) -> Result<ast::OptionValue, ()> {
-        match self.peek() {
-            Some((Token::IntLiteral(value), end)) => {
-                self.bump();
-                Ok(ast::OptionValue::Int(ast::Int {
-                    value,
-                    span: join_span(start, end),
-                    negative: negate,
-                }))
-            }
-            Some((Token::FloatLiteral(EqFloat(value)), end)) => {
-                self.bump();
-                Ok(ast::OptionValue::Float(ast::Float {
-                    value: if negate { -value } else { value },
-                    span: join_span(start, end),
-                }))
-            }
-            _ => self.unexpected_token("numeric literal")?,
         }
     }
 

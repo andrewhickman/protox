@@ -4,29 +4,19 @@ expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwra
 ---
 Ok(
     Field {
-        label: Some(
-            (
-                Optional,
-                0..8,
-            ),
-        ),
+        label: None,
         name: Ident {
-            value: "A",
-            span: 15..16,
+            value: "double",
+            span: 7..13,
         },
-        kind: Group {
-            ty_span: 9..14,
-            body: MessageBody {
-                items: [],
-                extensions: [],
-                options: [],
-                reserved: [],
-            },
+        kind: Normal {
+            ty: Double,
+            ty_span: 0..6,
         },
         number: Int {
             negative: false,
             value: 1,
-            span: 19..20,
+            span: 16..17,
         },
         options: Some(
             OptionList {
@@ -35,22 +25,22 @@ Ok(
                         name: [
                             Ident(
                                 Ident {
-                                    value: "deprecated",
-                                    span: 22..32,
+                                    value: "default",
+                                    span: 19..26,
                                 },
                             ),
                         ],
                         value: Ident {
-                            negative: false,
+                            negative: true,
                             ident: Ident {
-                                value: "true",
-                                span: 35..39,
+                                value: "nan",
+                                span: 30..33,
                             },
-                            span: 35..39,
+                            span: 29..33,
                         },
                     },
                 ],
-                span: 21..40,
+                span: 18..34,
             },
         ),
         comments: Comments {
@@ -58,6 +48,6 @@ Ok(
             leading_comment: None,
             trailing_comment: None,
         },
-        span: 0..44,
+        span: 0..35,
     },
 )

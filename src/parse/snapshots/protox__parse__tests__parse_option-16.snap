@@ -13,12 +13,14 @@ Ok(
                     },
                 ),
             ],
-            value: Ident(
-                Ident {
+            value: Ident {
+                negative: false,
+                ident: Ident {
                     value: "message",
                     span: 22..29,
                 },
-            ),
+                span: 22..29,
+            },
         },
         comments: Comments {
             leading_detached_comments: [],

@@ -928,11 +928,25 @@ impl<'a> Context<'a> {
         }
 
         match ast.value {
-            ast::OptionValue::Ident(ident) => UninterpretedOption {
+            ast::OptionValue::Ident {
+                negative: false,
+                ident,
+                ..
+            } => UninterpretedOption {
                 name,
                 identifier_value: Some(ident.value),
                 ..Default::default()
             },
+            ast::OptionValue::Ident {
+                negative: true,
+                span,
+                ..
+            } => {
+                self.errors.push(CheckError::NegativeIdentOutsideDefault {
+                    span: Some(span.into()),
+                });
+                Default::default()
+            }
             ast::OptionValue::Int(int) => {
                 if int.negative {
                     let negative_int_value = int.as_i64();

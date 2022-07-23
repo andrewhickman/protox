@@ -20,12 +20,14 @@ Ok(
                             },
                         ),
                     ],
-                    value: Ident(
-                        Ident {
+                    value: Ident {
+                        negative: false,
+                        ident: Ident {
                             value: "SPEED",
                             span: 57..62,
                         },
-                    ),
+                        span: 57..62,
+                    },
                 },
                 comments: Comments {
                     leading_detached_comments: [],

@@ -33,12 +33,14 @@ Ok(
                                 },
                             ),
                         ],
-                        value: Ident(
-                            Ident {
+                        value: Ident {
+                            negative: false,
+                            ident: Ident {
                                 value: "true",
                                 span: 33..37,
                             },
-                        ),
+                            span: 33..37,
+                        },
                     },
                     OptionBody {
                         name: [

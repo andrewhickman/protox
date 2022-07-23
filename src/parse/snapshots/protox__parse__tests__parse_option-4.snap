@@ -24,12 +24,14 @@ Ok(
                     },
                 ),
             ],
-            value: Ident(
-                Ident {
+            value: Ident {
+                negative: false,
+                ident: Ident {
                     value: "true",
                     span: 19..23,
                 },
-            ),
+                span: 19..23,
+            },
         },
         comments: Comments {
             leading_detached_comments: [],

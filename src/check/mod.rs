@@ -189,4 +189,9 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
+    #[error("identifiers may not be negative")]
+    NegativeIdentOutsideDefault {
+        #[label("found here")]
+        span: Option<SourceSpan>,
+    },
 }

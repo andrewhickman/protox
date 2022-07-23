@@ -81,7 +81,11 @@ pub(crate) struct String {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum OptionValue {
-    Ident(Ident),
+    Ident {
+        negative: bool,
+        ident: Ident,
+        span: Span,
+    },
     Int(Int),
     Float(Float),
     String(String),
@@ -425,7 +429,7 @@ impl OptionBody {
 impl OptionValue {
     pub fn span(&self) -> Span {
         match self {
-            OptionValue::Ident(ident) => ident.span.clone(),
+            OptionValue::Ident { span, .. } => span.clone(),
             OptionValue::Int(int) => int.span.clone(),
             OptionValue::Float(float) => float.span.clone(),
             OptionValue::String(string) => string.span.clone(),
@@ -502,7 +506,15 @@ impl fmt::Display for TypeName {
 impl fmt::Display for OptionValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            OptionValue::Ident(ident) => ident.fmt(f),
+            OptionValue::Ident {
+                negative, ident, ..
+            } => {
+                if *negative {
+                    write!(f, "-{}", ident)
+                } else {
+                    write!(f, "{}", ident)
+                }
+            }
             OptionValue::Int(int) => int.fmt(f),
             OptionValue::Float(float) => float.fmt(f),
             OptionValue::String(string) => string.fmt(f),

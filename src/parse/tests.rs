@@ -246,6 +246,7 @@ pub fn parse_field() {
     case!(parse_field("map<string, Foo> foo = x"));
     case!(parse_field("map<string, Foo> foo = 1 service"));
     case!(parse_field("map<foo;"));
+    case!(parse_field("double double = 1 [default = -nan];"));
 }
 
 #[test]
