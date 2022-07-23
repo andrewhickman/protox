@@ -13,12 +13,14 @@ use once_cell::sync::Lazy;
 use crate::{
     compile::{ParsedFile, ParsedFileMap},
     file::GoogleFileResolver,
-    index_to_i32, make_absolute_name, make_name, parse_namespace,
+    index_to_i32,
+    lines::LineResolver,
+    make_absolute_name, make_name, parse_namespace, resolve_span, tag,
     types::{
         field_descriptor_proto, source_code_info::Location, DescriptorProto, EnumDescriptorProto,
         FieldDescriptorProto, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
     },
-    Compiler, lines::LineResolver, resolve_span, tag,
+    Compiler,
 };
 
 use super::CheckError;
@@ -208,68 +210,6 @@ impl NameMap {
 }
 
 impl<'a> NamePass<'a> {
-    fn add_name<'b>(
-        &mut self,
-        name: impl Into<Cow<'b, str>>,
-        kind: DefinitionKind,
-        path_items: &[i32],
-    ) {
-        let span = self.resolve_span(path_items);
-        if let Err(err) = self
-            .name_map
-            .add(self.full_name(name), kind, span, None, true)
-        {
-            self.errors.push(CheckError::DuplicateName(err));
-        }
-    }
-
-    fn merge_names(&mut self, file: &ParsedFile, public: bool) {
-        if let Err(err) = self
-            .name_map
-            .merge(&file.name_map, file.name().to_owned(), public)
-        {
-            self.errors.push(err);
-        }
-    }
-
-    fn full_name<'b>(&self, name: impl Into<Cow<'b, str>>) -> String {
-        make_name(&self.scope, name.into())
-    }
-
-    fn enter_scope(&mut self, name: &str) {
-        if !self.scope.is_empty() {
-            self.scope.push('.');
-        }
-        self.scope.push_str(name);
-    }
-
-    fn exit_scope(&mut self) {
-        let len = self.scope.rfind('.').unwrap_or(0);
-        self.scope.truncate(len);
-    }
-
-    fn resolve_span(&mut self, path_items: &[i32]) -> Option<Span> {
-        self.path.extend(path_items);
-        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
-        self.pop_path(path_items.len());
-        span
-    }
-
-    fn pop_path(&mut self, n: usize) {
-        debug_assert!(self.path.len() >= n);
-        self.path.truncate(self.path.len() - n);
-    }
-
-    fn bump_path(&mut self) {
-        debug_assert!(self.path.len() >= 2);
-        *self.path.last_mut().unwrap() += 1;
-    }
-
-    fn replace_path(&mut self, path_items: &[i32]) {
-        self.pop_path(path_items.len());
-        self.path.extend(path_items);
-    }
-
     fn add_file_descriptor_proto(&mut self, file: &FileDescriptorProto, file_map: &ParsedFileMap) {
         for (index, import) in file.dependency.iter().enumerate() {
             let import_file = &file_map[import.as_str()];
@@ -319,7 +259,11 @@ impl<'a> NamePass<'a> {
     }
 
     fn add_descriptor_proto(&mut self, message: &DescriptorProto) {
-        self.add_name(message.name(), DefinitionKind::Message, &[tag::message::NAME]);
+        self.add_name(
+            message.name(),
+            DefinitionKind::Message,
+            &[tag::message::NAME],
+        );
         self.enter_scope(message.name());
 
         self.path.extend(&[tag::message::FIELD, 0]);
@@ -393,7 +337,11 @@ impl<'a> NamePass<'a> {
     }
 
     fn add_service_descriptor_proto(&mut self, service: &ServiceDescriptorProto) {
-        self.add_name(service.name(), DefinitionKind::Service, &[tag::service::NAME]);
+        self.add_name(
+            service.name(),
+            DefinitionKind::Service,
+            &[tag::service::NAME],
+        );
 
         self.enter_scope(service.name());
         self.path.extend(&[tag::service::METHOD, 0]);
@@ -403,6 +351,68 @@ impl<'a> NamePass<'a> {
         }
         self.pop_path(2);
         self.exit_scope();
+    }
+
+    fn add_name<'b>(
+        &mut self,
+        name: impl Into<Cow<'b, str>>,
+        kind: DefinitionKind,
+        path_items: &[i32],
+    ) {
+        let span = self.resolve_span(path_items);
+        if let Err(err) = self
+            .name_map
+            .add(self.full_name(name), kind, span, None, true)
+        {
+            self.errors.push(CheckError::DuplicateName(err));
+        }
+    }
+
+    fn merge_names(&mut self, file: &ParsedFile, public: bool) {
+        if let Err(err) = self
+            .name_map
+            .merge(&file.name_map, file.name().to_owned(), public)
+        {
+            self.errors.push(err);
+        }
+    }
+
+    fn full_name<'b>(&self, name: impl Into<Cow<'b, str>>) -> String {
+        make_name(&self.scope, name.into())
+    }
+
+    fn enter_scope(&mut self, name: &str) {
+        if !self.scope.is_empty() {
+            self.scope.push('.');
+        }
+        self.scope.push_str(name);
+    }
+
+    fn exit_scope(&mut self) {
+        let len = self.scope.rfind('.').unwrap_or(0);
+        self.scope.truncate(len);
+    }
+
+    fn resolve_span(&mut self, path_items: &[i32]) -> Option<Span> {
+        self.path.extend(path_items);
+        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
+        self.pop_path(path_items.len());
+        span
+    }
+
+    fn pop_path(&mut self, n: usize) {
+        debug_assert!(self.path.len() >= n);
+        self.path.truncate(self.path.len() - n);
+    }
+
+    fn bump_path(&mut self) {
+        debug_assert!(self.path.len() >= 2);
+        *self.path.last_mut().unwrap() += 1;
+    }
+
+    fn replace_path(&mut self, path_items: &[i32]) {
+        self.pop_path(path_items.len());
+        self.path.extend(path_items);
     }
 }
 

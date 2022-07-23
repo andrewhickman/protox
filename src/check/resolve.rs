@@ -14,7 +14,7 @@ use crate::{
     lines::LineResolver,
     make_name,
     options::{self, OptionSet},
-    parse_namespace,
+    parse_namespace, resolve_span, tag,
     types::{
         descriptor_proto::{ExtensionRange, ReservedRange},
         enum_descriptor_proto::EnumReservedRange,
@@ -23,7 +23,7 @@ use crate::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
         SourceCodeInfo,
-    }, resolve_span, tag,
+    },
 };
 
 use super::{
@@ -37,14 +37,20 @@ pub(crate) fn resolve(
     lines: Option<&LineResolver>,
     name_map: &NameMap,
 ) -> Result<(), Vec<CheckError>> {
-    let locations = file.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]);
+    let locations = file
+        .source_code_info
+        .as_ref()
+        .map(|s| s.location.as_slice())
+        .unwrap_or(&[]);
     let syntax = match file.syntax() {
         "proto2" => ast::Syntax::Proto2,
         "proto3" => ast::Syntax::Proto3,
-        syntax => return Err(vec![CheckError::UnknownSyntax {
-            syntax: syntax.to_owned(),
-            span: resolve_span(lines, locations, &[tag::file::SYNTAX]).map(SourceSpan::from),
-        }]),
+        syntax => {
+            return Err(vec![CheckError::UnknownSyntax {
+                syntax: syntax.to_owned(),
+                span: resolve_span(lines, locations, &[tag::file::SYNTAX]).map(SourceSpan::from),
+            }])
+        }
     };
 
     let mut context = Context {
@@ -52,8 +58,9 @@ pub(crate) fn resolve(
         name_map,
         scope: String::new(),
         errors: Vec::new(),
-        // locations,
-        // lines,
+        path: Vec::new(),
+        locations,
+        lines,
         is_google_descriptor: file.name() == "google/protobuf/descriptor.proto",
     };
 
@@ -71,58 +78,14 @@ struct Context<'a> {
     syntax: ast::Syntax,
     name_map: &'a NameMap,
     scope: String,
+    path: Vec<i32>,
+    locations: &'a [Location],
+    lines: Option<&'a LineResolver>,
     errors: Vec<CheckError>,
     is_google_descriptor: bool,
 }
 
 impl<'a> Context<'a> {
-    /*
-    fn enter(&mut self, scope: Scope) {
-        self.scope.push(scope);
-    }
-
-    fn exit(&mut self) {
-        self.scope.pop().expect("unbalanced scope stack");
-    }
-
-    fn scope_name(&self) -> &str {
-        for def in self.scope.iter().rev() {
-            match def {
-                Scope::Message { full_name, .. } | Scope::Package { full_name } => {
-                    return full_name.as_str()
-                }
-                _ => continue,
-            }
-        }
-
-        ""
-    }
-
-    fn full_name(&self, name: impl Display) -> String {
-        make_name(self.scope_name(), name)
-    }
-
-    fn resolve_type_name(
-        &mut self,
-        type_name: &ast::TypeName,
-    ) -> (String, Option<&DefinitionKind>) {
-        if let Some(name_map) = &self.name_map {
-            let name = type_name.name.to_string();
-            if let Some((name, def)) = name_map.resolve(self.scope_name(), &name) {
-                (name.into_owned(), Some(def))
-            } else {
-                self.errors.push(CheckError::TypeNameNotFound {
-                    name: name.clone(),
-                    span: type_name.span(),
-                });
-                (name, None)
-            }
-        } else {
-            (type_name.to_string(), None)
-        }
-    }
-    */
-
     /*
     fn check_option(
         &mut self,
@@ -517,4 +480,68 @@ impl<'a> Context<'a> {
         None
     }
     */
+
+    fn resolve_type_name(
+        &mut self,
+        name: &mut Option<String>,
+        path_items: &[i32],
+    ) -> Option<&DefinitionKind> {
+        if let Some(name) = name.as_mut() {
+            if let Some((resolved_name, def)) = self.name_map.resolve(self.scope_name(), &name) {
+                *name = resolved_name.into_owned();
+                Some(def)
+            } else {
+                let span = self.resolve_span(path_items);
+                self.errors.push(CheckError::TypeNameNotFound {
+                    name: name.to_owned(),
+                    span,
+                });
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn enter_scope(&mut self, name: &str) {
+        if !self.scope.is_empty() {
+            self.scope.push('.');
+        }
+        self.scope.push_str(name);
+    }
+
+    fn exit_scope(&mut self) {
+        let len = self.scope.rfind('.').unwrap_or(0);
+        self.scope.truncate(len);
+    }
+
+    fn scope_name(&self) -> &str {
+        &self.scope
+    }
+
+    fn full_name(&self, name: impl Display) -> String {
+        make_name(self.scope_name(), name)
+    }
+
+    fn resolve_span(&mut self, path_items: &[i32]) -> Option<SourceSpan> {
+        self.path.extend(path_items);
+        let span = resolve_span(self.lines, &self.locations, self.path.as_slice());
+        self.pop_path(path_items.len());
+        span.map(SourceSpan::from)
+    }
+
+    fn pop_path(&mut self, n: usize) {
+        debug_assert!(self.path.len() >= n);
+        self.path.truncate(self.path.len() - n);
+    }
+
+    fn bump_path(&mut self) {
+        debug_assert!(self.path.len() >= 2);
+        *self.path.last_mut().unwrap() += 1;
+    }
+
+    fn replace_path(&mut self, path_items: &[i32]) {
+        self.pop_path(path_items.len());
+        self.path.extend(path_items);
+    }
 }

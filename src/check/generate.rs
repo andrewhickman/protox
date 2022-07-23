@@ -332,7 +332,7 @@ impl<'a> Context<'a> {
         if let Some(number) = number {
             if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&number) {
                 self.errors.push(CheckError::ReservedMessageNumber {
-                    span: ast.number.span.clone(),
+                    span: Some(ast.number.span.clone().into()),
                 });
             }
         }
@@ -397,7 +397,7 @@ impl<'a> Context<'a> {
 
                 if self.syntax != ast::Syntax::Proto2 {
                     self.errors.push(CheckError::Proto3GroupField {
-                        span: ast.span.clone(),
+                        span: Some(ast.span.clone().into()),
                     });
                 }
 
@@ -433,18 +433,20 @@ impl<'a> Context<'a> {
                     FieldScope::Oneof => {
                         self.errors.push(CheckError::InvalidOneofFieldKind {
                             kind: "map",
-                            span: ast.span.clone(),
+                            span: Some(ast.span.clone().into()),
                         });
                     }
                     FieldScope::Extend => {
                         self.errors.push(CheckError::InvalidExtendFieldKind {
                             kind: "map",
-                            span: ast.span.clone(),
+                            span: Some(ast.span.clone().into()),
                         });
                     }
                     FieldScope::Message => {
                         if let Some((_, span)) = ast.label {
-                            self.errors.push(CheckError::MapFieldWithLabel { span });
+                            self.errors.push(CheckError::MapFieldWithLabel {
+                                span: Some(span.into()),
+                            });
                         }
                     }
                 }
@@ -469,8 +471,9 @@ impl<'a> Context<'a> {
                         | ast::Ty::Bool
                         | ast::Ty::String
                 ) {
-                    self.errors
-                        .push(CheckError::InvalidMapFieldKeyType { span: key_ty_span });
+                    self.errors.push(CheckError::InvalidMapFieldKeyType {
+                        span: Some(key_ty_span.into()),
+                    });
                 };
 
                 messages.push(DescriptorProto {
@@ -535,22 +538,29 @@ impl<'a> Context<'a> {
     ) -> Option<field_descriptor_proto::Label> {
         match (scope, label) {
             (FieldScope::Extend, Some((ast::FieldLabel::Required, span))) => {
-                self.errors.push(CheckError::RequiredExtendField { span });
+                self.errors.push(CheckError::RequiredExtendField {
+                    span: Some(span.into()),
+                });
                 None
             }
             (FieldScope::Oneof, Some((_, span))) => {
-                self.errors.push(CheckError::OneofFieldWithLabel { span });
+                self.errors.push(CheckError::OneofFieldWithLabel {
+                    span: Some(span.into()),
+                });
                 None
             }
             (FieldScope::Message | FieldScope::Extend, None)
                 if self.syntax == ast::Syntax::Proto2 =>
             {
-                self.errors
-                    .push(CheckError::Proto2FieldMissingLabel { span: field_span });
+                self.errors.push(CheckError::Proto2FieldMissingLabel {
+                    span: Some(field_span.into()),
+                });
                 None
             }
             (_, Some((ast::FieldLabel::Required, span))) if self.syntax == ast::Syntax::Proto3 => {
-                self.errors.push(CheckError::Proto3RequiredField { span });
+                self.errors.push(CheckError::Proto3RequiredField {
+                    span: Some(span.into()),
+                });
                 None
             }
             (_, Some((ast::FieldLabel::Required, span))) => {
@@ -573,8 +583,9 @@ impl<'a> Context<'a> {
         match ast.as_i32() {
             Some(number @ 1..=MAX_MESSAGE_FIELD_NUMBER) => Some(number),
             _ => {
-                self.errors
-                    .push(CheckError::InvalidMessageNumber { span: ast.span });
+                self.errors.push(CheckError::InvalidMessageNumber {
+                    span: Some(ast.span.into()),
+                });
                 None
             }
         }
@@ -777,8 +788,9 @@ impl<'a> Context<'a> {
         match ast.as_i32() {
             Some(number) => Some(number),
             None => {
-                self.errors
-                    .push(CheckError::InvalidEnumNumber { span: ast.span });
+                self.errors.push(CheckError::InvalidEnumNumber {
+                    span: Some(ast.span.into()),
+                });
                 None
             }
         }
@@ -930,7 +942,7 @@ impl<'a> Context<'a> {
                             actual: int.to_string(),
                             min: i64::MIN.to_string(),
                             max: u64::MAX.to_string(),
-                            span: int.span,
+                            span: Some(int.span.into()),
                         })
                     }
 

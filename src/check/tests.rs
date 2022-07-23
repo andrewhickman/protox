@@ -145,9 +145,9 @@ fn name_conflict_field_camel_case() {
         ),
         vec![DuplicateCamelCaseFieldName {
             first_name: "foo_bar".to_owned(),
-            first: 60..67,
+            first: Some(SourceSpan::from(60..67)),
             second_name: "foobar".to_owned(),
-            second: 104..110,
+            second: Some(SourceSpan::from(104..110)),
         }]
     );
     assert_eq!(
@@ -161,9 +161,9 @@ fn name_conflict_field_camel_case() {
         ),
         vec![DuplicateCamelCaseFieldName {
             first_name: "foo".to_owned(),
-            first: 60..63,
+            first: Some(SourceSpan::from(60..63)),
             second_name: "FOO".to_owned(),
-            second: 100..103,
+            second: Some(SourceSpan::from(100..103)),
         }]
     );
 }
@@ -208,23 +208,33 @@ fn name_conflict() {
 fn invalid_message_number() {
     assert_eq!(
         check_err("message Foo { optional int32 i = -5; }"),
-        vec![InvalidMessageNumber { span: 33..35 }]
+        vec![InvalidMessageNumber {
+            span: Some(SourceSpan::from(33..35))
+        }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 0; }"),
-        vec![InvalidMessageNumber { span: 33..34 }]
+        vec![InvalidMessageNumber {
+            span: Some(SourceSpan::from(33..34))
+        }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 536870912; }"),
-        vec![InvalidMessageNumber { span: 33..42 }]
+        vec![InvalidMessageNumber {
+            span: Some(SourceSpan::from(33..42))
+        }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 19000; }"),
-        vec![ReservedMessageNumber { span: 33..38 }]
+        vec![ReservedMessageNumber {
+            span: Some(SourceSpan::from(33..38))
+        }]
     );
     assert_eq!(
         check_err("message Foo { optional int32 i = 19999; }"),
-        vec![ReservedMessageNumber { span: 33..38 }]
+        vec![ReservedMessageNumber {
+            span: Some(SourceSpan::from(33..38))
+        }]
     );
     assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
     assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
@@ -314,7 +324,7 @@ fn invalid_service_type() {
         vec![InvalidMethodTypeName {
             name: ".Enum".to_owned(),
             kind: "input",
-            span: 170..175,
+            span: Some(SourceSpan::from(170..175)),
         }],
     );
     assert_eq!(
@@ -334,7 +344,7 @@ fn invalid_service_type() {
         vec![InvalidMethodTypeName {
             name: ".Enum".to_owned(),
             kind: "output",
-            span: 189..194,
+            span: Some(SourceSpan::from(189..194)),
         }],
     );
     assert_eq!(
@@ -351,7 +361,7 @@ fn invalid_service_type() {
         vec![InvalidMethodTypeName {
             name: ".Service".to_owned(),
             kind: "output",
-            span: 125..133,
+            span: Some(SourceSpan::from(125..133)),
         }],
     );
 }
@@ -376,7 +386,7 @@ fn name_resolution() {
         .unwrap_err(),
         vec![TypeNameNotFound {
             name: "foo.FooBar".to_owned(),
-            span: 124..135,
+            span: Some(SourceSpan::from(124..135)),
         }]
     );
     assert_eq!(
@@ -397,7 +407,7 @@ fn name_resolution() {
         .unwrap_err(),
         vec![TypeNameNotFound {
             name: "FooBar".to_owned(),
-            span: 124..131,
+            span: Some(SourceSpan::from(124..131)),
         }]
     );
 }
@@ -485,7 +495,9 @@ fn proto3_default_value() {
                 optional int32 foo = 1 [default = "foo"];
             }"#
         ),
-        vec![Proto3DefaultValue { span: 103..118 }],
+        vec![Proto3DefaultValue {
+            span: Some(SourceSpan::from(103..118))
+        }],
     );
 }
 
@@ -500,7 +512,7 @@ fn field_default_value() {
         ),
         vec![InvalidDefault {
             kind: "message",
-            span: 73..85,
+            span: Some(SourceSpan::from(73..85)),
         }],
     );
     assert_eq!(
@@ -512,7 +524,7 @@ fn field_default_value() {
         ),
         vec![InvalidDefault {
             kind: "map",
-            span: 78..90,
+            span: Some(SourceSpan::from(78..90)),
         }],
     );
     assert_eq!(
@@ -524,7 +536,7 @@ fn field_default_value() {
         ),
         vec![InvalidDefault {
             kind: "group",
-            span: 71..83,
+            span: Some(SourceSpan::from(71..83)),
         }],
     );
     assert_eq!(
@@ -536,7 +548,7 @@ fn field_default_value() {
         ),
         vec![InvalidDefault {
             kind: "repeated",
-            span: 71..83,
+            span: Some(SourceSpan::from(71..83)),
         }],
     );
 }
@@ -557,7 +569,7 @@ fn enum_field_invalid_default() {
         vec![OptionUnknownField {
             name: "ONE".to_owned(),
             namespace: "google.protobuf.FieldOptions".to_owned(),
-            span: 69..72,
+            span: Some(SourceSpan::from(69..72)),
         }],
     );
 }
@@ -574,7 +586,7 @@ fn field_default_invalid_type() {
         vec![ValueInvalidType {
             expected: "an integer".to_owned(),
             actual: "foo".to_owned(),
-            span: 81..86,
+            span: Some(SourceSpan::from(81..86)),
         }],
     );
     assert_eq!(
@@ -589,7 +601,7 @@ fn field_default_invalid_type() {
             actual: "-100".to_owned(),
             min: "0".to_owned(),
             max: "4294967295".to_owned(),
-            span: 82..86,
+            span: Some(SourceSpan::from(82..86)),
         }],
     );
     assert_eq!(
@@ -604,7 +616,7 @@ fn field_default_invalid_type() {
             actual: "2147483648".to_owned(),
             min: "-2147483648".to_owned(),
             max: "2147483647".to_owned(),
-            span: 81..91,
+            span: Some(SourceSpan::from(81..91)),
         }],
     );
     assert_eq!(
@@ -621,7 +633,7 @@ fn field_default_invalid_type() {
         vec![ValueInvalidType {
             expected: "an enum value identifier".to_owned(),
             actual: "1".to_owned(),
-            span: 79..80,
+            span: Some(SourceSpan::from(79..80)),
         }],
     );
     assert_eq!(
@@ -638,7 +650,7 @@ fn field_default_invalid_type() {
         vec![ValueInvalidType {
             expected: "either 'true' or 'false'".to_owned(),
             actual: "FALSE".to_owned(),
-            span: 80..85,
+            span: Some(SourceSpan::from(80..85)),
         }],
     );
     assert_eq!(
@@ -648,7 +660,9 @@ fn field_default_invalid_type() {
                 optional string foo = 1 [default = '\xFF'];
             }"#
         ),
-        vec![StringValueInvalidUtf8 { span: 82..88 }],
+        vec![StringValueInvalidUtf8 {
+            span: Some(SourceSpan::from(82..88))
+        }],
     );
 }
 
@@ -876,8 +890,8 @@ fn option_already_set() {
         ),
         vec![OptionAlreadySet {
             name: "deprecated".to_owned(),
-            first: 103..113,
-            second: 122..132
+            first: Some(SourceSpan::from(103..113)),
+            second: Some(SourceSpan::from(122..132))
         }],
     );
 }

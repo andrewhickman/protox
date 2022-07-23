@@ -16,7 +16,7 @@ use crate::{
         check_shadow, path_to_file_name, ChainFileResolver, File, FileResolver, GoogleFileResolver,
         IncludeFileResolver,
     },
-    resolve_span, index_to_i32, tag, transcode_file,
+    index_to_i32, resolve_span, tag, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
 };
 
@@ -137,7 +137,11 @@ impl Compiler {
                 import,
                 resolve_span(
                     file.lines.as_ref(),
-                    file.descriptor.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]),
+                    file.descriptor
+                        .source_code_info
+                        .as_ref()
+                        .map(|s| s.location.as_slice())
+                        .unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 &mut import_stack,
@@ -241,7 +245,11 @@ impl Compiler {
                 import,
                 resolve_span(
                     file.lines.as_ref(),
-                    file.descriptor.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]),
+                    file.descriptor
+                        .source_code_info
+                        .as_ref()
+                        .map(|s| s.location.as_slice())
+                        .unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 import_stack,
@@ -270,7 +278,9 @@ impl Compiler {
         let path = file.path.as_deref();
         let source = file.source.as_deref();
         let name_map = NameMap::from_proto(&file.descriptor, &self.file_map, file.lines.as_ref())
-            .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
+            .map_err(|errors| {
+            Error::check_errors(errors, make_source(file_name, path, source))
+        })?;
 
         let mut descriptor = file.descriptor;
         if descriptor.name().is_empty() {
