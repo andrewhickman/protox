@@ -203,7 +203,7 @@ impl<'a> Context<'a> {
     }
 
     fn resolve_method_descriptor_proto(&mut self, method: &mut MethodDescriptorProto) {
-        let input_ty = self.resolve_type_name(&mut method.name, &[tag::method::INPUT_TYPE]);
+        let input_ty = self.resolve_type_name(&mut method.input_type, &[tag::method::INPUT_TYPE]);
         if !matches!(input_ty, None | Some(DefinitionKind::Message)) {
             let span = self.resolve_span(&[tag::method::INPUT_TYPE]);
             self.errors.push(CheckError::InvalidMethodTypeName {
@@ -213,9 +213,9 @@ impl<'a> Context<'a> {
             })
         }
 
-        let output_ty = self.resolve_type_name(&mut method.name, &[tag::method::OUTPUT_TYPE]);
+        let output_ty = self.resolve_type_name(&mut method.output_type, &[tag::method::OUTPUT_TYPE]);
         if !matches!(output_ty, None | Some(DefinitionKind::Message)) {
-            let span = self.resolve_span(&[tag::method::INPUT_TYPE]);
+            let span = self.resolve_span(&[tag::method::OUTPUT_TYPE]);
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.output_type().to_owned(),
                 kind: "output",
