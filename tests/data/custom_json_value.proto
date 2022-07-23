@@ -1,0 +1,3 @@
+message Foo {
+    repeated uint64 foo = 1 [json_name = "BAR_quz"];
+}

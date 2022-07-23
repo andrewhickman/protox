@@ -17,6 +17,13 @@ message Foo {
     optional string string = 14 [default = "hello"];
     optional bytes bytes = 15 [default = "abc\366\xFE\a\b\f\n\r\t\v\\\'\"\x00"];
     optional Enum enum = 16 [default = ZERO];
+
+    optional double double_int = 17 [default = 42];
+    optional double double_int_negative = 18 [default = -24];
+    optional double double_nan = 19 [default = nan];
+    optional double double_inf = 20 [default = inf];
+    optional double double_nan_negative = 21 [default = -nan];
+    optional double double_inf_negative = 22 [default = -inf];
 }
 
 enum Enum {

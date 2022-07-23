@@ -334,6 +334,22 @@ impl Int {
             i64::try_from(self.value).ok()
         }
     }
+
+    pub fn as_u32(&self) -> std::option::Option<u32> {
+        if self.negative {
+            None
+        } else {
+            u32::try_from(self.value).ok()
+        }
+    }
+
+    pub fn as_u64(&self) -> std::option::Option<u64> {
+        if self.negative {
+            None
+        } else {
+            Some(self.value)
+        }
+    }
 }
 
 impl String {
@@ -413,6 +429,10 @@ impl OptionNamePart {
 }
 
 impl OptionBody {
+    pub fn has_name(&self, name: &str) -> bool {
+        matches!(self.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == name)
+    }
+
     pub fn name_span(&self) -> Span {
         debug_assert!(!self.name.is_empty());
         join_span(
@@ -434,6 +454,44 @@ impl OptionValue {
             OptionValue::Float(float) => float.span.clone(),
             OptionValue::String(string) => string.span.clone(),
             OptionValue::Aggregate(_, span) => span.clone(),
+        }
+    }
+
+    pub fn to_token_string(&self) -> std::string::String {
+        match self {
+            OptionValue::String(s) => format!("\"{}\"", s),
+            _ => self.to_string(),
+        }
+    }
+
+    pub fn as_f64(&self) -> std::option::Option<f64> {
+        match self {
+            OptionValue::Ident {
+                negative, ident, ..
+            } => {
+                let value = if ident.value == "nan" {
+                    f64::NAN
+                } else if ident.value == "inf" {
+                    f64::INFINITY
+                } else {
+                    return None;
+                };
+
+                if *negative {
+                    Some(-value)
+                } else {
+                    Some(value)
+                }
+            }
+            OptionValue::Int(int) => {
+                if int.negative {
+                    Some(-(int.value as f64))
+                } else {
+                    Some(int.value as f64)
+                }
+            }
+            OptionValue::Float(float) => Some(float.value),
+            OptionValue::String(_) | OptionValue::Aggregate(_, _) => None,
         }
     }
 }

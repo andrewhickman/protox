@@ -316,7 +316,7 @@ impl<'a> Context<'a> {
     #[allow(clippy::too_many_arguments)]
     fn generate_field_descriptor(
         &mut self,
-        ast: ast::Field,
+        mut ast: ast::Field,
         field_index: usize,
         field_tag: i32,
         message_tag: i32,
@@ -363,10 +363,14 @@ impl<'a> Context<'a> {
             (None, None)
         };
 
+        let default_value_option = take_option(&mut ast.options, "default");
+        let default_value_option_span = default_value_option.as_ref().map(|o| o.span().into());
+
         let name;
         let r#type;
         let type_name;
         let label;
+        let mut default_value = None;
         match ast.kind {
             ast::FieldKind::Normal {
                 ty: ast::Ty::Named(ty),
@@ -379,12 +383,21 @@ impl<'a> Context<'a> {
 
                 self.add_comments(ast.span, ast.comments);
                 self.add_span_for(&[tag::field::TYPE_NAME], ty.span());
+                if let Some(o) = default_value_option {
+                    default_value = Some(o.value.to_token_string());
+                    self.add_span_for(&[tag::field::DEFAULT_VALUE], o.value.span());
+                }
             }
             ast::FieldKind::Normal { ty, ty_span } => {
                 name = ast.name.value;
                 label = self.generate_field_label(ast.label, ast.span.clone(), scope);
                 r#type = ty.proto_ty();
                 type_name = None;
+
+                if let Some(o) = default_value_option {
+                    self.add_span_for(&[tag::field::DEFAULT_VALUE], o.value.span());
+                    default_value = self.generate_field_default_value(r#type, o.value);
+                }
 
                 self.add_comments(ast.span, ast.comments);
                 self.add_span_for(&[tag::field::TYPE], ty_span);
@@ -398,6 +411,13 @@ impl<'a> Context<'a> {
                 if self.syntax != ast::Syntax::Proto2 {
                     self.errors.push(CheckError::Proto3GroupField {
                         span: Some(ast.span.clone().into()),
+                    });
+                }
+
+                if let Some(o) = default_value_option {
+                    self.errors.push(CheckError::InvalidDefault {
+                        kind: "group",
+                        span: Some(o.span().into()),
                     });
                 }
 
@@ -449,6 +469,13 @@ impl<'a> Context<'a> {
                             });
                         }
                     }
+                }
+
+                if let Some(o) = default_value_option {
+                    self.errors.push(CheckError::InvalidDefault {
+                        kind: "map",
+                        span: Some(o.span().into()),
+                    });
                 }
 
                 self.add_comments(ast.span, ast.comments);
@@ -509,6 +536,13 @@ impl<'a> Context<'a> {
             }
         }
 
+        if default_value.is_some() && label == Some(field_descriptor_proto::Label::Repeated) {
+            self.errors.push(CheckError::InvalidDefault {
+                kind: "repeated",
+                span: default_value_option_span,
+            });
+        }
+
         let json_name = Some(to_json_name(&name));
 
         self.path.push(tag::field::OPTIONS);
@@ -522,7 +556,7 @@ impl<'a> Context<'a> {
             r#type: r#type.map(|t| t as _),
             type_name,
             extendee: None,
-            default_value: None,
+            default_value,
             oneof_index,
             json_name,
             options,
@@ -576,6 +610,143 @@ impl<'a> Context<'a> {
                 Some(field_descriptor_proto::Label::Optional)
             }
             (_, None) => Some(field_descriptor_proto::Label::Optional),
+        }
+    }
+
+    fn generate_field_default_value(
+        &mut self,
+        ty: Option<field_descriptor_proto::Type>,
+        value: ast::OptionValue,
+    ) -> Option<String> {
+        use field_descriptor_proto::Type;
+
+        match (ty, value) {
+            (Some(Type::Double | Type::Float), value) => {
+                if let Some(float) = value.as_f64() {
+                    let mut string = float.to_string();
+                    string.make_ascii_lowercase();
+                    Some(string)
+                } else {
+                    self.errors.push(CheckError::ValueInvalidType {
+                        expected: "a floating-point number".to_owned(),
+                        actual: value.to_string(),
+                        span: Some(value.span().into()),
+                    });
+                    None
+                }
+            }
+            (Some(Type::Int64 | Type::Sfixed64 | Type::Sint64), ast::OptionValue::Int(int)) => {
+                if let Some(value) = int.as_i64() {
+                    Some(value.to_string())
+                } else {
+                    self.errors.push(CheckError::IntegerValueOutOfRange {
+                        expected: "a signed 64-bit integer".to_owned(),
+                        actual: int.to_string(),
+                        min: i64::MIN.to_string(),
+                        max: i64::MAX.to_string(),
+                        span: Some(int.span.into()),
+                    });
+                    None
+                }
+            }
+            (Some(Type::Int32 | Type::Sfixed32 | Type::Sint32), ast::OptionValue::Int(int)) => {
+                if let Some(value) = int.as_i32() {
+                    Some(value.to_string())
+                } else {
+                    self.errors.push(CheckError::IntegerValueOutOfRange {
+                        expected: "a signed 32-bit integer".to_owned(),
+                        actual: int.to_string(),
+                        min: i32::MIN.to_string(),
+                        max: i32::MAX.to_string(),
+                        span: Some(int.span.into()),
+                    });
+                    None
+                }
+            }
+            (Some(Type::Uint64 | Type::Fixed64), ast::OptionValue::Int(int)) => {
+                if let Some(value) = int.as_u64() {
+                    Some(value.to_string())
+                } else {
+                    self.errors.push(CheckError::IntegerValueOutOfRange {
+                        expected: "an unsigned 64-bit integer".to_owned(),
+                        actual: int.to_string(),
+                        min: u64::MIN.to_string(),
+                        max: u64::MAX.to_string(),
+                        span: Some(int.span.into()),
+                    });
+                    None
+                }
+            }
+            (Some(Type::Uint32 | Type::Fixed32), ast::OptionValue::Int(int)) => {
+                if let Some(value) = int.as_u32() {
+                    Some(value.to_string())
+                } else {
+                    self.errors.push(CheckError::IntegerValueOutOfRange {
+                        expected: "an unsigned 32-bit integer".to_owned(),
+                        actual: int.to_string(),
+                        min: u32::MIN.to_string(),
+                        max: u32::MAX.to_string(),
+                        span: Some(int.span.into()),
+                    });
+                    None
+                }
+            }
+            (
+                Some(
+                    Type::Int64
+                    | Type::Sfixed64
+                    | Type::Sint64
+                    | Type::Int32
+                    | Type::Sfixed32
+                    | Type::Sint32
+                    | Type::Uint64
+                    | Type::Fixed64
+                    | Type::Uint32
+                    | Type::Fixed32,
+                ),
+                value,
+            ) => {
+                self.errors.push(CheckError::ValueInvalidType {
+                    expected: "an integer".to_owned(),
+                    actual: value.to_string(),
+                    span: Some(value.span().into()),
+                });
+                None
+            }
+            (Some(Type::Bool), ast::OptionValue::Ident { ident, .. }) if ident.value == "true" => {
+                Some(true.to_string())
+            }
+            (Some(Type::Bool), ast::OptionValue::Ident { ident, .. }) if ident.value == "false" => {
+                Some(false.to_string())
+            }
+            (Some(Type::Bool), value) => {
+                self.errors.push(CheckError::ValueInvalidType {
+                    expected: "either 'true' or 'false'".to_owned(),
+                    actual: value.to_string(),
+                    span: Some(value.span().into()),
+                });
+                None
+            }
+            (Some(Type::String), ast::OptionValue::String(string)) => {
+                if let Ok(string) = String::from_utf8(string.value) {
+                    Some(string)
+                } else {
+                    self.errors.push(CheckError::StringValueInvalidUtf8 {
+                        span: Some(string.span.into()),
+                    });
+                    None
+                }
+            }
+            (Some(Type::Bytes), ast::OptionValue::String(string)) => Some(string.to_string()),
+            (Some(Type::String | Type::Bytes), value) => {
+                self.errors.push(CheckError::ValueInvalidType {
+                    expected: "a string".to_owned(),
+                    actual: value.to_string(),
+                    span: Some(value.span().into()),
+                });
+                None
+            }
+            (None | Some(Type::Message | Type::Group | Type::Enum), _) => todo!(),
         }
     }
 
@@ -1026,4 +1197,14 @@ impl<'a> Context<'a> {
     fn pop_path(&mut self, n: usize) {
         self.path.truncate(self.path.len() - n);
     }
+}
+
+fn take_option(options: &mut Option<ast::OptionList>, name: &str) -> Option<ast::OptionBody> {
+    if let Some(options) = options {
+        if let Some(index) = options.options.iter().position(|o| o.has_name(name)) {
+            return Some(options.options.remove(index));
+        }
+    }
+
+    None
 }

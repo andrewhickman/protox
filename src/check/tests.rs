@@ -675,6 +675,16 @@ fn field_default_invalid_type() {
 }
 
 #[test]
+fn negative_ident_outside_default() {
+    assert_eq!(
+        check_err("option opt = -foo;"),
+        vec![NegativeIdentOutsideDefault {
+            span: Some(SourceSpan::from(13..17))
+        }],
+    );
+}
+
+#[test]
 #[ignore]
 fn message_field_json_name() {
     // custom json name with option
