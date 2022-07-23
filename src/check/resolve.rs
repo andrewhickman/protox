@@ -1,8 +1,12 @@
+use std::collections::{hash_map, HashMap};
+
 use miette::SourceSpan;
 use prost_types::field_descriptor_proto;
 
 use crate::{
     ast::Syntax,
+    case::to_lower_without_underscores,
+    index_to_i32,
     lines::LineResolver,
     resolve_span, tag,
     types::{
@@ -119,6 +123,12 @@ impl<'a> Context<'a> {
         }
         self.pop_path(2);
         self.exit_scope();
+
+        if self.syntax != Syntax::Proto2 {
+            self.path.push(tag::message::FIELD);
+            self.check_message_field_camel_case_names(message.field.iter());
+            self.path.pop();
+        }
     }
 
     fn resolve_field_descriptor_proto(&mut self, field: &mut FieldDescriptorProto) {
@@ -148,6 +158,34 @@ impl<'a> Context<'a> {
                         name: field.type_name().to_owned(),
                         span,
                     });
+                }
+            }
+        }
+    }
+
+    fn check_message_field_camel_case_names<'b>(
+        &mut self,
+        fields: impl Iterator<Item = &'b FieldDescriptorProto>,
+    ) {
+        let mut names: HashMap<String, (&'b str, i32)> = HashMap::new();
+        for (index, field) in fields.enumerate() {
+            let name = field.name();
+            let index = index_to_i32(index);
+
+            match names.entry(to_lower_without_underscores(name)) {
+                hash_map::Entry::Occupied(entry) => {
+                    let first = self.resolve_span(&[entry.get().1, tag::field::NAME]);
+                    let second = self.resolve_span(&[index, tag::field::NAME]);
+
+                    self.errors.push(CheckError::DuplicateCamelCaseFieldName {
+                        first_name: entry.get().0.to_owned(),
+                        first,
+                        second_name: name.to_owned(),
+                        second,
+                    })
+                }
+                hash_map::Entry::Vacant(entry) => {
+                    entry.insert((name, index));
                 }
             }
         }

@@ -166,6 +166,13 @@ fn name_conflict_field_camel_case() {
             second: Some(SourceSpan::from(100..103)),
         }]
     );
+    assert_yaml_snapshot!(check_ok(
+        "syntax = 'proto2';
+
+        message Foo {\
+            optional int32 foo = 1;
+            optional int32 FOO = 2;
+        }"));
 }
 
 #[test]
