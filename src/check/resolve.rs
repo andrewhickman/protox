@@ -1,4 +1,7 @@
-use std::collections::{hash_map, HashMap};
+use std::{
+    borrow::Cow,
+    collections::{hash_map, HashMap},
+};
 
 use miette::SourceSpan;
 use prost_types::field_descriptor_proto;
@@ -9,11 +12,12 @@ use crate::{
     index_to_i32,
     lines::LineResolver,
     make_name,
-    options::OptionSet,
+    options::{self, OptionSet},
     parse, parse_namespace, resolve_span, strip_leading_dot, tag,
     types::{
-        source_code_info::Location, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
-        MethodDescriptorProto, ServiceDescriptorProto, UninterpretedOption,
+        descriptor_proto, source_code_info::Location, uninterpreted_option, DescriptorProto,
+        EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
+        MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, UninterpretedOption,
     },
 };
 
@@ -96,11 +100,11 @@ impl<'a> Context<'a> {
             self.bump_path();
         }
 
-        // self.replace_path(&[tag::file::ENUM_TYPE, 0]);
-        // for enu in &file.enum_type {
-        //     self.add_enum_descriptor_proto(enu);
-        //     self.bump_path();
-        // }
+        self.replace_path(&[tag::file::ENUM_TYPE, 0]);
+        for enum_ in &mut file.enum_type {
+            self.resolve_enum_descriptor_proto(enum_);
+            self.bump_path();
+        }
 
         self.replace_path(&[tag::file::EXTENSION, 0]);
         for extend in &mut file.extension {
@@ -115,6 +119,10 @@ impl<'a> Context<'a> {
         }
         self.pop_path(2);
 
+        self.path.push(tag::file::OPTIONS);
+        self.resolve_options(&mut file.options, "google.protobuf.FileOptions");
+        self.path.pop();
+
         if !file.package().is_empty() {
             for _ in file.package().split('.') {
                 self.exit_scope();
@@ -124,12 +132,31 @@ impl<'a> Context<'a> {
 
     fn resolve_descriptor_proto(&mut self, message: &mut DescriptorProto) {
         self.enter_scope(message.name());
+
         self.path.extend(&[tag::message::FIELD, 0]);
         for field in &mut message.field {
             self.resolve_field_descriptor_proto(field);
             self.bump_path();
         }
         self.pop_path(2);
+
+        self.path.extend(&[tag::message::EXTENSION_RANGE, 0]);
+        for range in &mut message.extension_range {
+            self.resolve_extension_range(range);
+            self.bump_path();
+        }
+        self.pop_path(2);
+
+        self.path.extend(&[tag::message::ONEOF_DECL, 0]);
+        for oneof in &mut message.oneof_decl {
+            self.resolve_oneof_descriptor_proto(oneof);
+            self.bump_path();
+        }
+        self.pop_path(2);
+
+        self.path.push(tag::message::OPTIONS);
+        self.resolve_options(&mut message.options, "google.protobuf.MessageOptions");
+        self.path.pop();
         self.exit_scope();
 
         if self.syntax != Syntax::Proto2 {
@@ -208,7 +235,21 @@ impl<'a> Context<'a> {
             }
         }
 
-        let options = self.take_uninterpreted_options(&mut field.options);
+        self.path.push(tag::field::OPTIONS);
+        self.resolve_options(&mut field.options, "google.protobuf.FieldOptions");
+        self.path.pop();
+    }
+
+    fn resolve_extension_range(&mut self, range: &mut descriptor_proto::ExtensionRange) {
+        self.path.push(tag::message::extension_range::OPTIONS);
+        self.resolve_options(&mut range.options, "google.protobuf.ExtensionRangeOptions");
+        self.path.pop();
+    }
+
+    fn resolve_oneof_descriptor_proto(&mut self, oneof: &mut OneofDescriptorProto) {
+        self.path.push(tag::oneof::OPTIONS);
+        self.resolve_options(&mut oneof.options, "google.protobuf.OneofOptions");
+        self.path.pop();
     }
 
     fn check_message_field_camel_case_names<'b>(
@@ -239,13 +280,37 @@ impl<'a> Context<'a> {
         }
     }
 
+    fn resolve_enum_descriptor_proto(&mut self, enum_: &mut EnumDescriptorProto) {
+        self.path.extend(&[tag::enum_::VALUE, 0]);
+        for value in &mut enum_.value {
+            self.resolve_enum_value_descriptor_proto(value)
+        }
+        self.pop_path(2);
+
+        self.path.push(tag::enum_::OPTIONS);
+        self.resolve_options(&mut enum_.options, "google.protobuf.EnumOptions");
+        self.path.pop();
+    }
+
+    fn resolve_enum_value_descriptor_proto(&mut self, value: &mut EnumValueDescriptorProto) {
+        self.path.push(tag::enum_value::OPTIONS);
+        self.resolve_options(&mut value.options, "google.protobuf.EnumValueOptions");
+        self.path.pop();
+    }
+
     fn resolve_service_descriptor_proto(&mut self, service: &mut ServiceDescriptorProto) {
         self.enter_scope(service.name());
         self.path.extend(&[tag::service::METHOD, 0]);
+
         for method in &mut service.method {
             self.resolve_method_descriptor_proto(method);
             self.bump_path();
         }
+
+        self.path.push(tag::service::OPTIONS);
+        self.resolve_options(&mut service.options, "google.protobuf.ServiceOptions");
+        self.path.pop();
+
         self.pop_path(2);
         self.exit_scope();
     }
@@ -271,55 +336,39 @@ impl<'a> Context<'a> {
                 span,
             })
         }
+
+        self.path.push(tag::method::OPTIONS);
+        self.resolve_options(&mut method.options, "google.protobuf.MethodOptions");
+        self.path.pop();
     }
 
-    fn take_uninterpreted_options(
-        &mut self,
-        options: &mut Option<OptionSet>,
-    ) -> Vec<(UninterpretedOption, Option<Location>)> {
+    fn resolve_options(&mut self, options: &mut Option<OptionSet>, namespace: &str) {
         let options = match options {
-            Some(options) => options.take_uninterpreted(),
-            None => return vec![],
+            Some(options) => options,
+            None => return,
         };
 
-        options
-            .into_iter()
-            .enumerate()
-            .map(|(index, option)| {
-                self.path
-                    .extend(&[tag::UNINTERPRETED_OPTION, index_to_i32(index)]);
-                let location = match self
-                    .locations
-                    .binary_search_by(|location| location.path.as_slice().cmp(&self.path))
-                {
-                    Ok(index) => Some(self.locations.remove(index)),
-                    Err(_) => None,
-                };
-                self.pop_path(2);
-
-                (option, location)
-            })
-            .collect()
+        for (index, option) in options.take_uninterpreted().into_iter().enumerate() {
+            let location = self.remove_location(&[tag::UNINTERPRETED_OPTION, index_to_i32(index)]);
+            self.resolve_option(options, namespace, option, location);
+        }
     }
 
-    /*
-    fn check_option(
+    fn resolve_option(
         &mut self,
         mut result: &mut OptionSet,
         namespace: &str,
-        option: &ast::OptionBody,
-        option_span: Span,
-    ) -> Result<(), ()> {
+        option: UninterpretedOption,
+        location: Option<Location>,
+    ) {
         use field_descriptor_proto::{Label, Type};
 
-        // Special cases for things which use option syntax but aren't options
-        if namespace == "google.protobuf.FieldOptions" && option.is("default") {
-            return Ok(());
-        }
-
-        if self.name_map.is_none() && !option.is_simple() {
-            todo!("set uninterpreted_option")
-        }
+        let option_span = match (self.lines, location) {
+            (Some(lines), Some(location)) => lines
+                .resolve_proto_span(&location.span)
+                .map(SourceSpan::from),
+            _ => None,
+        };
 
         let mut numbers = vec![];
         let mut ty = None;
@@ -331,83 +380,86 @@ impl<'a> Context<'a> {
             let namespace = match (ty, &type_name) {
                 (None | Some(Type::Message | Type::Group), Some(name)) => name.as_ref(),
                 _ => {
-                    self.errors.push(CheckError::OptionScalarFieldAccess {
-                        span: option.name_span(),
-                    });
-                    return Err(());
+                    self.errors
+                        .push(CheckError::OptionScalarFieldAccess { span: option_span });
+                    return;
                 }
             };
 
             if let Some(&number) = numbers.last() {
-                result = result.get_message_mut(number, part.span());
+                result = result.get_message_mut(number);
             }
 
-            match part {
-                ast::OptionNamePart::Ident(name) => {
-                    let full_name = make_name(namespace, name);
-                    if let Some(DefinitionKind::Field {
-                        number: field_number,
-                        label,
-                        ty: field_ty,
-                        type_name: field_type_name,
-                        extendee: None,
-                        ..
-                    }) = self.get_option_def(&full_name)
-                    {
-                        numbers.push(*field_number);
-                        ty = *field_ty;
-                        is_repeated = matches!(label, Some(Label::Repeated));
-                        type_name_context = Some(namespace.to_owned());
-                        type_name = field_type_name.clone().map(Cow::Owned);
-                    } else {
-                        self.errors.push(CheckError::OptionUnknownField {
-                            name: name.to_string(),
-                            namespace: namespace.to_owned(),
-                            span: name.span.clone(),
-                        });
-                        return Err(());
-                    }
+            if part.is_extension {
+                todo!()
+            } else {
+                let full_name = make_name(namespace, &part.name_part);
+                if let Some(DefinitionKind::Field {
+                    number: field_number,
+                    label,
+                    ty: field_ty,
+                    type_name: field_type_name,
+                    extendee: None,
+                    ..
+                }) = self.get_option_def(&full_name)
+                {
+                    numbers.push(*field_number);
+                    ty = *field_ty;
+                    is_repeated = matches!(label, Some(Label::Repeated));
+                    type_name_context = Some(namespace.to_owned());
+                    type_name = field_type_name.clone().map(Cow::Owned);
+                } else {
+                    self.errors.push(CheckError::OptionUnknownField {
+                        name: part.name_part.clone(),
+                        namespace: namespace.to_owned(),
+                        span: option_span,
+                    });
+                    return;
                 }
-                ast::OptionNamePart::Extension(_, _) => todo!(),
             }
         }
 
-        let value = self.check_option_value(
+        let value = todo!()/*match self.check_option_value(
             ty,
             option,
             type_name_context.as_deref().unwrap_or_default(),
             type_name.as_deref(),
-        )?;
+        ) {
+            Ok(value) => value,
+            Err(_) => return,
+        }*/;
 
-        self.add_location_for(&numbers, option_span);
         if is_repeated {
             result.set_repeated(
                 *numbers.last().expect("expected at least one field access"),
                 value,
-                option.name_span(),
             )
-        } else if let Err(first) = result.set(
+        } else if let Err(()) = result.set(
             *numbers.last().expect("expected at least one field access"),
             value,
-            option.name_span(),
         ) {
+            let first = self.resolve_span(&numbers);
             self.errors.push(CheckError::OptionAlreadySet {
-                name: option.name_string(),
+                name: fmt_option_name(&option.name),
                 first,
-                second: option.name_span(),
-            })
+                second: option_span,
+            });
+            return;
         }
-
-        Ok(())
+        self.add_location(&numbers, location);
     }
 
     fn check_option_value(
         &mut self,
         ty: Option<field_descriptor_proto::Type>,
-        option: &ast::OptionBody,
+        option: UninterpretedOption,
         type_name_context: &str,
         type_name: Option<&str>,
     ) -> Result<options::Value, ()> {
+        todo!()
+    }
+
+    /*
         use field_descriptor_proto::Type;
 
         Ok(match ty {
@@ -665,12 +717,11 @@ impl<'a> Context<'a> {
             }
         }
     }
+    */
 
     fn get_option_def(&self, name: &str) -> Option<&DefinitionKind> {
-        if let Some(name_map) = &self.name_map {
-            if let Some(def) = name_map.get(name) {
-                return Some(def);
-            }
+        if let Some(def) = self.name_map.get(name) {
+            return Some(def);
         }
 
         if !self.is_google_descriptor {
@@ -681,10 +732,8 @@ impl<'a> Context<'a> {
     }
 
     fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
-        if let Some(name_map) = &self.name_map {
-            if let Some((_, def)) = name_map.resolve(context, name) {
-                return Some(def);
-            }
+        if let Some((_, def)) = self.name_map.resolve(context, name) {
+            return Some(def);
         }
 
         if !self.is_google_descriptor {
@@ -695,7 +744,6 @@ impl<'a> Context<'a> {
 
         None
     }
-    */
 
     fn resolve_type_name(
         &mut self,
@@ -742,6 +790,35 @@ impl<'a> Context<'a> {
         span.map(SourceSpan::from)
     }
 
+    fn add_location(&mut self, path_items: &[i32], location: Option<Location>) {
+        if let Some(mut location) = location {
+            self.path.extend(path_items);
+
+            location.path = self.path.clone();
+            match self
+                .locations
+                .binary_search_by(|l| l.path.as_slice().cmp(&self.path))
+            {
+                Ok(index) | Err(index) => Some(self.locations.insert(index, location)),
+            };
+            self.pop_path(path_items.len());
+        }
+    }
+
+    fn remove_location(&mut self, path_items: &[i32]) -> Option<Location> {
+        self.path.extend(path_items);
+        let location = match self
+            .locations
+            .binary_search_by(|l| l.path.as_slice().cmp(&self.path))
+        {
+            Ok(index) => Some(self.locations.remove(index)),
+            Err(_) => None,
+        };
+        self.pop_path(path_items.len());
+
+        location
+    }
+
     fn pop_path(&mut self, n: usize) {
         debug_assert!(self.path.len() >= n);
         self.path.truncate(self.path.len() - n);
@@ -756,4 +833,21 @@ impl<'a> Context<'a> {
         self.pop_path(path_items.len());
         self.path.extend(path_items);
     }
+}
+
+fn fmt_option_name(name: &[uninterpreted_option::NamePart]) -> String {
+    let mut result = String::new();
+    for part in name {
+        if !result.is_empty() {
+            result.push('.');
+        }
+        if part.is_extension {
+            result.push('(');
+            result.push_str(&part.name_part);
+            result.push(')');
+        } else {
+            result.push_str(&part.name_part);
+        }
+    }
+    result
 }

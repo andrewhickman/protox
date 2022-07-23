@@ -916,6 +916,12 @@ fn option_already_set() {
 
 #[test]
 #[ignore]
+fn option_ignore() {
+    todo!()
+}
+
+#[test]
+#[ignore]
 fn option_map_entry_set_explicitly() {
     todo!()
 }
