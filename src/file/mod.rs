@@ -82,19 +82,32 @@ impl File {
     ///
     /// ```
     /// # use std::{fs, path::PathBuf};
-    /// # use protox::file::{IncludeFileResolver, FileResolver};
+    /// # use protox::file::File;
+    /// # use prost_types::{DescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location};
     /// # let tempdir = assert_fs::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("foo.proto", "message Foo { }").unwrap();
     ///
-    /// let file = File::read("foo.proto").unwrap();
+    /// let file = File::read("foo.proto".as_ref()).unwrap();
     /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
-    /// assert_eq!(file.content(), Some("message Foo { }"));
+    /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
-    ///
+    ///     message_type: vec![DescriptorProto {
+    ///         name: Some("Foo".to_owned()),
+    ///         ..Default::default()
+    ///     }],
+    ///     source_code_info: Some(SourceCodeInfo {
+    ///         location: vec![
+    ///             /* ... */
+    /// #           Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
+    /// #           Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
+    /// #           Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
+    ///         ]
+    ///     }),
+    ///     ..Default::default()
     /// });
     ///
-    /// assert!(File::read("notfound.proto").unwrap_err().is_file_not_found());
+    /// assert!(File::read("notfound.proto".as_ref()).unwrap_err().is_file_not_found());
     /// ```
     pub fn read(path: &Path) -> Result<Self, Error> {
         let map_io_err = |err: io::Error| -> Error {
@@ -142,12 +155,25 @@ impl File {
     ///
     /// ```
     /// # use std::{fs, path::PathBuf};
-    /// # use protox::file::{IncludeFileResolver, FileResolver, File};
+    /// # use protox::file::File;
+    /// # use prost_types::{DescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location};
     /// let file = File::from_source("message Foo { }").unwrap();
-    /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
-    /// assert_eq!(file.content(), Some("message Foo { }"));
+    /// assert_eq!(file.path(), None);
+    /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
-    ///
+    ///     message_type: vec![DescriptorProto {
+    ///         name: Some("Foo".to_owned()),
+    ///         ..Default::default()
+    ///     }],
+    ///     source_code_info: Some(SourceCodeInfo {
+    ///         location: vec![
+    ///             /* ... */
+    /// #           Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
+    /// #           Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
+    /// #           Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
+    ///         ]
+    ///     }),
+    ///     ..Default::default()
     /// });
     /// ```
     pub fn from_source(source: &str) -> Result<Self, Error> {
@@ -170,6 +196,8 @@ impl File {
     }
 
     /// Create a new instance of [`File`] from a parsed [`FileDescriptorProto`](prost_types::FileDescriptorProto).
+    ///
+    /// The file does not need to have type names or imports resolved. Typically, it would be returned by the [`parse()`](crate::parse()) method.
     pub fn from_file_descriptor_proto(file: prost_types::FileDescriptorProto) -> Self {
         File {
             path: None,
@@ -183,6 +211,8 @@ impl File {
     /// from the given bytes.
     ///
     /// Unlike when going through [`from_file_descriptor_proto()`](File::from_file_descriptor_proto), extension options are preserved.
+    ///
+    /// The file does not need to have type names or imports resolved.
     pub fn decode_file_descriptor_proto<B>(buf: B) -> Result<Self, DecodeError>
     where
         B: Buf,
@@ -206,6 +236,8 @@ impl File {
     }
 
     /// Returns the parsed value of the source file.
+    ///
+    /// This is typically equivalent to calling [`parse()`](crate::parse()) on the string returned by [`source()`](File::source).
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
         transcode_file(&self.descriptor, &mut Vec::new())
     }

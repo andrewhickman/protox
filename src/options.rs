@@ -2,7 +2,6 @@ use std::collections::btree_map::{self, BTreeMap};
 use std::mem;
 
 use bytes::{Buf, BufMut};
-use logos::Span;
 use prost::encoding::{DecodeContext, WireType};
 use prost::{DecodeError, Message};
 
@@ -162,10 +161,6 @@ impl OptionSet {
 
     pub fn take_uninterpreted(&mut self) -> Vec<UninterpretedOption> {
         mem::take(&mut self.uninterpreted_options)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
     }
 
     pub fn get_message_mut(&mut self, number: i32) -> &mut OptionSet {

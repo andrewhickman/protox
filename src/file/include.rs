@@ -54,12 +54,12 @@ impl FileResolver for IncludeFileResolver {
     /// # use protox::file::{IncludeFileResolver, FileResolver};
     /// # let tempdir = assert_fs::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
-    /// fs::write("./foo.proto", "content").unwrap();
+    /// fs::write("./foo.proto", "/* hello! */").unwrap();
     ///
     /// let resolver = IncludeFileResolver::new(PathBuf::from("."));
     /// let file = resolver.open_file("foo.proto").unwrap();
-    /// assert_eq!(file.path, Some(PathBuf::from("./foo.proto")));
-    /// assert_eq!(file.content, "content");
+    /// assert_eq!(file.path(), Some("./foo.proto".as_ref()));
+    /// assert_eq!(file.source(), Some("/* hello! */"));
     /// ```
     fn open_file(&self, name: &str) -> Result<File, Error> {
         let path = self.include.join(name);

@@ -613,7 +613,15 @@ impl fmt::Debug for String {
 
 impl fmt::Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for &ch in &self.value {
+        HexEscaped(self.value.as_slice()).fmt(f)
+    }
+}
+
+pub(crate) struct HexEscaped<'a>(pub &'a [u8]);
+
+impl<'a> fmt::Display for HexEscaped<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for &ch in self.0 {
             match ch {
                 b'\t' => f.write_str("\\t")?,
                 b'\r' => f.write_str("\\r")?,

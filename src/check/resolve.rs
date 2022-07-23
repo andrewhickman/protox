@@ -1,13 +1,15 @@
 use std::{
     borrow::Cow,
     collections::{hash_map, HashMap},
+    convert::{TryFrom, TryInto},
+    mem,
 };
 
 use miette::SourceSpan;
 use prost_types::field_descriptor_proto;
 
 use crate::{
-    ast::Syntax,
+    ast::{HexEscaped, Syntax},
     case::to_lower_without_underscores,
     index_to_i32,
     lines::LineResolver,
@@ -358,12 +360,12 @@ impl<'a> Context<'a> {
         &mut self,
         mut result: &mut OptionSet,
         namespace: &str,
-        option: UninterpretedOption,
+        mut option: UninterpretedOption,
         location: Option<Location>,
     ) {
         use field_descriptor_proto::{Label, Type};
 
-        let option_span = match (self.lines, location) {
+        let option_span = match (self.lines, &location) {
             (Some(lines), Some(location)) => lines
                 .resolve_proto_span(&location.span)
                 .map(SourceSpan::from),
@@ -376,7 +378,8 @@ impl<'a> Context<'a> {
         let mut type_name = Some(Cow::Borrowed(namespace));
         let mut type_name_context = None;
 
-        for part in &option.name {
+        let option_name = mem::take(&mut option.name);
+        for part in &option_name {
             let namespace = match (ty, &type_name) {
                 (None | Some(Type::Message | Type::Group), Some(name)) => name.as_ref(),
                 _ => {
@@ -419,15 +422,16 @@ impl<'a> Context<'a> {
             }
         }
 
-        let value = todo!()/*match self.check_option_value(
+        let value = match self.check_option_value(
             ty,
             option,
+            option_span,
             type_name_context.as_deref().unwrap_or_default(),
             type_name.as_deref(),
         ) {
             Ok(value) => value,
             Err(_) => return,
-        }*/;
+        };
 
         if is_repeated {
             result.set_repeated(
@@ -440,7 +444,7 @@ impl<'a> Context<'a> {
         ) {
             let first = self.resolve_span(&numbers);
             self.errors.push(CheckError::OptionAlreadySet {
-                name: fmt_option_name(&option.name),
+                name: fmt_option_name(&option_name),
                 first,
                 second: option_span,
             });
@@ -453,58 +457,62 @@ impl<'a> Context<'a> {
         &mut self,
         ty: Option<field_descriptor_proto::Type>,
         option: UninterpretedOption,
+        option_span: Option<SourceSpan>,
         type_name_context: &str,
         type_name: Option<&str>,
     ) -> Result<options::Value, ()> {
-        todo!()
-    }
-
-    /*
         use field_descriptor_proto::Type;
 
         Ok(match ty {
             Some(Type::Double) => {
-                options::Value::Double(self.check_option_value_f64(&option.value)?)
+                options::Value::Double(self.check_option_value_f64(option, option_span)?)
             }
             Some(Type::Float) => {
-                options::Value::Float(self.check_option_value_f64(&option.value)? as f32)
+                options::Value::Float(self.check_option_value_f64(option, option_span)? as f32)
             }
-            Some(Type::Int32) => options::Value::Int32(self.check_option_value_i32(&option.value)?),
-            Some(Type::Int64) => options::Value::Int64(self.check_option_value_i64(&option.value)?),
+            Some(Type::Int32) => {
+                options::Value::Int32(self.check_option_value_i32(option, option_span)?)
+            }
+            Some(Type::Int64) => {
+                options::Value::Int64(self.check_option_value_i64(option, option_span)?)
+            }
             Some(Type::Uint32) => {
-                options::Value::Uint32(self.check_option_value_u32(&option.value)?)
+                options::Value::Uint32(self.check_option_value_u32(option, option_span)?)
             }
             Some(Type::Uint64) => {
-                options::Value::Uint64(self.check_option_value_u64(&option.value)?)
+                options::Value::Uint64(self.check_option_value_u64(option, option_span)?)
             }
             Some(Type::Sint32) => {
-                options::Value::Sint32(self.check_option_value_i32(&option.value)?)
+                options::Value::Sint32(self.check_option_value_i32(option, option_span)?)
             }
             Some(Type::Sint64) => {
-                options::Value::Sint64(self.check_option_value_i64(&option.value)?)
+                options::Value::Sint64(self.check_option_value_i64(option, option_span)?)
             }
             Some(Type::Fixed32) => {
-                options::Value::Fixed32(self.check_option_value_u32(&option.value)?)
+                options::Value::Fixed32(self.check_option_value_u32(option, option_span)?)
             }
             Some(Type::Fixed64) => {
-                options::Value::Fixed64(self.check_option_value_u64(&option.value)?)
+                options::Value::Fixed64(self.check_option_value_u64(option, option_span)?)
             }
             Some(Type::Sfixed32) => {
-                options::Value::Sfixed32(self.check_option_value_i32(&option.value)?)
+                options::Value::Sfixed32(self.check_option_value_i32(option, option_span)?)
             }
             Some(Type::Sfixed64) => {
-                options::Value::Sfixed64(self.check_option_value_i64(&option.value)?)
+                options::Value::Sfixed64(self.check_option_value_i64(option, option_span)?)
             }
-            Some(Type::Bool) => options::Value::Bool(self.check_option_value_bool(&option.value)?),
+            Some(Type::Bool) => {
+                options::Value::Bool(self.check_option_value_bool(option, option_span)?)
+            }
             Some(Type::String) => {
-                options::Value::String(self.check_option_value_string(&option.value)?)
+                options::Value::String(self.check_option_value_string(option, option_span)?)
             }
             Some(Type::Bytes) => {
-                options::Value::Bytes(self.check_option_value_bytes(&option.value)?)
+                options::Value::Bytes(self.check_option_value_bytes(option, option_span)?)
             }
             Some(Type::Enum) => {
                 let value = self.check_option_value_enum(
-                    &option.value,
+                    option,
+                    option_span,
                     type_name_context,
                     type_name.unwrap_or_default(),
                 )?;
@@ -514,7 +522,8 @@ impl<'a> Context<'a> {
                 let type_name = type_name.unwrap_or_default();
                 match self.resolve_option_def(type_name_context, type_name) {
                     Some(DefinitionKind::Message) => {
-                        let value = self.check_option_value_message(&option.value, type_name)?;
+                        let value =
+                            self.check_option_value_message(option, option_span, type_name)?;
                         if ty == Some(Type::Group) {
                             options::Value::Group(value)
                         } else {
@@ -523,7 +532,8 @@ impl<'a> Context<'a> {
                     }
                     Some(DefinitionKind::Enum) => {
                         let value = self.check_option_value_enum(
-                            &option.value,
+                            option,
+                            option_span,
                             type_name_context,
                             type_name,
                         )?;
@@ -532,7 +542,7 @@ impl<'a> Context<'a> {
                     Some(_) | None => {
                         self.errors.push(CheckError::OptionInvalidTypeName {
                             name: type_name.to_owned(),
-                            span: option.name_span(),
+                            span: option_span,
                         });
                         return Err(());
                     }
@@ -541,136 +551,176 @@ impl<'a> Context<'a> {
         })
     }
 
-    fn check_option_value_f64(&mut self, value: &ast::OptionValue) -> Result<f64, ()> {
-        match value {
-            ast::OptionValue::Float(float) => Ok(float.value),
-            _ => {
-                self.errors.push(CheckError::ValueInvalidType {
-                    expected: "a float".to_owned(),
-                    actual: value.to_string(),
-                    span: value.span(),
-                });
-                Err(())
-            }
+    fn check_option_value_f64(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<f64, ()> {
+        if let Some(float) = value.double_value {
+            Ok(float)
+        } else if let Some(int) = value.positive_int_value {
+            Ok(int as f64)
+        } else if let Some(int) = value.negative_int_value {
+            Ok(int as f64)
+        } else {
+            self.errors.push(CheckError::ValueInvalidType {
+                expected: "a number".to_owned(),
+                actual: fmt_option_value(&value),
+                span,
+            });
+            Err(())
         }
     }
 
-    fn check_option_value_i32(&mut self, value: &ast::OptionValue) -> Result<i32, ()> {
-        match self.check_option_value_int(value)?.as_i32() {
+    fn check_option_value_i32(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<i32, ()> {
+        match self.check_option_value_int(&value, span)? {
             Some(value) => Ok(value),
             None => {
                 self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "a signed 32-bit integer".to_owned(),
-                    actual: value.to_string(),
+                    actual: fmt_option_value(&value),
                     min: i32::MIN.to_string(),
                     max: i32::MAX.to_string(),
-                    span: value.span(),
+                    span,
                 });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_i64(&mut self, value: &ast::OptionValue) -> Result<i64, ()> {
-        match self.check_option_value_int(value)?.as_i64() {
+    fn check_option_value_i64(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<i64, ()> {
+        match self.check_option_value_int(&value, span)? {
             Some(value) => Ok(value),
             None => {
                 self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "a signed 64-bit integer".to_owned(),
-                    actual: value.to_string(),
+                    actual: fmt_option_value(&value),
                     min: i64::MIN.to_string(),
                     max: i64::MAX.to_string(),
-                    span: value.span(),
+                    span,
                 });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_u32(&mut self, value: &ast::OptionValue) -> Result<u32, ()> {
-        match self.check_option_value_int(value)?.as_u32() {
+    fn check_option_value_u32(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<u32, ()> {
+        match self.check_option_value_int(&value, span)? {
             Some(value) => Ok(value),
             None => {
                 self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "an unsigned 32-bit integer".to_owned(),
-                    actual: value.to_string(),
+                    actual: fmt_option_value(&value),
                     min: u32::MIN.to_string(),
                     max: u32::MAX.to_string(),
-                    span: value.span(),
+                    span,
                 });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_u64(&mut self, value: &ast::OptionValue) -> Result<u64, ()> {
-        match self.check_option_value_int(value)?.as_u64() {
+    fn check_option_value_u64(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<u64, ()> {
+        match self.check_option_value_int(&value, span)? {
             Some(value) => Ok(value),
             None => {
                 self.errors.push(CheckError::IntegerValueOutOfRange {
                     expected: "an unsigned 64-bit integer".to_owned(),
-                    actual: value.to_string(),
+                    actual: fmt_option_value(&value),
                     min: u64::MIN.to_string(),
                     max: u64::MAX.to_string(),
-                    span: value.span(),
+                    span,
                 });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_int<'b>(
+    fn check_option_value_int<T>(
         &mut self,
-        value: &'b ast::OptionValue,
-    ) -> Result<&'b ast::Int, ()> {
-        match value {
-            ast::OptionValue::Int(int) => Ok(int),
-            _ => {
-                self.errors.push(CheckError::ValueInvalidType {
-                    expected: "an integer".to_owned(),
-                    actual: value.to_string(),
-                    span: value.span(),
-                });
-                Err(())
-            }
+        value: &UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<Option<T>, ()>
+    where
+        T: TryFrom<u64> + TryFrom<i64>,
+    {
+        if let Some(int) = value.positive_int_value {
+            Ok(int.try_into().ok())
+        } else if let Some(int) = value.negative_int_value {
+            Ok(int.try_into().ok())
+        } else {
+            self.errors.push(CheckError::ValueInvalidType {
+                expected: "an integer".to_owned(),
+                actual: fmt_option_value(value),
+                span,
+            });
+            Err(())
         }
     }
 
-    fn check_option_value_bool(&mut self, value: &ast::OptionValue) -> Result<bool, ()> {
-        match value {
-            ast::OptionValue::Ident(ident) if ident.value.as_str() == "false" => Ok(false),
-            ast::OptionValue::Ident(ident) if ident.value.as_str() == "true" => Ok(true),
+    fn check_option_value_bool(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<bool, ()> {
+        match value.identifier_value() {
+            "false" => Ok(false),
+            "true" => Ok(true),
             _ => {
                 self.errors.push(CheckError::ValueInvalidType {
                     expected: "either 'true' or 'false'".to_owned(),
-                    actual: value.to_string(),
-                    span: value.span(),
+                    actual: fmt_option_value(&value),
+                    span,
                 });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_string(&mut self, value: &ast::OptionValue) -> Result<String, ()> {
-        let bytes = self.check_option_value_bytes(value)?;
+    fn check_option_value_string(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<String, ()> {
+        let bytes = self.check_option_value_bytes(value, span)?;
         match String::from_utf8(bytes) {
             Ok(string) => Ok(string),
             Err(_) => {
                 self.errors
-                    .push(CheckError::StringValueInvalidUtf8 { span: value.span() });
+                    .push(CheckError::StringValueInvalidUtf8 { span });
                 Err(())
             }
         }
     }
 
-    fn check_option_value_bytes(&mut self, value: &ast::OptionValue) -> Result<Vec<u8>, ()> {
-        match value {
-            ast::OptionValue::String(string) => Ok(string.value.clone()),
+    fn check_option_value_bytes(
+        &mut self,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
+    ) -> Result<Vec<u8>, ()> {
+        match value.string_value {
+            Some(string) => Ok(string),
             _ => {
                 self.errors.push(CheckError::ValueInvalidType {
                     expected: "a string".to_owned(),
-                    actual: value.to_string(),
-                    span: value.span(),
+                    actual: fmt_option_value(&value),
+                    span,
                 });
                 Err(())
             }
@@ -679,7 +729,8 @@ impl<'a> Context<'a> {
 
     fn check_option_value_message(
         &mut self,
-        _value: &ast::OptionValue,
+        _value: UninterpretedOption,
+        _span: Option<SourceSpan>,
         _type_name: &str,
     ) -> Result<OptionSet, ()> {
         todo!()
@@ -687,21 +738,22 @@ impl<'a> Context<'a> {
 
     fn check_option_value_enum(
         &mut self,
-        value: &ast::OptionValue,
+        value: UninterpretedOption,
+        span: Option<SourceSpan>,
         context: &str,
         type_name: &str,
     ) -> Result<i32, ()> {
         let type_namespace = parse_namespace(type_name);
 
-        match value {
-            ast::OptionValue::Ident(ident) => {
-                match self.resolve_option_def(context, &make_name(type_namespace, &ident.value)) {
+        match value.identifier_value {
+            Some(ident) => {
+                match self.resolve_option_def(context, &make_name(type_namespace, &ident)) {
                     Some(DefinitionKind::EnumValue { number }) => Ok(*number),
                     _ => {
                         self.errors.push(CheckError::InvalidEnumValue {
-                            value_name: ident.value.clone(),
+                            value_name: ident,
                             enum_name: type_name.to_owned(),
-                            span: ident.span.clone(),
+                            span,
                         });
                         Err(())
                     }
@@ -710,14 +762,13 @@ impl<'a> Context<'a> {
             _ => {
                 self.errors.push(CheckError::ValueInvalidType {
                     expected: "an enum value identifier".to_owned(),
-                    actual: value.to_string(),
-                    span: value.span(),
+                    actual: fmt_option_value(&value),
+                    span,
                 });
                 Err(())
             }
         }
     }
-    */
 
     fn get_option_def(&self, name: &str) -> Option<&DefinitionKind> {
         if let Some(def) = self.name_map.get(name) {
@@ -799,7 +850,7 @@ impl<'a> Context<'a> {
                 .locations
                 .binary_search_by(|l| l.path.as_slice().cmp(&self.path))
             {
-                Ok(index) | Err(index) => Some(self.locations.insert(index, location)),
+                Ok(index) | Err(index) => self.locations.insert(index, location),
             };
             self.pop_path(path_items.len());
         }
@@ -850,4 +901,22 @@ fn fmt_option_name(name: &[uninterpreted_option::NamePart]) -> String {
         }
     }
     result
+}
+
+fn fmt_option_value(value: &UninterpretedOption) -> String {
+    if let Some(identifier_value) = &value.identifier_value {
+        identifier_value.clone()
+    } else if let Some(positive_int_value) = value.positive_int_value {
+        positive_int_value.to_string()
+    } else if let Some(negative_int_value) = value.negative_int_value {
+        negative_int_value.to_string()
+    } else if let Some(double_value) = value.double_value {
+        double_value.to_string()
+    } else if let Some(string_value) = &value.string_value {
+        HexEscaped(string_value.as_slice()).to_string()
+    } else if let Some(aggregate_value) = &value.aggregate_value {
+        format!("{{{}}}", aggregate_value)
+    } else {
+        String::new()
+    }
 }

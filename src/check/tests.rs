@@ -908,8 +908,8 @@ fn option_already_set() {
         ),
         vec![OptionAlreadySet {
             name: "deprecated".to_owned(),
-            first: Some(SourceSpan::from(103..113)),
-            second: Some(SourceSpan::from(122..132))
+            first: Some(SourceSpan::from(103..120)),
+            second: Some(SourceSpan::from(122..140))
         }],
     );
 }
