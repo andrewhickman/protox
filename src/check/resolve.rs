@@ -74,17 +74,10 @@ impl<'a> generate::File<'a> {
 struct Context<'a> {
     syntax: ast::Syntax,
     name_map: Option<&'a NameMap>,
-    scope: Vec<Scope>,
+    scope: String,
     errors: Vec<CheckError>,
     lines: Option<LineResolver>,
     is_google_descriptor: bool,
-}
-
-enum Scope {
-    Package { full_name: String },
-    Message { full_name: String },
-    Oneof { synthetic: bool },
-    Extend,
 }
 
 impl<'a> Context<'a> {

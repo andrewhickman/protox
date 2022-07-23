@@ -72,6 +72,13 @@ pub(crate) enum DefinitionKind {
     Method,
 }
 
+struct NamePass {
+    name_map: NameMap,
+    scope: String,
+    path: Vec<i32>,
+    errors: Vec<CheckError>,
+}
+
 impl NameMap {
     pub fn from_proto(
         file: &FileDescriptorProto,
@@ -80,7 +87,8 @@ impl NameMap {
         let mut ctx = NamePass {
             name_map: NameMap::new(),
             errors: Vec::new(),
-            scope: Vec::new(),
+            path: Vec::new(),
+            scope: String::new(),
         };
 
         ctx.add_file_descriptor_proto(file, file_map);
@@ -151,7 +159,7 @@ impl NameMap {
                 self.add(
                     name.clone(),
                     entry.kind.clone(),
-                    entry.span.clone(),
+                    entry.span.clone(), // todo None?
                     Some(&file),
                     public,
                 )?;
@@ -190,12 +198,6 @@ impl NameMap {
     }
 }
 
-struct NamePass {
-    name_map: NameMap,
-    scope: Vec<String>,
-    errors: Vec<CheckError>,
-}
-
 impl NamePass {
     fn add_name<'a>(
         &mut self,
@@ -221,19 +223,20 @@ impl NamePass {
     }
 
     fn full_name<'a>(&self, name: impl Into<Cow<'a, str>>) -> String {
-        let name = name.into();
-        match self.scope.last() {
-            Some(namespace) => make_name(namespace, name),
-            None => name.into_owned(),
-        }
+        make_name(&self.scope, name.into())
     }
 
-    fn enter<'a>(&mut self, name: impl Into<Cow<'a, str>>) {
-        self.scope.push(self.full_name(name))
+    fn enter(&mut self, name: &str) {
+        if !self.scope.is_empty() {
+            self.scope.push('.');
+        }
+        self.scope.push_str(name);
     }
 
     fn exit(&mut self) {
-        self.scope.pop().expect("unbalanced scope stack");
+        debug_assert!(!self.scope.is_empty(), "imbalanced scope stack");
+        let len = self.scope.rfind('.').unwrap_or(0);
+        self.scope.truncate(len);
     }
 
     fn add_file_descriptor_proto(&mut self, file: &FileDescriptorProto, file_map: &ParsedFileMap) {
