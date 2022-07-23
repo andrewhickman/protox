@@ -6,7 +6,6 @@ use std::{
 };
 
 use logos::Span;
-use miette::NamedSource;
 use prost::Message;
 
 use crate::{
@@ -149,7 +148,7 @@ impl Compiler {
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 &mut import_stack,
-                make_source(&name, file.path(), file.source()),
+                DynSourceCode::new(Some(&name), file.path(), file.source()),
             )?;
         }
         drop(import_stack);
@@ -261,7 +260,7 @@ impl Compiler {
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 import_stack,
-                make_source(file_name, file.path(), file.source()),
+                DynSourceCode::new(Some(file_name), file.path(), file.source()),
             )?;
         }
         import_stack.pop();
@@ -287,7 +286,7 @@ impl Compiler {
         let source = file.source.as_deref();
         let name_map = NameMap::from_proto(&file.descriptor, &self.file_map, file.lines.as_ref())
             .map_err(|errors| {
-            Error::check_errors(errors, make_source(file_name, path, source))
+            Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
         })?;
 
         let mut descriptor = file.descriptor;
@@ -295,8 +294,9 @@ impl Compiler {
             descriptor.name = Some(file_name.to_owned());
         }
 
-        check::resolve(&mut descriptor, file.lines.as_ref(), &name_map)
-            .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
+        check::resolve(&mut descriptor, file.lines.as_ref(), &name_map).map_err(|errors| {
+            Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
+        })?;
 
         Ok((descriptor, name_map))
     }
@@ -352,18 +352,5 @@ impl<'a> Index<&'a str> for ParsedFileMap {
 impl<'a> IndexMut<&'a str> for ParsedFileMap {
     fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
         &mut self.files[self.file_names[index]]
-    }
-}
-
-fn make_source(name: &str, path: Option<&Path>, source: Option<&str>) -> DynSourceCode {
-    if let Some(source) = source {
-        let name = match path {
-            Some(path) => path.display().to_string(),
-            None => name.to_owned(),
-        };
-
-        NamedSource::new(name, source.to_owned()).into()
-    } else {
-        DynSourceCode::default()
     }
 }

@@ -1,4 +1,7 @@
-use std::{fmt, io, path::PathBuf, sync::Arc};
+use std::{
+    fmt, io,
+    path::{Path, PathBuf},
+};
 
 use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
 use thiserror::Error;
@@ -73,6 +76,21 @@ pub(crate) enum ErrorKind {
 #[derive(Default)]
 pub(crate) struct DynSourceCode(Option<Box<dyn SourceCode>>);
 
+impl DynSourceCode {
+    pub fn new(name: Option<&str>, path: Option<&Path>, source: Option<&str>) -> DynSourceCode {
+        if let Some(source) = source {
+            let source = source.to_owned();
+            match (path, name) {
+                (Some(path), _) => NamedSource::new(path.display().to_string(), source).into(),
+                (None, Some(name)) => NamedSource::new(name, source).into(),
+                (None, None) => DynSourceCode(Some(Box::new(source))),
+            }
+        } else {
+            DynSourceCode::default()
+        }
+    }
+}
+
 impl fmt::Debug for DynSourceCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("DynSourceCode").finish_non_exhaustive()
@@ -91,12 +109,6 @@ impl SourceCode for DynSourceCode {
         } else {
             Err(MietteError::OutOfBounds)
         }
-    }
-}
-
-impl From<Arc<str>> for DynSourceCode {
-    fn from(source: Arc<str>) -> Self {
-        DynSourceCode(Some(Box::new(source)))
     }
 }
 

@@ -19,14 +19,16 @@ mod tests;
 mod types;
 
 use std::fmt;
-use std::sync::Arc;
 use std::{convert::TryInto, path::Path};
 
 use lines::LineResolver;
 use logos::Span;
 use prost::Message;
 
-use crate::types::{source_code_info, FileDescriptorProto};
+use crate::{
+    error::DynSourceCode,
+    types::{source_code_info, FileDescriptorProto},
+};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -196,14 +198,21 @@ pub fn compile(
 /// })
 /// ```
 pub fn parse(source: &str) -> Result<prost_types::FileDescriptorProto, Error> {
-    parse_internal(source, &LineResolver::new(source))
+    parse_internal(None, None, source, &LineResolver::new(source))
         .map(|file| transcode_file(&file, &mut Vec::new()))
 }
 
-fn parse_internal(source: &str, lines: &LineResolver) -> Result<FileDescriptorProto, Error> {
-    let ast =
-        parse::parse(source).map_err(|errors| Error::parse_errors(errors, Arc::from(source)))?;
-    check::generate(ast, lines).map_err(|errors| Error::check_errors(errors, Arc::from(source)))
+fn parse_internal(
+    name: Option<&str>,
+    path: Option<&Path>,
+    source: &str,
+    lines: &LineResolver,
+) -> Result<FileDescriptorProto, Error> {
+    let ast = parse::parse(source).map_err(|errors| {
+        Error::parse_errors(errors, DynSourceCode::new(name, path, Some(source)))
+    })?;
+    check::generate(ast, lines)
+        .map_err(|errors| Error::check_errors(errors, DynSourceCode::new(name, path, Some(source))))
 }
 
 const MAX_FILE_LEN: u64 = i32::MAX as u64;

@@ -135,7 +135,7 @@ impl File {
             .map_err(map_io_err)?;
 
         let lines = LineResolver::new(&buf);
-        let descriptor = parse_internal(&buf, &lines)?;
+        let descriptor = parse_internal(None, Some(path), &buf, &lines)?;
 
         Ok(File {
             path: Some(path.to_owned()),
@@ -185,7 +185,7 @@ impl File {
         }
 
         let lines = LineResolver::new(source);
-        let descriptor = parse_internal(source, &lines)?;
+        let descriptor = parse_internal(None, None, source, &lines)?;
 
         Ok(File {
             path: None,
