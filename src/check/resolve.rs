@@ -221,7 +221,8 @@ impl<'a> Context<'a> {
                         let value_name =
                             make_name(parse_namespace(enum_name), field.default_value());
                         match self.name_map.get(&value_name) {
-                            Some(DefinitionKind::EnumValue { .. }) => (),
+                            Some(DefinitionKind::EnumValue { parent, .. })
+                                if parent == enum_name => {}
                             _ => {
                                 let span = self.resolve_span(&[tag::field::DEFAULT_VALUE]);
                                 self.errors.push(CheckError::InvalidEnumValue {
@@ -748,7 +749,9 @@ impl<'a> Context<'a> {
         match value.identifier_value {
             Some(ident) => {
                 match self.resolve_option_def(context, &make_name(type_namespace, &ident)) {
-                    Some(DefinitionKind::EnumValue { number }) => Ok(*number),
+                    Some(DefinitionKind::EnumValue { parent, number }) if parent == type_name => {
+                        Ok(*number)
+                    }
                     _ => {
                         self.errors.push(CheckError::InvalidEnumValue {
                             value_name: ident,

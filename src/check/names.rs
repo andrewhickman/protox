@@ -59,6 +59,7 @@ pub(crate) enum DefinitionKind {
     Message,
     Enum,
     EnumValue {
+        parent: String,
         number: i32,
     },
     Oneof,
@@ -319,14 +320,15 @@ impl<'a> NamePass<'a> {
         self.add_name(oneof.name(), DefinitionKind::Oneof, &[tag::oneof::NAME]);
     }
 
-    fn add_enum_descriptor_proto(&mut self, enu: &EnumDescriptorProto) {
-        self.add_name(enu.name(), DefinitionKind::Enum, &[tag::enum_::NAME]);
+    fn add_enum_descriptor_proto(&mut self, enum_: &EnumDescriptorProto) {
+        self.add_name(enum_.name(), DefinitionKind::Enum, &[tag::enum_::NAME]);
 
         self.path.extend(&[tag::enum_::VALUE, 0]);
-        for value in &enu.value {
+        for value in &enum_.value {
             self.add_name(
                 value.name(),
                 DefinitionKind::EnumValue {
+                    parent: self.full_name(enum_.name()),
                     number: value.number(),
                 },
                 &[tag::enum_value::NAME],

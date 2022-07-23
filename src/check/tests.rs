@@ -580,6 +580,28 @@ fn enum_field_invalid_default() {
             span: Some(SourceSpan::from(79..82)),
         }],
     );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                optional Foo foo = 1 [default = ONE];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }
+            
+            enum Bar {
+                NONE = 0;
+                ONE = 1;
+            }"#
+        ),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "Foo".to_owned(),
+            span: Some(SourceSpan::from(79..82)),
+        }],
+    );
 }
 
 #[test]
