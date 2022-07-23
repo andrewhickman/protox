@@ -578,6 +578,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "Foo".to_owned(),
             span: Some(SourceSpan::from(79..82)),
+            help: Some("possible values are: ZERO".to_owned())
         }],
     );
     assert_eq!(
@@ -589,6 +590,7 @@ fn enum_field_invalid_default() {
 
             enum Foo {
                 ZERO = 0;
+                TWO = 2;
             }
             
             enum Bar {
@@ -600,6 +602,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "Foo".to_owned(),
             span: Some(SourceSpan::from(79..82)),
+            help: Some("possible values are: ZERO, TWO".to_owned()),
         }],
     );
 }

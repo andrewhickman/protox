@@ -188,6 +188,8 @@ pub(crate) enum CheckError {
         enum_name: String,
         #[label("defined here")]
         span: Option<SourceSpan>,
+        #[help]
+        help: Option<String>,
     },
     #[error("identifiers may not be negative")]
     NegativeIdentOutsideDefault {

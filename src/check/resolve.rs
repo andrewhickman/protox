@@ -15,7 +15,7 @@ use crate::{
     lines::LineResolver,
     make_name,
     options::{self, OptionSet},
-    parse, parse_namespace, resolve_span, strip_leading_dot, tag,
+    parse, parse_name, parse_namespace, resolve_span, strip_leading_dot, tag,
     types::{
         descriptor_proto, source_code_info::Location, uninterpreted_option, DescriptorProto,
         EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
@@ -218,8 +218,8 @@ impl<'a> Context<'a> {
                         });
                     } else {
                         let enum_name = strip_leading_dot(field.type_name());
-                        let value_name =
-                            make_name(parse_namespace(enum_name), field.default_value());
+                        let enum_namespace = parse_namespace(enum_name);
+                        let value_name = make_name(enum_namespace, field.default_value());
                         match self.name_map.get(&value_name) {
                             Some(DefinitionKind::EnumValue { parent, .. })
                                 if parent == enum_name => {}
@@ -229,6 +229,7 @@ impl<'a> Context<'a> {
                                     value_name: field.default_value().to_owned(),
                                     enum_name: enum_name.to_owned(),
                                     span,
+                                    help: fmt_valid_enum_values_help(self.name_map, enum_name),
                                 });
                             }
                         }
@@ -742,20 +743,21 @@ impl<'a> Context<'a> {
         value: UninterpretedOption,
         span: Option<SourceSpan>,
         context: &str,
-        type_name: &str,
+        enum_name: &str,
     ) -> Result<i32, ()> {
-        let type_namespace = parse_namespace(type_name);
+        let enum_namespace = parse_namespace(enum_name);
 
         match value.identifier_value {
             Some(ident) => {
-                match self.resolve_option_def(context, &make_name(type_namespace, &ident)) {
-                    Some(DefinitionKind::EnumValue { parent, number }) if parent == type_name => {
+                match self.resolve_option_def(context, &make_name(enum_namespace, &ident)) {
+                    Some(DefinitionKind::EnumValue { parent, number }) if parent == enum_name => {
                         Ok(*number)
                     }
                     _ => {
                         self.errors.push(CheckError::InvalidEnumValue {
                             value_name: ident,
-                            enum_name: type_name.to_owned(),
+                            enum_name: enum_name.to_owned(),
+                            help: fmt_valid_enum_values_help(self.name_map, enum_name),
                             span,
                         });
                         Err(())
@@ -922,4 +924,21 @@ fn fmt_option_value(value: &UninterpretedOption) -> String {
     } else {
         String::new()
     }
+}
+
+fn fmt_valid_enum_values_help(name_map: &NameMap, enum_name: &str) -> Option<String> {
+    use std::fmt::Write;
+
+    let mut result = None;
+
+    for (name, def) in name_map.iter() {
+        if matches!(def, DefinitionKind::EnumValue { parent, .. } if parent == enum_name) {
+            match &mut result {
+                None => result = Some(format!("possible values are: {}", parse_name(name))),
+                Some(result) => write!(result, ", {}", parse_name(name)).unwrap(),
+            }
+        }
+    }
+
+    result
 }

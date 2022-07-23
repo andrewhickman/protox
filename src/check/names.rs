@@ -180,6 +180,12 @@ impl NameMap {
         Ok(())
     }
 
+    pub(super) fn iter(&self) -> impl Iterator<Item = (&'_ str, &'_ DefinitionKind)> {
+        self.map
+            .iter()
+            .map(|(key, value)| (key.as_str(), &value.kind))
+    }
+
     pub(super) fn get(&self, name: &str) -> Option<&DefinitionKind> {
         self.map.get(name).map(|e| &e.kind)
     }
