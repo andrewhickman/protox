@@ -168,20 +168,22 @@ impl Compiler {
     pub fn file_descriptor_set(&self) -> prost_types::FileDescriptorSet {
         let mut buf = Vec::new();
 
-        let file = if self.include_imports {
-            self.file_map
-                .files
-                .iter()
-                .map(|f| transcode_file(&f.descriptor, &mut buf))
-                .collect()
-        } else {
-            self.file_map
-                .files
-                .iter()
-                .filter(|f| f.is_root)
-                .map(|f| transcode_file(&f.descriptor, &mut buf))
-                .collect()
-        };
+        let file = self
+            .file_map
+            .files
+            .iter()
+            .filter(|f| self.include_imports || f.is_root)
+            .map(|f| {
+                if self.include_source_info {
+                    transcode_file(&f.descriptor, &mut buf)
+                } else {
+                    prost_types::FileDescriptorProto {
+                        source_code_info: None,
+                        ..transcode_file(&f.descriptor, &mut buf)
+                    }
+                }
+            })
+            .collect();
 
         prost_types::FileDescriptorSet { file }
     }
@@ -191,20 +193,22 @@ impl Compiler {
     /// This is equivalent to `file_descriptor_set()?.encode_to_vec()`, with the exception that extension
     /// options are included.
     pub fn encode_file_descriptor_set(&self) -> Vec<u8> {
-        let file = if self.include_imports {
-            self.file_map
-                .files
-                .iter()
-                .map(|f| f.descriptor.clone())
-                .collect()
-        } else {
-            self.file_map
-                .files
-                .iter()
-                .filter(|f| f.is_root)
-                .map(|f| f.descriptor.clone())
-                .collect()
-        };
+        let file = self
+            .file_map
+            .files
+            .iter()
+            .filter(|f| self.include_imports || f.is_root)
+            .map(|f| {
+                if self.include_source_info {
+                    f.descriptor.clone()
+                } else {
+                    FileDescriptorProto {
+                        source_code_info: None,
+                        ..f.descriptor.clone()
+                    }
+                }
+            })
+            .collect();
 
         FileDescriptorSet { file }.encode_to_vec()
     }

@@ -1,25 +1,17 @@
-use std::{
-    fmt::Display,
-};
-
-
 use miette::SourceSpan;
 use prost_types::field_descriptor_proto;
 
 use crate::{
     ast::Syntax,
     lines::LineResolver,
-    make_name, resolve_span, tag,
+    resolve_span, tag,
     types::{
-        source_code_info::Location,
-        DescriptorProto,
-        FileDescriptorProto, ServiceDescriptorProto, MethodDescriptorProto, FieldDescriptorProto,
+        source_code_info::Location, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
+        MethodDescriptorProto, ServiceDescriptorProto,
     },
 };
 
-use super::{
-    names::DefinitionKind, CheckError, NameMap,
-};
+use super::{names::DefinitionKind, CheckError, NameMap};
 
 /// Resolve and check relative type names and options.
 pub(crate) fn resolve(
@@ -149,7 +141,7 @@ impl<'a> Context<'a> {
                 }
                 DefinitionKind::Enum => {
                     field.r#type = Some(field_descriptor_proto::Type::Enum as _);
-                },
+                }
                 _ => {
                     let span = self.resolve_span(&[tag::field::TYPE_NAME]);
                     self.errors.push(CheckError::InvalidMessageFieldTypeName {

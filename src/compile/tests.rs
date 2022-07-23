@@ -24,8 +24,8 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     assert_eq!(compiler.file_map.files.len(), 1);
     assert_eq!(compiler.file_map[name].name(), name);
     assert_eq!(
-        compiler.file_map[name].descriptor,
-        FileDescriptorProto {
+        compiler.file_descriptor_set().file[0],
+        prost_types::FileDescriptorProto {
             name: Some(name.to_owned()),
             ..Default::default()
         }
