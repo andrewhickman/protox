@@ -1,12 +1,12 @@
 use std::ops::Range;
 
 use logos::Span;
-use miette::Diagnostic;
+use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
 use crate::{ast, lines::LineResolver, types::FileDescriptorProto};
 
-// mod resolve;
+mod resolve;
 mod generate;
 mod names;
 #[cfg(test)]
@@ -16,23 +16,7 @@ const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
 use self::names::DuplicateNameError;
-pub(crate) use self::names::NameMap;
-
-/// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
-pub(crate) fn generate(
-    ast: ast::File,
-    lines: &LineResolver,
-) -> Result<FileDescriptorProto, Vec<CheckError>> {
-    generate::generate(ast, lines)
-}
-
-/// Resolve and check relative type names and options.
-pub(crate) fn resolve(
-    _file: &mut FileDescriptorProto,
-    _names: &NameMap,
-) -> Result<(), Vec<CheckError>> {
-    Ok(())
-}
+pub(crate) use self::{names::NameMap, generate::generate, resolve::resolve};
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {
@@ -47,6 +31,13 @@ pub(crate) enum CheckError {
         second_name: String,
         #[label("…conflicts with field here")]
         second: Span,
+    },
+    #[error("unknown syntax '{syntax}'")]
+    #[diagnostic(help("possible values are 'proto2' and 'proto3'"))]
+    UnknownSyntax {
+        syntax: String,
+        #[label("defined here")]
+        span: Option<SourceSpan>,
     },
     #[error("the type name '{name}' was not found")]
     TypeNameNotFound {

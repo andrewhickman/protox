@@ -5,6 +5,7 @@ use std::{
 };
 
 use logos::Span;
+use miette::SourceSpan;
 
 use crate::{
     ast,
@@ -22,7 +23,7 @@ use crate::{
         DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
         FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
         SourceCodeInfo,
-    },
+    }, resolve_span, tag,
 };
 
 use super::{
@@ -30,57 +31,52 @@ use super::{
     RESERVED_MESSAGE_FIELD_NUMBERS,
 };
 
-impl<'a> generate::File<'a> {
-    pub fn check(
-        &self,
-        file_name: Option<&str>,
-        name_map: Option<&NameMap>,
-        source: Option<&str>,
-    ) -> Result<FileDescriptorProto, Vec<CheckError>> {
-        let mut context = Context {
-            syntax: self.ast.syntax,
-            name_map,
-            scope: Vec::new(),
-            errors: Vec::new(),
-            path: Vec::new(),
-            locations: Vec::new(),
-            lines: source.map(LineResolver::new),
-            is_google_descriptor: file_name == Some("google/protobuf/descriptor.proto"),
-        };
+/// Resolve and check relative type names and options.
+pub(crate) fn resolve(
+    file: &mut FileDescriptorProto,
+    lines: Option<&LineResolver>,
+    name_map: &NameMap,
+) -> Result<(), Vec<CheckError>> {
+    let locations = file.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]);
+    let syntax = match file.syntax() {
+        "proto2" => ast::Syntax::Proto2,
+        "proto3" => ast::Syntax::Proto3,
+        syntax => return Err(vec![CheckError::UnknownSyntax {
+            syntax: syntax.to_owned(),
+            span: resolve_span(lines, locations, &[tag::file::SYNTAX]).map(SourceSpan::from),
+        }]),
+    };
 
-        let file = context.check_file(self);
-        debug_assert!(context.scope.is_empty());
+    let mut context = Context {
+        syntax,
+        name_map,
+        scope: String::new(),
+        errors: Vec::new(),
+        // locations,
+        // lines,
+        is_google_descriptor: file.name() == "google/protobuf/descriptor.proto",
+    };
 
-        let source_code_info = if source.is_some() {
-            Some(SourceCodeInfo {
-                location: context.locations,
-            })
-        } else {
-            None
-        };
+    // let file = context.check_file(self);
+    // debug_assert!(context.scope.is_empty());
 
-        if context.errors.is_empty() {
-            Ok(FileDescriptorProto {
-                name: file_name.map(ToOwned::to_owned),
-                source_code_info,
-                ..file
-            })
-        } else {
-            Err(context.errors)
-        }
+    if context.errors.is_empty() {
+        Ok(())
+    } else {
+        Err(context.errors)
     }
 }
 
 struct Context<'a> {
     syntax: ast::Syntax,
-    name_map: Option<&'a NameMap>,
+    name_map: &'a NameMap,
     scope: String,
     errors: Vec<CheckError>,
-    lines: Option<LineResolver>,
     is_google_descriptor: bool,
 }
 
 impl<'a> Context<'a> {
+    /*
     fn enter(&mut self, scope: Scope) {
         self.scope.push(scope);
     }
@@ -125,602 +121,9 @@ impl<'a> Context<'a> {
             (type_name.to_string(), None)
         }
     }
+    */
 
-    fn in_extend(&self) -> bool {
-        matches!(self.scope.last(), Some(Scope::Extend { .. }))
-    }
-
-    fn in_oneof(&self) -> bool {
-        matches!(self.scope.last(), Some(Scope::Oneof { synthetic: false }))
-    }
-
-    fn in_synthetic_oneof(&self) -> bool {
-        matches!(self.scope.last(), Some(Scope::Oneof { synthetic: true }))
-    }
-
-    fn check_file(&mut self, file: &generate::File) -> FileDescriptorProto {
-        self.add_location(file.ast.span.clone());
-
-        if let Some(package) = &file.ast.package {
-            self.add_comments_for(&[PACKAGE], package.span.clone(), package.comments.clone());
-
-            for part in &package.name.parts {
-                self.enter(Scope::Package {
-                    full_name: self.full_name(part),
-                });
-            }
-        }
-
-        let package = file.ast.package.as_ref().map(|p| p.name.to_string());
-
-        let mut dependency = Vec::with_capacity(file.ast.imports.len());
-        let mut public_dependency = Vec::new();
-        let mut weak_dependency = Vec::new();
-
-        for import in file.ast.imports.iter() {
-            let index = index_to_i32(dependency.len());
-
-            self.add_comments_for(
-                &[DEPENDENCY, index],
-                import.span.clone(),
-                import.comments.clone(),
-            );
-
-            dependency.push(import.value.clone());
-            match &import.kind {
-                Some((ast::ImportKind::Public, _)) => {
-                    self.add_location_for(
-                        &[PUBLIC_DEPENDENCY, index_to_i32(public_dependency.len())],
-                        import.span.clone(),
-                    );
-                    public_dependency.push(index);
-                }
-                Some((ast::ImportKind::Weak, _)) => {
-                    self.add_location_for(
-                        &[WEAK_DEPENDENCY, index_to_i32(public_dependency.len())],
-                        import.span.clone(),
-                    );
-                    weak_dependency.push(index);
-                }
-                _ => (),
-            }
-        }
-
-        self.path.push(MESSAGE_TYPE);
-        let message_type = file
-            .messages
-            .iter()
-            .enumerate()
-            .map(|(index, message)| {
-                self.path.push(index_to_i32(index));
-                let desc = self.check_message(message);
-                self.path.pop();
-                desc
-            })
-            .collect();
-        self.path.pop();
-
-        let mut enum_type = Vec::new();
-        let mut service = Vec::new();
-        let mut extension = Vec::new();
-
-        for item in &file.ast.items {
-            match item {
-                ast::FileItem::Message(_) => continue,
-                ast::FileItem::Enum(e) => {
-                    self.path
-                        .extend(&[ENUM_TYPE, index_to_i32(enum_type.len())]);
-                    enum_type.push(self.check_enum(e));
-                    self.pop_path(2);
-                }
-                ast::FileItem::Extend(e) => {
-                    self.path.push(EXTENSION);
-                    self.check_extend(e, &mut extension);
-                    self.path.pop();
-                }
-                ast::FileItem::Service(s) => {
-                    self.path.extend(&[SERVICE, index_to_i32(service.len())]);
-                    service.push(self.check_service(s));
-                    self.pop_path(2);
-                }
-            }
-        }
-
-        self.path.push(OPTIONS);
-        let options = self.check_file_options(&file.ast.options);
-        self.path.pop();
-
-        if let Some((syntax_span, syntax_comments)) = &file.ast.syntax_span {
-            self.add_comments_for(&[SYNTAX], syntax_span.clone(), syntax_comments.clone());
-        }
-        let syntax = if self.syntax == ast::Syntax::default() {
-            None
-        } else {
-            Some(self.syntax.to_string())
-        };
-
-        if let Some(package) = &file.ast.package {
-            for _ in &package.name.parts {
-                self.exit();
-            }
-        }
-
-        FileDescriptorProto {
-            name: None,
-            package,
-            dependency,
-            public_dependency,
-            weak_dependency,
-            message_type,
-            enum_type,
-            service,
-            extension,
-            options,
-            source_code_info: None,
-            syntax,
-        }
-    }
-
-    fn check_message(&mut self, message: &generate::Message) -> DescriptorProto {
-        self.enter(Scope::Message {
-            full_name: self.full_name(&message.ast.name()),
-        });
-
-        match message.ast {
-            generate::MessageSource::Message(message) => {
-                self.add_comments(message.span.clone(), message.comments.clone());
-                self.add_location_for(&[NAME], message.name.span.clone());
-            }
-            generate::MessageSource::Group(field, _) => {
-                self.add_comments(field.span.clone(), field.comments.clone());
-                self.add_location_for(&[NAME], field.name.span.clone());
-            }
-            generate::MessageSource::Map(_) => (),
-        }
-
-        self.path.extend(&[FIELD, 0]);
-        let field = message
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                self.replace_path(&[index_to_i32(index)]);
-                self.check_message_field(field)
-            })
-            .collect();
-        self.replace_path(&[NESTED_TYPE, 0]);
-        let nested_type = message
-            .messages
-            .iter()
-            .enumerate()
-            .map(|(index, message)| {
-                self.replace_path(&[index_to_i32(index)]);
-                self.check_message(message)
-            })
-            .collect();
-        self.replace_path(&[ONEOF_DECL, 0]);
-        let oneof_decl = message
-            .oneofs
-            .iter()
-            .enumerate()
-            .map(|(index, oneof)| {
-                self.replace_path(&[index_to_i32(index)]);
-                self.check_oneof(oneof)
-            })
-            .collect();
-        self.pop_path(2);
-
-        self.check_message_field_camel_case_names(message.fields.iter());
-
-        let mut enum_type = Vec::new();
-        let mut extension = Vec::new();
-        let mut extension_range = Vec::new();
-        let mut reserved_range = Vec::new();
-        let mut reserved_name = Vec::new();
-        let mut options = None;
-        if let Some(body) = message.ast.body() {
-            for item in &body.items {
-                match item {
-                    ast::MessageItem::Field(_)
-                    | ast::MessageItem::Message(_)
-                    | ast::MessageItem::Oneof(_) => continue,
-                    ast::MessageItem::Enum(e) => {
-                        self.path
-                            .extend(&[ENUM_TYPE, index_to_i32(enum_type.len())]);
-                        enum_type.push(self.check_enum(e));
-                        self.pop_path(2);
-                    }
-                    ast::MessageItem::Extend(e) => {
-                        self.path.push(EXTENSION);
-                        self.check_extend(e, &mut extension);
-                        self.path.pop();
-                    }
-                }
-            }
-
-            for reserved in &body.reserved {
-                match &reserved.kind {
-                    ast::ReservedKind::Ranges(ranges) => {
-                        self.path.push(RESERVED_RANGE);
-                        self.add_comments(reserved.span.clone(), reserved.comments.clone());
-                        for range in ranges {
-                            self.path.push(index_to_i32(reserved_range.len()));
-                            reserved_range.push(self.check_message_reserved_range(range));
-                            self.path.pop();
-                        }
-                        self.path.pop();
-                    }
-
-                    ast::ReservedKind::Names(names) => {
-                        self.path.push(RESERVED_NAME);
-                        self.add_comments(reserved.span.clone(), reserved.comments.clone());
-                        for name in names {
-                            self.path.push(index_to_i32(reserved_name.len()));
-                            reserved_name.push(name.value.to_owned());
-                            self.path.pop();
-                        }
-                        self.path.pop();
-                    }
-                }
-            }
-
-            self.path.push(EXTENSION_RANGE);
-            for extensions in &body.extensions {
-                self.add_comments(extensions.span.clone(), extensions.comments.clone());
-
-                for range in &extensions.ranges {
-                    self.path.push(index_to_i32(extension_range.len()));
-                    extension_range.push(
-                        self.check_message_extension_range(range, extensions.options.as_ref()),
-                    );
-                    self.path.pop();
-                }
-            }
-            self.path.pop();
-
-            self.path.push(OPTIONS);
-            options = self.check_message_options(&body.options);
-            self.path.pop();
-        };
-
-        if let generate::MessageSource::Map(map) = &message.ast {
-            options
-                .get_or_insert_with(Default::default)
-                .set(
-                    options::MESSAGE_MAP_ENTRY,
-                    options::Value::Bool(true),
-                    map.ty_span(),
-                )
-                .expect("cannot set options on generated message");
-        };
-
-        self.exit();
-        DescriptorProto {
-            name: Some(message.ast.name().into_owned()),
-            field,
-            nested_type,
-            extension,
-            enum_type,
-            extension_range,
-            oneof_decl,
-            options,
-            reserved_range,
-            reserved_name,
-        }
-    }
-
-    fn check_message_field(&mut self, field: &generate::Field) -> FieldDescriptorProto {
-        let name = field.ast.name();
-        let json_name = Some(to_json_name(&name));
-        let number = self.check_field_number(&field.ast.number());
-        let (ty, type_name) = self.check_type(&field.ast.ty(), field.ast.is_group());
-
-        let oneof_index = field.oneof_index;
-
-        if oneof_index.is_some() {
-            self.enter(Scope::Oneof {
-                synthetic: field.is_synthetic_oneof,
-            });
-        }
-        let descriptor = match &field.ast {
-            generate::FieldSource::Field(ast) => self.check_field(ast, ty, type_name.as_deref()),
-            generate::FieldSource::MapKey(ty, span) => self.check_map_key(ty, span.clone()),
-            generate::FieldSource::MapValue(..) => self.check_map_value(),
-        };
-        if oneof_index.is_some() {
-            self.exit();
-        }
-
-        FieldDescriptorProto {
-            name: Some(name.into_owned()),
-            json_name,
-            number,
-            r#type: ty.map(|ty| ty as i32),
-            type_name,
-            oneof_index: field.oneof_index,
-            ..descriptor
-        }
-    }
-
-    fn check_field(
-        &mut self,
-        field: &ast::Field,
-        ty: Option<field_descriptor_proto::Type>,
-        type_name: Option<&str>,
-    ) -> FieldDescriptorProto {
-        self.add_comments(field.span.clone(), field.comments.clone());
-
-        self.add_location_for(&[NAME], field.name.span.clone());
-        self.add_location_for(&[NUMBER], field.number.span.clone());
-
-        let label = self.check_field_label(field);
-        if let Some((_, label_span)) = &field.label {
-            self.add_location_for(&[LABEL], label_span.clone());
-        }
-
-        match &field.kind {
-            ast::FieldKind::Normal {
-                ty: ast::Ty::Named(name),
-                ..
-            } => {
-                self.add_location_for(&[TYPE_NAME], name.span());
-            }
-            ast::FieldKind::Normal { ty_span, .. } => {
-                self.add_location_for(&[TYPE], ty_span.clone());
-            }
-            ast::FieldKind::Group { ty_span, .. } => {
-                self.add_location_for(&[TYPE], ty_span.clone());
-                self.add_location_for(&[TYPE_NAME], field.name.span.clone());
-            }
-            ast::FieldKind::Map { ty_span, .. } => {
-                self.add_location_for(&[TYPE_NAME], ty_span.clone());
-            }
-        }
-
-        self.path.push(OPTIONS);
-        let options = self.check_field_options(field.options.as_ref());
-        self.path.pop();
-
-        let default_value = self.check_field_default_value(field, ty, type_name);
-        if let Some(default_value) = &field.default_value() {
-            self.add_location_for(&[DEFAULT_VALUE], default_value.value.span());
-        }
-
-        let proto3_optional = if self.in_synthetic_oneof() {
-            Some(true)
-        } else {
-            None
-        };
-
-        FieldDescriptorProto {
-            label: label.map(|l| l as i32),
-            default_value,
-            options,
-            proto3_optional,
-            ..Default::default()
-        }
-    }
-
-    fn check_field_label(&mut self, field: &ast::Field) -> Option<field_descriptor_proto::Label> {
-        let (label, span) = match field.label.clone() {
-            Some((label, span)) => (Some(label), span),
-            None => (None, field.span.clone()),
-        };
-
-        if let ast::FieldKind::Map { .. } = &field.kind {
-        } else if let ast::FieldKind::Group { .. } = &field.kind {
-        }
-
-    }
-
-    fn check_type(
-        &mut self,
-        ty: &ast::Ty,
-        is_group: bool,
-    ) -> (Option<field_descriptor_proto::Type>, Option<String>) {
-        match ty {
-            ast::Ty::Named(type_name) => match self.resolve_type_name(type_name) {
-                (name, None) => (None, Some(name)),
-                (name, Some(DefinitionKind::Message)) => {
-                    if is_group {
-                        (Some(field_descriptor_proto::Type::Group as _), Some(name))
-                    } else {
-                        (Some(field_descriptor_proto::Type::Message as _), Some(name))
-                    }
-                }
-                (name, Some(DefinitionKind::Enum)) => {
-                    (Some(field_descriptor_proto::Type::Enum as _), Some(name))
-                }
-                (name, Some(_)) => {
-                    self.errors.push(CheckError::InvalidMessageFieldTypeName {
-                        name: type_name.to_string(),
-                        span: type_name.span(),
-                    });
-                    (None, Some(name))
-                }
-            },
-            _ => (ty.proto_ty(), None),
-        }
-    }
-
-    fn check_field_default_value(
-        &mut self,
-        field: &ast::Field,
-        ty: Option<field_descriptor_proto::Type>,
-        type_name: Option<&str>,
-    ) -> Option<String> {
-        if let Some(option) = field.default_value() {
-        } else {
-            None
-        }
-    }
-
-    fn check_message_field_camel_case_names<'b>(
-        &mut self,
-        fields: impl Iterator<Item = &'b generate::Field<'b>>,
-    ) {
-        if self.syntax != ast::Syntax::Proto2 {
-            let mut names: HashMap<String, (String, Span)> = HashMap::new();
-            for field in fields {
-                let name = field.ast.name().into_owned();
-                let span = field.ast.name_span();
-
-                match names.entry(to_lower_without_underscores(&name)) {
-                    hash_map::Entry::Occupied(entry) => {
-                        self.errors.push(CheckError::DuplicateCamelCaseFieldName {
-                            first_name: entry.get().0.clone(),
-                            first: entry.get().1.clone(),
-                            second_name: name,
-                            second: span,
-                        })
-                    }
-                    hash_map::Entry::Vacant(entry) => {
-                        entry.insert((name, span));
-                    }
-                }
-            }
-        }
-    }
-
-    fn check_oneof(&mut self, oneof: &generate::Oneof) -> OneofDescriptorProto {
-        match oneof.ast {
-            generate::OneofSource::Oneof(oneof) => {
-                self.add_location(oneof.span.clone());
-                self.add_location_for(&[NAME], oneof.name.span.clone());
-
-                self.path.push(OPTIONS);
-                let options = self.check_oneof_options(&oneof.options);
-                self.path.pop();
-
-                OneofDescriptorProto {
-                    name: Some(oneof.name.value.clone()),
-                    options,
-                }
-            }
-            generate::OneofSource::Field(field) => OneofDescriptorProto {
-                name: Some(field.synthetic_oneof_name()),
-                options: None,
-            },
-        }
-    }
-
-    fn check_extend(&mut self, extend: &ast::Extend, result: &mut Vec<FieldDescriptorProto>) {
-        const FIELD_EXTENDEE: i32 = 2;
-
-        self.add_comments(extend.span.clone(), extend.comments.clone());
-
-        let (extendee, def) = self.resolve_type_name(&extend.extendee);
-        if def.is_some() && def != Some(&DefinitionKind::Message) {
-            self.errors.push(CheckError::InvalidExtendeeTypeName {
-                name: extend.extendee.to_string(),
-                span: extend.extendee.span(),
-            })
-        }
-
-        self.enter(Scope::Extend);
-        for field in &extend.fields {
-            self.path.push(index_to_i32(result.len()));
-            self.add_location_for(&[FIELD_EXTENDEE], extend.extendee.span());
-
-            let name = field.field_name();
-            let json_name = Some(to_json_name(&name));
-            let number = self.check_field_number(&field.number);
-            let (ty, type_name) = self.check_type(&field.ty(), field.is_group());
-
-            let desc = self.check_field(field, ty, type_name.as_deref());
-            result.push(FieldDescriptorProto {
-                name: Some(name.into_owned()),
-                json_name,
-                number,
-                r#type: ty.map(|ty| ty as i32),
-                type_name,
-                extendee: Some(extendee.clone()),
-                ..desc
-            });
-            self.path.pop();
-        }
-        self.exit();
-    }
-
-    fn check_method(&mut self, method: &ast::Method) -> MethodDescriptorProto {
-    }
-
-    fn check_file_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.FileOptions", options)
-    }
-
-    fn check_message_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.MessageOptions", options)
-    }
-
-    fn check_field_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        self.check_option_list("google.protobuf.FieldOptions", options)
-    }
-
-    fn check_extension_range_options(
-        &mut self,
-        options: Option<&ast::OptionList>,
-    ) -> Option<OptionSet> {
-        self.check_option_list("google.protobuf.ExtensionRangeOptions", options)
-    }
-
-    fn check_oneof_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.OneofOptions", options)
-    }
-
-    fn check_enum_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.EnumOptions", options)
-    }
-
-    fn check_enum_value_options(&mut self, options: Option<&ast::OptionList>) -> Option<OptionSet> {
-        self.check_option_list("google.protobuf.EnumValueOptions", options)
-    }
-
-    fn check_service_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.ServiceOptions", options)
-    }
-
-    fn check_method_options(&mut self, options: &[ast::Option]) -> Option<OptionSet> {
-        self.check_options("google.protobuf.MethodOptions", options)
-    }
-
-    fn check_options(&mut self, message_name: &str, options: &[ast::Option]) -> Option<OptionSet> {
-        let mut result = OptionSet::new();
-
-        for option in options {
-            self.add_location(option.span.clone());
-
-            let _ = self.check_option(&mut result, message_name, &option.body, option.span.clone());
-        }
-
-        if result.is_empty() {
-            None
-        } else {
-            Some(result)
-        }
-    }
-
-    fn check_option_list(
-        &mut self,
-        message_name: &str,
-        options: Option<&ast::OptionList>,
-    ) -> Option<OptionSet> {
-        let mut result = OptionSet::new();
-
-        if let Some(options) = options {
-            self.add_location(options.span.clone());
-            for option in &options.options {
-                let _ = self.check_option(&mut result, message_name, option, option.span());
-            }
-        }
-
-        if result.is_empty() {
-            None
-        } else {
-            Some(result)
-        }
-    }
-
+    /*
     fn check_option(
         &mut self,
         mut result: &mut OptionSet,
@@ -1113,4 +516,5 @@ impl<'a> Context<'a> {
 
         None
     }
+    */
 }

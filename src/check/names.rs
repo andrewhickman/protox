@@ -236,14 +236,14 @@ impl<'a> NamePass<'a> {
         make_name(&self.scope, name.into())
     }
 
-    fn enter(&mut self, name: &str) {
+    fn enter_scope(&mut self, name: &str) {
         if !self.scope.is_empty() {
             self.scope.push('.');
         }
         self.scope.push_str(name);
     }
 
-    fn exit(&mut self) {
+    fn exit_scope(&mut self) {
         let len = self.scope.rfind('.').unwrap_or(0);
         self.scope.truncate(len);
     }
@@ -282,7 +282,7 @@ impl<'a> NamePass<'a> {
         if !file.package().is_empty() {
             for part in file.package().split('.') {
                 self.add_name(part, DefinitionKind::Package, &[tag::file::PACKAGE]);
-                self.enter(part);
+                self.enter_scope(part);
             }
         }
 
@@ -313,14 +313,14 @@ impl<'a> NamePass<'a> {
 
         if !file.package().is_empty() {
             for _ in file.package().split('.') {
-                self.exit();
+                self.exit_scope();
             }
         }
     }
 
     fn add_descriptor_proto(&mut self, message: &DescriptorProto) {
         self.add_name(message.name(), DefinitionKind::Message, &[tag::message::NAME]);
-        self.enter(message.name());
+        self.enter_scope(message.name());
 
         self.path.extend(&[tag::message::FIELD, 0]);
         for field in &message.field {
@@ -353,7 +353,7 @@ impl<'a> NamePass<'a> {
         }
         self.pop_path(2);
 
-        self.exit();
+        self.exit_scope();
     }
 
     fn add_field_descriptor_proto(&mut self, field: &FieldDescriptorProto) {
@@ -395,14 +395,14 @@ impl<'a> NamePass<'a> {
     fn add_service_descriptor_proto(&mut self, service: &ServiceDescriptorProto) {
         self.add_name(service.name(), DefinitionKind::Service, &[tag::service::NAME]);
 
-        self.enter(service.name());
+        self.enter_scope(service.name());
         self.path.extend(&[tag::service::METHOD, 0]);
         for method in &service.method {
             self.add_name(method.name(), DefinitionKind::Method, &[tag::method::NAME]);
             self.bump_path();
         }
         self.pop_path(2);
-        self.exit();
+        self.exit_scope();
     }
 }
 

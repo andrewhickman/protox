@@ -18,6 +18,7 @@ use crate::{
 
 use super::{CheckError, MAX_MESSAGE_FIELD_NUMBER, RESERVED_MESSAGE_FIELD_NUMBERS};
 
+/// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
 pub(crate) fn generate(
     ast: ast::File,
     lines: &LineResolver,

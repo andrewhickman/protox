@@ -58,8 +58,10 @@ pub(crate) enum ParseError {
         #[label("defined here")]
         span: Span,
     },
-    #[error("unknown syntax")]
+    #[error("unknown syntax '{syntax}'")]
+    #[diagnostic(help("possible values are 'proto2' and 'proto3'"))]
     UnknownSyntax {
+        syntax: String,
         #[label("defined here")]
         span: Span,
     },
@@ -247,8 +249,9 @@ impl<'a> Parser<'a> {
                 match value.value.as_slice() {
                     b"proto2" => ast::Syntax::Proto2,
                     b"proto3" => ast::Syntax::Proto3,
-                    _ => {
+                    bytes => {
                         self.add_error(ParseError::UnknownSyntax {
+                            syntax: String::from_utf8_lossy(bytes).into_owned(),
                             span: value.span.clone(),
                         });
                         return Err(());

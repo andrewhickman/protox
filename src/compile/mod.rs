@@ -277,7 +277,7 @@ impl Compiler {
             descriptor.name = Some(file_name.to_owned());
         }
 
-        check::resolve(&mut descriptor, &name_map)
+        check::resolve(&mut descriptor, file.lines.as_ref(), &name_map)
             .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
 
         Ok((descriptor, name_map))
