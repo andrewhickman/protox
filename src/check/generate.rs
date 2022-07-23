@@ -538,12 +538,12 @@ impl<'a> Context<'a> {
 
         if default_value.is_some() {
             if label == Some(field_descriptor_proto::Label::Repeated) {
-                self.errors.push(CheckError::Proto3DefaultValue {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "repeated",
                     span: default_value_option_span,
                 });
             } else if self.syntax != ast::Syntax::Proto2 {
-                self.errors.push(CheckError::InvalidDefault {
-                    kind: "repeated",
+                self.errors.push(CheckError::Proto3DefaultValue {
                     span: default_value_option_span,
                 });
             }

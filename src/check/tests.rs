@@ -500,11 +500,11 @@ fn proto3_default_value() {
             syntax = 'proto3';
 
             message Message {
-                optional int32 foo = 1 [default = "foo"];
+                optional int32 foo = 1 [default = -0];
             }"#
         ),
         vec![Proto3DefaultValue {
-            span: Some(SourceSpan::from(103..118))
+            span: Some(SourceSpan::from(103..115))
         }],
     );
 }
@@ -520,7 +520,7 @@ fn field_default_value() {
         ),
         vec![InvalidDefault {
             kind: "message",
-            span: Some(SourceSpan::from(73..85)),
+            span: Some(SourceSpan::from(83..85)),
         }],
     );
     assert_eq!(
@@ -551,12 +551,12 @@ fn field_default_value() {
         check_err(
             r#"
             message Message {
-                repeated int32 foo = 1 [default = ""];
+                repeated int32 foo = 1 [default = 1];
             }"#
         ),
         vec![InvalidDefault {
             kind: "repeated",
-            span: Some(SourceSpan::from(71..83)),
+            span: Some(SourceSpan::from(71..82)),
         }],
     );
 }
