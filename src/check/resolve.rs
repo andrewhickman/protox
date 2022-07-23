@@ -11,8 +11,8 @@ use crate::{
     resolve_span, tag,
     types::{
         source_code_info::Location, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
-        MethodDescriptorProto, ServiceDescriptorProto,
-    },
+        MethodDescriptorProto, ServiceDescriptorProto, UninterpretedOption
+    }, options::OptionSet,
 };
 
 use super::{names::DefinitionKind, CheckError, NameMap};
@@ -23,11 +23,17 @@ pub(crate) fn resolve(
     lines: Option<&LineResolver>,
     name_map: &NameMap,
 ) -> Result<(), Vec<CheckError>> {
-    let source_code_info = file.source_code_info.take();
-    let locations = source_code_info
-        .as_ref()
-        .map(|s| s.location.as_slice())
-        .unwrap_or(&[]);
+    let mut source_code_info = file.source_code_info.take();
+
+    let mut tmp;
+    let locations = match &mut source_code_info {
+        Some(s) => &mut s.location,
+        None => {
+            tmp = Vec::new();
+            &mut tmp
+        }
+    };
+
     let syntax = match file.syntax() {
         "" | "proto2" => Syntax::Proto2,
         "proto3" => Syntax::Proto3,
@@ -68,7 +74,7 @@ struct Context<'a> {
     name_map: &'a NameMap,
     scope: String,
     path: Vec<i32>,
-    locations: &'a [Location],
+    locations: &'a mut Vec<Location>,
     lines: Option<&'a LineResolver>,
     errors: Vec<CheckError>,
     is_google_descriptor: bool,
@@ -161,6 +167,8 @@ impl<'a> Context<'a> {
                 }
             }
         }
+
+        let options = self.take_uninterpreted_options(&mut field.options);
     }
 
     fn check_message_field_camel_case_names<'b>(
@@ -222,6 +230,26 @@ impl<'a> Context<'a> {
                 span,
             })
         }
+    }
+
+    fn take_uninterpreted_options(&mut self, options: &mut Option<OptionSet>) -> Vec<(UninterpretedOption, Option<Location>)> {
+        let options = match options {
+            Some(options) => options.take_uninterpreted(),
+            None => return vec![],
+        };
+
+        options.into_iter().enumerate()
+            .map(|(index, option)| {
+                self.path.extend(&[tag::UNINTERPRETED_OPTION, index_to_i32(index)]);
+                let location = match self.locations.binary_search_by(|location| location.path.as_slice().cmp(&self.path)) {
+                    Ok(index) => Some(self.locations.remove(index)),
+                    Err(_) => None,
+                };
+                self.pop_path(2);
+
+                (option, location)
+            })
+            .collect()
     }
 
     /*
