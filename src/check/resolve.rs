@@ -8,8 +8,9 @@ use crate::{
     case::to_lower_without_underscores,
     index_to_i32,
     lines::LineResolver,
+    make_name,
     options::OptionSet,
-    resolve_span, tag,
+    parse, parse_namespace, resolve_span, strip_leading_dot, tag,
     types::{
         source_code_info::Location, DescriptorProto, FieldDescriptorProto, FileDescriptorProto,
         MethodDescriptorProto, ServiceDescriptorProto, UninterpretedOption,
@@ -166,6 +167,44 @@ impl<'a> Context<'a> {
                         span,
                     });
                 }
+            }
+        }
+
+        if !field.default_value().is_empty() {
+            match field.r#type() {
+                field_descriptor_proto::Type::Message | field_descriptor_proto::Type::Group => {
+                    let span = self.resolve_span(&[tag::field::DEFAULT_VALUE]);
+                    self.errors.push(CheckError::InvalidDefault {
+                        kind: "message",
+                        span,
+                    });
+                }
+                field_descriptor_proto::Type::Enum => {
+                    if !parse::is_valid_ident(field.default_value()) {
+                        let span = self.resolve_span(&[tag::field::DEFAULT_VALUE]);
+                        self.errors.push(CheckError::ValueInvalidType {
+                            expected: "an enum value identifier".to_owned(),
+                            actual: field.default_value().to_owned(),
+                            span,
+                        });
+                    } else {
+                        let enum_name = strip_leading_dot(field.type_name());
+                        let value_name =
+                            make_name(parse_namespace(enum_name), field.default_value());
+                        match self.name_map.get(&value_name) {
+                            Some(DefinitionKind::EnumValue { .. }) => (),
+                            _ => {
+                                let span = self.resolve_span(&[tag::field::DEFAULT_VALUE]);
+                                self.errors.push(CheckError::InvalidEnumValue {
+                                    value_name: field.default_value().to_owned(),
+                                    enum_name: enum_name.to_owned(),
+                                    span,
+                                });
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         }
 

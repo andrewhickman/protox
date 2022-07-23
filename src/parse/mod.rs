@@ -1420,7 +1420,7 @@ fn fmt_expected(ts: impl Iterator<Item = ExpectedToken>) -> String {
     s
 }
 
-fn is_valid_ident(s: &str) -> bool {
+pub(crate) fn is_valid_ident(s: &str) -> bool {
     !s.is_empty()
         && s.as_bytes()[0].is_ascii_alphabetic()
         && s.as_bytes()[1..]

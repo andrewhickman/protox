@@ -234,6 +234,10 @@ fn make_absolute_name(namespace: &str, name: impl fmt::Display) -> String {
     }
 }
 
+fn strip_leading_dot(name: &str) -> &str {
+    name.strip_prefix('.').unwrap_or(name)
+}
+
 fn parse_namespace(name: &str) -> &str {
     match name.rsplit_once('.') {
         Some((namespace, _)) => namespace,

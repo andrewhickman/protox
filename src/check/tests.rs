@@ -567,17 +567,17 @@ fn enum_field_invalid_default() {
         check_err(
             r#"
             message Message {
-                optional Foo foo = 1 [ONE = 1];
+                optional Foo foo = 1 [default = ONE];
             }
 
             enum Foo {
                 ZERO = 0;
             }"#
         ),
-        vec![OptionUnknownField {
-            name: "ONE".to_owned(),
-            namespace: "google.protobuf.FieldOptions".to_owned(),
-            span: Some(SourceSpan::from(69..72)),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "Foo".to_owned(),
+            span: Some(SourceSpan::from(79..82)),
         }],
     );
 }
