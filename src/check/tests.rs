@@ -392,7 +392,7 @@ fn name_resolution() {
         ])
         .unwrap_err(),
         vec![TypeNameNotFound {
-            name: "foo.FooBar".to_owned(),
+            name: ".foo.FooBar".to_owned(),
             span: Some(SourceSpan::from(124..135)),
         }]
     );
@@ -413,7 +413,7 @@ fn name_resolution() {
         ])
         .unwrap_err(),
         vec![TypeNameNotFound {
-            name: "FooBar".to_owned(),
+            name: ".FooBar".to_owned(),
             span: Some(SourceSpan::from(124..131)),
         }]
     );
