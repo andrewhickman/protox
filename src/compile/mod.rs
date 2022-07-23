@@ -50,7 +50,11 @@ impl Compiler {
     ///
     /// In addition to the given include paths, the [`Compiler`] instance will be able to import
     /// standard files like `google/protobuf/descriptor.proto`.
-    pub fn new(includes: impl IntoIterator<Item = impl AsRef<Path>>) -> Result<Self, Error> {
+    pub fn new<I, P>(includes: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = P>,
+        P: AsRef<Path>,
+    {
         let mut resolver = ChainFileResolver::new();
 
         for include in includes {
