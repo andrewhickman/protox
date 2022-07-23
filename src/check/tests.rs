@@ -648,6 +648,23 @@ fn field_default_invalid_type() {
         check_err(
             r#"
             message Message {
+                optional Foo foo = 1 [default = "ZERO"];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        vec![ValueInvalidType {
+            expected: "an enum value identifier".to_owned(),
+            actual: "\"ZERO\"".to_owned(),
+            span: Some(SourceSpan::from(79..85)),
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
                 optional bool foo = 1 [default = FALSE];
             }
 
