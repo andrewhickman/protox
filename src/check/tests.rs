@@ -263,7 +263,7 @@ fn generate_map_entry_message_name_conflict() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo.BazEntry".to_owned(),
-            first: NameLocation::Root(32..35),
+            first: NameLocation::Unknown,
             second: NameLocation::Root(63..71),
         })]
     );
@@ -305,7 +305,7 @@ fn generate_synthetic_oneof_name_conflict() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo._val".to_owned(),
-            first: NameLocation::Root(79..82),
+            first: NameLocation::Unknown,
             second: NameLocation::Root(113..117),
         })],
     );
