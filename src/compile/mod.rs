@@ -5,7 +5,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use miette::{NamedSource, SourceSpan};
+use logos::Span;
+use miette::NamedSource;
 use prost::Message;
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
         check_shadow, path_to_file_name, ChainFileResolver, File, FileResolver, GoogleFileResolver,
         IncludeFileResolver,
     },
-    get_span, index_to_i32, tag, transcode_file,
+    resolve_span, index_to_i32, tag, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
 };
 
@@ -134,9 +135,9 @@ impl Compiler {
         for (index, import) in file.descriptor.dependency.iter().enumerate() {
             self.add_import(
                 import,
-                get_span(
-                    &file.lines,
-                    &file.descriptor.source_code_info,
+                resolve_span(
+                    file.lines.as_ref(),
+                    file.descriptor.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 &mut import_stack,
@@ -211,7 +212,7 @@ impl Compiler {
     fn add_import(
         &mut self,
         file_name: &str,
-        span: Option<SourceSpan>,
+        span: Option<Span>,
         import_stack: &mut Vec<String>,
         import_src: DynSourceCode,
     ) -> Result<(), Error> {
@@ -238,9 +239,9 @@ impl Compiler {
         for (index, import) in file.descriptor.dependency.iter().enumerate() {
             self.add_import(
                 import,
-                get_span(
-                    &file.lines,
-                    &file.descriptor.source_code_info,
+                resolve_span(
+                    file.lines.as_ref(),
+                    file.descriptor.source_code_info.as_ref().map(|s| s.location.as_slice()).unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
                 ),
                 import_stack,
@@ -268,7 +269,7 @@ impl Compiler {
     ) -> Result<(FileDescriptorProto, NameMap), Error> {
         let path = file.path.as_deref();
         let source = file.source.as_deref();
-        let name_map = NameMap::from_proto(&file.descriptor, &self.file_map)
+        let name_map = NameMap::from_proto(&file.descriptor, &self.file_map, file.lines.as_ref())
             .map_err(|errors| Error::check_errors(errors, make_source(file_name, path, source)))?;
 
         let mut descriptor = file.descriptor;

@@ -678,7 +678,8 @@ impl<'a> Context<'a> {
         self.path.pop();
 
         for field_ast in ast.fields {
-            self.path.extend(&[extension_tag, index_to_i32(extensions.len())]);
+            self.path
+                .extend(&[extension_tag, index_to_i32(extensions.len())]);
             self.add_span_for(&[tag::field::EXTENDEE], ast.extendee.span());
             self.pop_path(2);
 

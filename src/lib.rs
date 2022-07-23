@@ -24,10 +24,9 @@ use std::{convert::TryInto, path::Path};
 
 use lines::LineResolver;
 use logos::Span;
-use miette::SourceSpan;
 use prost::Message;
 
-use crate::types::{FileDescriptorProto, SourceCodeInfo};
+use crate::types::{source_code_info, FileDescriptorProto};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -242,27 +241,16 @@ fn parse_namespace(name: &str) -> &str {
     }
 }
 
-fn get_span(
-    lines: &Option<LineResolver>,
-    source: &Option<SourceCodeInfo>,
+fn resolve_span(
+    lines: Option<&LineResolver>,
+    locations: &[source_code_info::Location],
     path: &[i32],
-) -> Option<SourceSpan> {
-    match (lines, source) {
-        (Some(lines), Some(source)) => {
-            match source
-                .location
-                .binary_search_by(|location| location.path.as_slice().cmp(path))
-            {
-                Ok(index) => Some(
-                    lines
-                        .resolve_proto_span(&source.location[index].span)?
-                        .into(),
-                ),
-                Err(_) => None,
-            }
-        }
-        _ => None,
-    }
+) -> Option<Span> {
+    let lines = lines?;
+    let index = locations
+        .binary_search_by(|location| location.path.as_slice().cmp(path))
+        .ok()?;
+    lines.resolve_proto_span(&locations[index].span)
 }
 
 fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U

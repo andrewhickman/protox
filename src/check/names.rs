@@ -15,10 +15,10 @@ use crate::{
     file::GoogleFileResolver,
     index_to_i32, make_absolute_name, make_name, parse_namespace,
     types::{
-        field_descriptor_proto, DescriptorProto, EnumDescriptorProto, FieldDescriptorProto,
-        FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
+        field_descriptor_proto, source_code_info::Location, DescriptorProto, EnumDescriptorProto,
+        FieldDescriptorProto, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
     },
-    Compiler,
+    Compiler, lines::LineResolver, resolve_span, tag,
 };
 
 use super::CheckError;
@@ -72,10 +72,12 @@ pub(crate) enum DefinitionKind {
     Method,
 }
 
-struct NamePass {
+struct NamePass<'a> {
     name_map: NameMap,
     scope: String,
     path: Vec<i32>,
+    locations: &'a [Location],
+    lines: Option<&'a LineResolver>,
     errors: Vec<CheckError>,
 }
 
@@ -83,12 +85,19 @@ impl NameMap {
     pub fn from_proto(
         file: &FileDescriptorProto,
         file_map: &ParsedFileMap,
+        lines: Option<&LineResolver>,
     ) -> Result<NameMap, Vec<CheckError>> {
         let mut ctx = NamePass {
             name_map: NameMap::new(),
-            errors: Vec::new(),
             path: Vec::new(),
             scope: String::new(),
+            locations: file
+                .source_code_info
+                .as_ref()
+                .map(|s| s.location.as_slice())
+                .unwrap_or(&[]),
+            lines,
+            errors: Vec::new(),
         };
 
         ctx.add_file_descriptor_proto(file, file_map);
@@ -198,13 +207,14 @@ impl NameMap {
     }
 }
 
-impl NamePass {
-    fn add_name<'a>(
+impl<'a> NamePass<'a> {
+    fn add_name<'b>(
         &mut self,
-        name: impl Into<Cow<'a, str>>,
+        name: impl Into<Cow<'b, str>>,
         kind: DefinitionKind,
-        span: Option<Span>,
+        path_items: &[i32],
     ) {
+        let span = self.resolve_span(path_items);
         if let Err(err) = self
             .name_map
             .add(self.full_name(name), kind, span, None, true)
@@ -222,7 +232,7 @@ impl NamePass {
         }
     }
 
-    fn full_name<'a>(&self, name: impl Into<Cow<'a, str>>) -> String {
+    fn full_name<'b>(&self, name: impl Into<Cow<'b, str>>) -> String {
         make_name(&self.scope, name.into())
     }
 
@@ -234,9 +244,30 @@ impl NamePass {
     }
 
     fn exit(&mut self) {
-        debug_assert!(!self.scope.is_empty(), "imbalanced scope stack");
         let len = self.scope.rfind('.').unwrap_or(0);
         self.scope.truncate(len);
+    }
+
+    fn resolve_span(&mut self, path_items: &[i32]) -> Option<Span> {
+        self.path.extend(path_items);
+        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
+        self.pop_path(path_items.len());
+        span
+    }
+
+    fn pop_path(&mut self, n: usize) {
+        debug_assert!(self.path.len() >= n);
+        self.path.truncate(self.path.len() - n);
+    }
+
+    fn bump_path(&mut self) {
+        debug_assert!(self.path.len() >= 2);
+        *self.path.last_mut().unwrap() += 1;
+    }
+
+    fn replace_path(&mut self, path_items: &[i32]) {
+        self.pop_path(path_items.len());
+        self.path.extend(path_items);
     }
 
     fn add_file_descriptor_proto(&mut self, file: &FileDescriptorProto, file_map: &ParsedFileMap) {
@@ -248,55 +279,79 @@ impl NamePass {
             );
         }
 
-        for part in file.package().split('.') {
-            self.add_name(part, DefinitionKind::Package, None);
-            self.enter(part);
+        if !file.package().is_empty() {
+            for part in file.package().split('.') {
+                self.add_name(part, DefinitionKind::Package, &[tag::file::PACKAGE]);
+                self.enter(part);
+            }
         }
 
+        self.path.extend(&[tag::file::MESSAGE_TYPE, 0]);
         for message in &file.message_type {
             self.add_descriptor_proto(message);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::file::ENUM_TYPE, 0]);
         for enu in &file.enum_type {
             self.add_enum_descriptor_proto(enu);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::file::EXTENSION, 0]);
         for extend in &file.extension {
             self.add_field_descriptor_proto(extend);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::file::SERVICE, 0]);
         for service in &file.service {
             self.add_service_descriptor_proto(service);
+            self.bump_path();
         }
+        self.pop_path(2);
 
-        for _ in file.package().split('.') {
-            self.exit();
+        if !file.package().is_empty() {
+            for _ in file.package().split('.') {
+                self.exit();
+            }
         }
     }
 
     fn add_descriptor_proto(&mut self, message: &DescriptorProto) {
-        self.add_name(message.name(), DefinitionKind::Message, None);
+        self.add_name(message.name(), DefinitionKind::Message, &[tag::message::NAME]);
         self.enter(message.name());
 
+        self.path.extend(&[tag::message::FIELD, 0]);
         for field in &message.field {
-            self.add_field_descriptor_proto(field)
+            self.add_field_descriptor_proto(field);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::message::ONEOF_DECL, 0]);
         for oneof in &message.oneof_decl {
             self.add_oneof_descriptor_proto(oneof);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::message::NESTED_TYPE, 0]);
         for message in &message.nested_type {
             self.add_descriptor_proto(message);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::message::ENUM_TYPE, 0]);
         for enu in &message.enum_type {
             self.add_enum_descriptor_proto(enu);
+            self.bump_path();
         }
 
+        self.replace_path(&[tag::message::EXTENSION, 0]);
         for extension in &message.extension {
             self.add_field_descriptor_proto(extension);
+            self.bump_path();
         }
+        self.pop_path(2);
 
         self.exit();
     }
@@ -312,35 +367,41 @@ impl NamePass {
                 oneof_index: field.oneof_index,
                 extendee: field.extendee.clone(),
             },
-            None,
+            &[tag::field::NAME],
         );
     }
 
     fn add_oneof_descriptor_proto(&mut self, oneof: &OneofDescriptorProto) {
-        self.add_name(oneof.name(), DefinitionKind::Oneof, None);
+        self.add_name(oneof.name(), DefinitionKind::Oneof, &[tag::oneof::NAME]);
     }
 
     fn add_enum_descriptor_proto(&mut self, enu: &EnumDescriptorProto) {
-        self.add_name(enu.name(), DefinitionKind::Enum, None);
+        self.add_name(enu.name(), DefinitionKind::Enum, &[tag::enum_::NAME]);
 
+        self.path.extend(&[tag::enum_::VALUE, 0]);
         for value in &enu.value {
             self.add_name(
                 value.name(),
                 DefinitionKind::EnumValue {
                     number: value.number(),
                 },
-                None,
+                &[tag::enum_value::NAME],
             );
+            self.bump_path();
         }
+        self.pop_path(2);
     }
 
     fn add_service_descriptor_proto(&mut self, service: &ServiceDescriptorProto) {
-        self.add_name(service.name(), DefinitionKind::Service, None);
+        self.add_name(service.name(), DefinitionKind::Service, &[tag::service::NAME]);
 
         self.enter(service.name());
+        self.path.extend(&[tag::service::METHOD, 0]);
         for method in &service.method {
-            self.add_name(method.name(), DefinitionKind::Method, None);
+            self.add_name(method.name(), DefinitionKind::Method, &[tag::method::NAME]);
+            self.bump_path();
         }
+        self.pop_path(2);
         self.exit();
     }
 }

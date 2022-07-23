@@ -121,7 +121,7 @@ fn name_conflict_package() {
         vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(28..31),
+            second: NameLocation::Root(20..32),
         })]
     );
     assert_yaml_snapshot!(check_with_imports(vec![
