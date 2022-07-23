@@ -1,34 +1,24 @@
 use std::{
-    borrow::Cow,
-    collections::{hash_map, HashMap},
     fmt::Display,
 };
 
-use logos::Span;
+
 use miette::SourceSpan;
+use prost_types::field_descriptor_proto;
 
 use crate::{
-    ast,
-    case::{to_json_name, to_lower_without_underscores},
-    index_to_i32,
+    ast::Syntax,
     lines::LineResolver,
-    make_name,
-    options::{self, OptionSet},
-    parse_namespace, resolve_span, tag,
+    make_name, resolve_span, tag,
     types::{
-        descriptor_proto::{ExtensionRange, ReservedRange},
-        enum_descriptor_proto::EnumReservedRange,
-        field_descriptor_proto,
         source_code_info::Location,
-        DescriptorProto, EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto,
-        FileDescriptorProto, MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
-        SourceCodeInfo,
+        DescriptorProto,
+        FileDescriptorProto, ServiceDescriptorProto, MethodDescriptorProto, FieldDescriptorProto,
     },
 };
 
 use super::{
-    generate, names::DefinitionKind, CheckError, NameMap, MAX_MESSAGE_FIELD_NUMBER,
-    RESERVED_MESSAGE_FIELD_NUMBERS,
+    names::DefinitionKind, CheckError, NameMap,
 };
 
 /// Resolve and check relative type names and options.
@@ -37,14 +27,14 @@ pub(crate) fn resolve(
     lines: Option<&LineResolver>,
     name_map: &NameMap,
 ) -> Result<(), Vec<CheckError>> {
-    let locations = file
-        .source_code_info
+    let source_code_info = file.source_code_info.take();
+    let locations = source_code_info
         .as_ref()
         .map(|s| s.location.as_slice())
         .unwrap_or(&[]);
     let syntax = match file.syntax() {
-        "proto2" => ast::Syntax::Proto2,
-        "proto3" => ast::Syntax::Proto3,
+        "" | "proto2" => Syntax::Proto2,
+        "proto3" => Syntax::Proto3,
         syntax => {
             return Err(vec![CheckError::UnknownSyntax {
                 syntax: syntax.to_owned(),
@@ -64,18 +54,21 @@ pub(crate) fn resolve(
         is_google_descriptor: file.name() == "google/protobuf/descriptor.proto",
     };
 
-    // let file = context.check_file(self);
-    // debug_assert!(context.scope.is_empty());
+    context.resolve_file(file);
+    debug_assert!(context.scope.is_empty());
 
-    if context.errors.is_empty() {
+    let errors = context.errors;
+    file.source_code_info = source_code_info;
+
+    if errors.is_empty() {
         Ok(())
     } else {
-        Err(context.errors)
+        Err(errors)
     }
 }
 
 struct Context<'a> {
-    syntax: ast::Syntax,
+    syntax: Syntax,
     name_map: &'a NameMap,
     scope: String,
     path: Vec<i32>,
@@ -86,6 +79,121 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    fn resolve_file(&mut self, file: &mut FileDescriptorProto) {
+        if !file.package().is_empty() {
+            for part in file.package().split('.') {
+                self.enter_scope(part);
+            }
+        }
+
+        self.path.extend(&[tag::file::MESSAGE_TYPE, 0]);
+        for message in &mut file.message_type {
+            self.resolve_descriptor_proto(message);
+            self.bump_path();
+        }
+
+        // self.replace_path(&[tag::file::ENUM_TYPE, 0]);
+        // for enu in &file.enum_type {
+        //     self.add_enum_descriptor_proto(enu);
+        //     self.bump_path();
+        // }
+
+        self.replace_path(&[tag::file::EXTENSION, 0]);
+        for extend in &mut file.extension {
+            self.resolve_field_descriptor_proto(extend);
+            self.bump_path();
+        }
+
+        self.replace_path(&[tag::file::SERVICE, 0]);
+        for service in &mut file.service {
+            self.resolve_service_descriptor_proto(service);
+            self.bump_path();
+        }
+        self.pop_path(2);
+
+        if !file.package().is_empty() {
+            for _ in file.package().split('.') {
+                self.exit_scope();
+            }
+        }
+    }
+
+    fn resolve_descriptor_proto(&mut self, message: &mut DescriptorProto) {
+        self.enter_scope(message.name());
+        self.path.extend(&[tag::message::FIELD, 0]);
+        for field in &mut message.field {
+            self.resolve_field_descriptor_proto(field);
+            self.bump_path();
+        }
+        self.pop_path(2);
+        self.exit_scope();
+    }
+
+    fn resolve_field_descriptor_proto(&mut self, field: &mut FieldDescriptorProto) {
+        if let Some(def) = self.resolve_type_name(&mut field.extendee, &[tag::field::EXTENDEE]) {
+            if !matches!(def, DefinitionKind::Message) {
+                let span = self.resolve_span(&[tag::field::EXTENDEE]);
+                self.errors.push(CheckError::InvalidExtendeeTypeName {
+                    name: field.extendee().to_owned(),
+                    span,
+                });
+            }
+        }
+
+        if let Some(def) = self.resolve_type_name(&mut field.type_name, &[tag::field::TYPE_NAME]) {
+            match def {
+                DefinitionKind::Message => {
+                    if field.r#type != Some(field_descriptor_proto::Type::Group as _) {
+                        field.r#type = Some(field_descriptor_proto::Type::Message as _);
+                    }
+                }
+                DefinitionKind::Enum => {
+                    field.r#type = Some(field_descriptor_proto::Type::Enum as _);
+                },
+                _ => {
+                    let span = self.resolve_span(&[tag::field::TYPE_NAME]);
+                    self.errors.push(CheckError::InvalidMessageFieldTypeName {
+                        name: field.type_name().to_owned(),
+                        span,
+                    });
+                }
+            }
+        }
+    }
+
+    fn resolve_service_descriptor_proto(&mut self, service: &mut ServiceDescriptorProto) {
+        self.enter_scope(service.name());
+        self.path.extend(&[tag::service::METHOD, 0]);
+        for method in &mut service.method {
+            self.resolve_method_descriptor_proto(method);
+            self.bump_path();
+        }
+        self.pop_path(2);
+        self.exit_scope();
+    }
+
+    fn resolve_method_descriptor_proto(&mut self, method: &mut MethodDescriptorProto) {
+        let input_ty = self.resolve_type_name(&mut method.name, &[tag::method::INPUT_TYPE]);
+        if !matches!(input_ty, None | Some(DefinitionKind::Message)) {
+            let span = self.resolve_span(&[tag::method::INPUT_TYPE]);
+            self.errors.push(CheckError::InvalidMethodTypeName {
+                name: method.input_type().to_owned(),
+                kind: "input",
+                span,
+            })
+        }
+
+        let output_ty = self.resolve_type_name(&mut method.name, &[tag::method::OUTPUT_TYPE]);
+        if !matches!(output_ty, None | Some(DefinitionKind::Message)) {
+            let span = self.resolve_span(&[tag::method::INPUT_TYPE]);
+            self.errors.push(CheckError::InvalidMethodTypeName {
+                name: method.output_type().to_owned(),
+                kind: "output",
+                span,
+            })
+        }
+    }
+
     /*
     fn check_option(
         &mut self,
@@ -487,7 +595,7 @@ impl<'a> Context<'a> {
         path_items: &[i32],
     ) -> Option<&DefinitionKind> {
         if let Some(name) = name.as_mut() {
-            if let Some((resolved_name, def)) = self.name_map.resolve(self.scope_name(), &name) {
+            if let Some((resolved_name, def)) = self.name_map.resolve(self.scope_name(), name) {
                 *name = resolved_name.into_owned();
                 Some(def)
             } else {
@@ -519,13 +627,9 @@ impl<'a> Context<'a> {
         &self.scope
     }
 
-    fn full_name(&self, name: impl Display) -> String {
-        make_name(self.scope_name(), name)
-    }
-
     fn resolve_span(&mut self, path_items: &[i32]) -> Option<SourceSpan> {
         self.path.extend(path_items);
-        let span = resolve_span(self.lines, &self.locations, self.path.as_slice());
+        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
         self.pop_path(path_items.len());
         span.map(SourceSpan::from)
     }

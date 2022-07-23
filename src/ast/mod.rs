@@ -1,15 +1,13 @@
 use std::{
-    borrow::Cow,
     convert::TryFrom,
     fmt::{self, Write},
-    mem,
     ops::Range,
     vec,
 };
 
 use logos::Span;
 
-use crate::{case::to_pascal_case, join_span, types::field_descriptor_proto};
+use crate::{join_span, types::field_descriptor_proto};
 
 pub(crate) mod text_format;
 
@@ -332,22 +330,6 @@ impl Int {
             i64::try_from(self.value).ok()
         }
     }
-
-    pub fn as_u32(&self) -> std::option::Option<u32> {
-        if self.negative {
-            None
-        } else {
-            u32::try_from(self.value).ok()
-        }
-    }
-
-    pub fn as_u64(&self) -> std::option::Option<u64> {
-        if self.negative {
-            None
-        } else {
-            Some(self.value)
-        }
-    }
 }
 
 impl String {
@@ -387,71 +369,6 @@ impl TypeName {
     }
 }
 
-impl MessageBody {
-    pub fn drain_oneofs(&mut self) -> impl Iterator<Item = Oneof> {
-        // Ideally we'd use drain_filter here but its unstable :(
-        let mut oneofs = Vec::new();
-        self.items.retain_mut(|item| match item {
-            MessageItem::Oneof(oneof) => {
-                oneofs.push(Oneof {
-                    name: mem::replace(&mut oneof.name, Ident::new("", 0..0)),
-                    options: mem::take(&mut oneof.options),
-                    fields: mem::take(&mut oneof.fields),
-                    comments: mem::take(&mut oneof.comments),
-                    span: mem::take(&mut oneof.span),
-                });
-                false
-            }
-            _ => true,
-        });
-
-        oneofs.into_iter()
-    }
-}
-
-impl Field {
-    pub fn is_map(&self) -> bool {
-        matches!(&self.kind, FieldKind::Map { .. })
-    }
-
-    pub fn is_group(&self) -> bool {
-        matches!(&self.kind, FieldKind::Group { .. })
-    }
-
-    pub fn field_name(&self) -> Cow<'_, str> {
-        if self.is_group() {
-            Cow::Owned(self.name.value.to_ascii_lowercase())
-        } else {
-            Cow::Borrowed(self.name.value.as_str())
-        }
-    }
-
-    pub fn ty(&self) -> Ty {
-        match &self.kind {
-            FieldKind::Normal { ty, .. } => ty.clone(),
-            FieldKind::Group { .. } => Ty::Named(TypeName {
-                leading_dot: None,
-                name: FullIdent::from(self.name.clone()),
-            }),
-            FieldKind::Map { .. } => Ty::Named(TypeName {
-                leading_dot: None,
-                name: FullIdent::from(Ident::new(
-                    to_pascal_case(&self.name.value) + "Entry",
-                    self.name.span.clone(),
-                )),
-            }),
-        }
-    }
-
-    pub fn ty_span(&self) -> Span {
-        match &self.kind {
-            FieldKind::Normal { ty_span, .. }
-            | FieldKind::Group { ty_span, .. }
-            | FieldKind::Map { ty_span, .. } => ty_span.clone(),
-        }
-    }
-}
-
 impl Ty {
     pub fn proto_ty(&self) -> std::option::Option<field_descriptor_proto::Type> {
         match self {
@@ -482,30 +399,6 @@ impl Ty {
     }
 }
 
-impl FieldLabel {
-    pub fn proto_label(&self) -> field_descriptor_proto::Label {
-        match self {
-            FieldLabel::Optional => field_descriptor_proto::Label::Optional,
-            FieldLabel::Required => field_descriptor_proto::Label::Required,
-            FieldLabel::Repeated => field_descriptor_proto::Label::Repeated,
-        }
-    }
-}
-
-impl OptionList {
-    pub fn take_default_value(
-        options: &mut std::option::Option<OptionList>,
-    ) -> std::option::Option<OptionBody> {
-        if let Some(options) = options {
-            if let Some(index) = options.options.iter().position(|o| o.is("default")) {
-                return Some(options.options.remove(index));
-            }
-        }
-
-        None
-    }
-}
-
 impl OptionNamePart {
     pub fn span(&self) -> Span {
         match self {
@@ -516,27 +409,6 @@ impl OptionNamePart {
 }
 
 impl OptionBody {
-    pub fn is(&self, name: &str) -> bool {
-        matches!(self.name.as_slice(), [OptionNamePart::Ident(ident)] if ident.value == name)
-    }
-
-    pub fn is_simple(&self) -> bool {
-        matches!(self.name.as_slice(), [OptionNamePart::Ident(_)])
-    }
-
-    pub fn name_string(&self) -> std::string::String {
-        let mut result = std::string::String::new();
-
-        for part in &self.name {
-            match part {
-                OptionNamePart::Ident(ident) => write!(result, "{}", ident).unwrap(),
-                OptionNamePart::Extension(ident, _) => write!(result, "{}", ident).unwrap(),
-            }
-        }
-
-        result
-    }
-
     pub fn name_span(&self) -> Span {
         debug_assert!(!self.name.is_empty());
         join_span(

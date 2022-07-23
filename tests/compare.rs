@@ -22,8 +22,8 @@ fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
 
-    // std::fs::write("expected.yml", &expected);
-    // std::fs::write("actual.yml", &actual);
+    std::fs::write("expected.yml", &expected);
+    std::fs::write("actual.yml", &actual);
 
     assert_serde_eq!(actual, expected);
 }
