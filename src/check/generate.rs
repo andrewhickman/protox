@@ -536,14 +536,26 @@ impl<'a> Context<'a> {
             }
         }
 
-        if default_value.is_some() && label == Some(field_descriptor_proto::Label::Repeated) {
-            self.errors.push(CheckError::InvalidDefault {
-                kind: "repeated",
-                span: default_value_option_span,
-            });
+        if default_value.is_some() {
+            if label == Some(field_descriptor_proto::Label::Repeated) {
+                self.errors.push(CheckError::Proto3DefaultValue {
+                    span: default_value_option_span,
+                });
+            } else if self.syntax != ast::Syntax::Proto2 {
+                self.errors.push(CheckError::InvalidDefault {
+                    kind: "repeated",
+                    span: default_value_option_span,
+                });
+            }
         }
 
-        let json_name = Some(to_json_name(&name));
+        let json_name = if let Some(o) = take_option(&mut ast.options, "json_name") {
+            self.add_span_for(&[tag::field::JSON_NAME], o.span());
+            self.add_span_for(&[tag::field::JSON_NAME], o.value.span());
+            self.generate_string_option_value(o.value)
+        } else {
+            Some(to_json_name(&name))
+        };
 
         self.path.push(tag::field::OPTIONS);
         let options = self.generate_options_list(ast.options);
@@ -727,7 +739,23 @@ impl<'a> Context<'a> {
                 });
                 None
             }
-            (Some(Type::String), ast::OptionValue::String(string)) => {
+            (Some(Type::String), value) => self.generate_string_option_value(value),
+            (Some(Type::Bytes), ast::OptionValue::String(string)) => Some(string.to_string()),
+            (Some(Type::Bytes), value) => {
+                self.errors.push(CheckError::ValueInvalidType {
+                    expected: "a string".to_owned(),
+                    actual: value.to_string(),
+                    span: Some(value.span().into()),
+                });
+                None
+            }
+            (None | Some(Type::Message | Type::Group | Type::Enum), _) => todo!(),
+        }
+    }
+
+    fn generate_string_option_value(&mut self, value: ast::OptionValue) -> Option<String> {
+        match value {
+            ast::OptionValue::String(string) => {
                 if let Ok(string) = String::from_utf8(string.value) {
                     Some(string)
                 } else {
@@ -737,8 +765,7 @@ impl<'a> Context<'a> {
                     None
                 }
             }
-            (Some(Type::Bytes), ast::OptionValue::String(string)) => Some(string.to_string()),
-            (Some(Type::String | Type::Bytes), value) => {
+            _ => {
                 self.errors.push(CheckError::ValueInvalidType {
                     expected: "a string".to_owned(),
                     actual: value.to_string(),
@@ -746,7 +773,6 @@ impl<'a> Context<'a> {
                 });
                 None
             }
-            (None | Some(Type::Message | Type::Group | Type::Enum), _) => todo!(),
         }
     }
 

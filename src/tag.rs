@@ -40,6 +40,7 @@ pub(crate) mod field {
     pub(crate) const TYPE: i32 = 5;
     pub(crate) const TYPE_NAME: i32 = 6;
     pub(crate) const DEFAULT_VALUE: i32 = 7;
+    pub(crate) const JSON_NAME: i32 = 10;
     pub(crate) const OPTIONS: i32 = 8;
 }
 
