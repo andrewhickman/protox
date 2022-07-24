@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+message Message {
+    optional int32 field = 2;
+
+    // name
+    reserved "foo";
+    // reserved
+    reserved 1, 3 to 4;
+    // extensions
+    extensions 5 to max;
+}
+
+enum Enum {
+    ZERO = 0;
+
+    // name
+    reserved "ONE";
+    // reserved
+    reserved 1, 2 to 3, 4 to max;
+}

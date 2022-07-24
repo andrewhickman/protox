@@ -105,6 +105,7 @@ compare!(multiple_extends);
 compare!(name_resolution);
 compare!(option_merge_message);
 compare!(custom_json_name);
+compare!(reserved_ranges);
 // TODO need to get protoc to use the exact same versions of these files
 // compare!(import_google);
 

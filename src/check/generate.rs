@@ -273,9 +273,8 @@ impl<'a> Context<'a> {
                     self.path.push(tag::message::RESERVED_NAME);
                     self.add_comments(reserved.span, reserved.comments);
                     for name in names {
-                        self.path.push(index_to_i32(reserved_name.len()));
+                        self.add_span_for(&[index_to_i32(reserved_name.len())], name.span);
                         reserved_name.push(name.value);
-                        self.path.pop();
                     }
                     self.path.pop();
                 }
@@ -790,6 +789,10 @@ impl<'a> Context<'a> {
         &mut self,
         range: ast::ReservedRange,
     ) -> descriptor_proto::ReservedRange {
+        self.add_span(range.span());
+        self.add_span_for(&[tag::message::reserved_range::START], range.start_span());
+        self.add_span_for(&[tag::message::reserved_range::END], range.end_span());
+
         let start = self.generate_message_number(range.start);
         let end = match range.end {
             ast::ReservedRangeEnd::None => start,
@@ -938,9 +941,8 @@ impl<'a> Context<'a> {
                     self.path.push(tag::enum_::RESERVED_NAME);
                     self.add_comments(reserved.span, reserved.comments);
                     for name in names {
-                        self.path.push(index_to_i32(reserved_name.len()));
+                        self.add_span_for(&[index_to_i32(reserved_name.len())], name.span);
                         reserved_name.push(name.value);
-                        self.path.pop();
                     }
                     self.path.pop();
                 }
@@ -995,6 +997,10 @@ impl<'a> Context<'a> {
         &mut self,
         range: ast::ReservedRange,
     ) -> enum_descriptor_proto::EnumReservedRange {
+        self.add_span(range.span());
+        self.add_span_for(&[tag::enum_::reserved_range::START], range.start_span());
+        self.add_span_for(&[tag::enum_::reserved_range::END], range.end_span());
+
         let start = self.generate_enum_number(range.start);
         let end = match range.end {
             ast::ReservedRangeEnd::None => start,

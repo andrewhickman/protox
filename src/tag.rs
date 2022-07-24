@@ -30,6 +30,11 @@ pub(crate) mod message {
         pub(crate) const END: i32 = 2;
         pub(crate) const OPTIONS: i32 = 3;
     }
+
+    pub(crate) mod reserved_range {
+        pub(crate) const START: i32 = 1;
+        pub(crate) const END: i32 = 2;
+    }
 }
 
 pub(crate) mod field {
@@ -55,6 +60,11 @@ pub(crate) mod enum_ {
     pub(crate) const OPTIONS: i32 = 3;
     pub(crate) const RESERVED_RANGE: i32 = 4;
     pub(crate) const RESERVED_NAME: i32 = 5;
+
+    pub(crate) mod reserved_range {
+        pub(crate) const START: i32 = 1;
+        pub(crate) const END: i32 = 2;
+    }
 }
 
 pub(crate) mod enum_value {
