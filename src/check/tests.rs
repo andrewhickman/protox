@@ -1375,9 +1375,21 @@ fn oneof_group_field() {
 }
 
 #[test]
-#[ignore]
 fn empty_oneof() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                oneof foo {}
+            }
+            "#
+        ),
+        vec![EmptyOneof {
+            span: Some(SourceSpan::from(79..91)),
+        }],
+    );
 }
 
 #[test]

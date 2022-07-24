@@ -151,6 +151,11 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
+    #[error("a oneof must have at least one field")]
+    EmptyOneof {
+        #[label("defined here")]
+        span: Option<SourceSpan>,
+    },
     #[error("unknown field '{name}' for '{namespace}'")]
     OptionUnknownField {
         name: String,

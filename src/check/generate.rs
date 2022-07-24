@@ -853,6 +853,12 @@ impl<'a> Context<'a> {
         self.path.pop();
         self.pop_path(2);
 
+        if oneof.fields.is_empty() {
+            self.errors.push(CheckError::EmptyOneof {
+                span: Some(oneof.span.into()),
+            });
+        }
+
         for field_ast in oneof.fields {
             fields.push(FieldDescriptorProto {
                 oneof_index: Some(index_to_i32(oneof_index)),
