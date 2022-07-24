@@ -1158,22 +1158,55 @@ fn message_reserved_range_overlap_with_field() {
 }
 
 #[test]
-#[ignore]
 fn extend_required_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {}
+
+            extend Message {
+                required int32 foo = 1;
+            }
+            "#
+        ),
+        vec![RequiredExtendField {
+            span: Some(SourceSpan::from(78..86)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn extend_map_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {}
+
+            extend Message {
+                map<int32, string> foo = 1;
+            }
+            "#
+        ),
+        vec![InvalidExtendFieldKind {
+            kind: "map",
+            span: Some(SourceSpan::from(78..105)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn extend_group_field() {
-    // allow
-    todo!()
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        message Message {}
+
+        extend Message {
+            repeated group Foo = 1 {
+                required int32 bar = 1;
+            };
+        }
+    "#
+    ));
 }
 
 #[test]

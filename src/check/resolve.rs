@@ -89,7 +89,6 @@ pub(crate) struct DuplicateNumberError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum NumberKind {
-    #[allow(unused)]
     EnumValue { name: String, number: i32 },
     Field { name: String, number: i32 },
     ReservedRange { start: i32, end: i32 },
