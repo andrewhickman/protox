@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env};
 
-use insta::{assert_yaml_snapshot, assert_json_snapshot};
+use insta::{assert_json_snapshot, assert_yaml_snapshot};
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -855,35 +855,43 @@ fn negative_ident_outside_default() {
 #[test]
 fn message_field_json_name() {
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             optional int32 field = 1 [json_name = "\xFF"];
-        }"#),
+        }"#
+        ),
         vec![StringValueInvalidUtf8 {
             span: Some(SourceSpan::from(68..74))
         }],
     );
-    assert_json_snapshot!(check_ok(r#"message Message {
+    assert_json_snapshot!(check_ok(
+        r#"message Message {
         optional int32 field = 1 [json_name = '$FIELD'];
-    }"#));
+    }"#
+    ));
 }
 
 #[test]
 fn map_field_with_label() {
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             optional map<int32, string> field = 1;
-        }"#),
+        }"#
+        ),
         vec![MapFieldWithLabel {
             span: Some(SourceSpan::from(30..38))
         }],
     );
     assert_eq!(
-        check_err(r#"
+        check_err(
+            r#"
             syntax = 'proto3';
 
             message Message {
                 required map<int32, string> field = 1;
-            }"#),
+            }"#
+        ),
         vec![MapFieldWithLabel {
             span: Some(SourceSpan::from(79..87))
         }],
@@ -893,58 +901,71 @@ fn map_field_with_label() {
 #[test]
 fn map_field_invalid_type() {
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<Message, sfixed32> field = 1;
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..41))
         }],
     );
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<.Message, fixed32> field = 1;
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..42))
         }],
     );
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<.Message, bool> field = 1;
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..42))
         }],
     );
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<float, string> field = 1;
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..39))
         }],
     );
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<double, int64> field = 1;
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..40))
         }],
     );
     assert_eq!(
-        check_err(r#"message Message {
+        check_err(
+            r#"message Message {
             map<Enum, int64> field = 1;
 
             enum Enum {
                 ZERO = 0;
             }
-        }"#),
+        }"#
+        ),
         vec![InvalidMapFieldKeyType {
             span: Some(SourceSpan::from(34..38))
         }],
     );
-    assert_json_snapshot!(check_ok(r#"message Message {
+    assert_json_snapshot!(check_ok(
+        r#"message Message {
         map<int64, float> int64 = 1;
         map<uint32, double> uint32 = 2;
         map<uint64, .Message> uint64 = 3;
@@ -956,7 +977,8 @@ fn map_field_invalid_type() {
         map<sfixed64, sint64> sfixed64 = 9;
         map<bool, fixed32> bool = 10;
         map<string, fixed64> string = 11;
-    }"#))
+    }"#
+    ))
 }
 
 #[test]

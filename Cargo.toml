@@ -7,7 +7,7 @@ repository = "https://github.com/andrewhickman/protox"
 documentation = "https://docs.rs/protox"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
 include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",

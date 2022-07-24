@@ -458,7 +458,7 @@ impl Diagnostic for DuplicateNameError {
     fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
         match (&self.first, &self.second) {
             (NameLocation::Root(first), NameLocation::Root(second)) => Some(Box::new(
-                vec![
+                [
                     LabeledSpan::new_with_span(
                         Some("first defined here…".to_owned()),
                         first.clone(),

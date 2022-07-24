@@ -12,8 +12,8 @@ mod tests;
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
-use self::names::DuplicateNameError;
 pub(crate) use self::{generate::generate, names::NameMap, resolve::resolve};
+use self::{names::DuplicateNameError, resolve::DuplicateNumberError};
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {
@@ -29,6 +29,9 @@ pub(crate) enum CheckError {
         #[label("…conflicts with field here")]
         second: Option<SourceSpan>,
     },
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    DuplicateNumber(#[from] DuplicateNumberError),
     #[error("unknown syntax '{syntax}'")]
     #[diagnostic(help("possible values are 'proto2' and 'proto3'"))]
     UnknownSyntax {

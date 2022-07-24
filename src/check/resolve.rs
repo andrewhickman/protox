@@ -1,16 +1,18 @@
 use std::{
     borrow::Cow,
-    collections::{hash_map, HashMap},
+    collections::{hash_map, BTreeMap, HashMap},
     convert::{TryFrom, TryInto},
-    mem,
+    fmt, mem,
+    ops::RangeInclusive,
 };
 
-use miette::SourceSpan;
+use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use prost_types::field_descriptor_proto;
 
 use crate::{
     ast::{HexEscaped, Syntax},
     case::to_lower_without_underscores,
+    check::MAX_MESSAGE_FIELD_NUMBER,
     index_to_i32,
     lines::LineResolver,
     make_name,
@@ -75,6 +77,22 @@ pub(crate) fn resolve(
     } else {
         Err(errors)
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DuplicateNumberError {
+    first: NumberKind,
+    first_span: Option<SourceSpan>,
+    second: NumberKind,
+    second_span: Option<SourceSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum NumberKind {
+    EnumValue { name: String, number: i32 },
+    Field { name: String, number: i32 },
+    ReservedRange { start: i32, end: i32 },
+    ExtensionRange { start: i32, end: i32 },
 }
 
 struct Context<'a> {
@@ -166,6 +184,8 @@ impl<'a> Context<'a> {
             self.check_message_field_camel_case_names(message.field.iter());
             self.path.pop();
         }
+
+        self.check_message_field_numbers(message);
     }
 
     fn resolve_field_descriptor_proto(&mut self, field: &mut FieldDescriptorProto) {
@@ -300,6 +320,115 @@ impl<'a> Context<'a> {
         self.path.push(tag::enum_value::OPTIONS);
         self.resolve_options(&mut value.options, "google.protobuf.EnumValueOptions");
         self.path.pop();
+    }
+
+    fn check_message_field_numbers(&mut self, message: &DescriptorProto) {
+        #[derive(Clone)]
+        enum Item {
+            Field(usize),
+            Range(i32, usize),
+            Extension(i32, usize),
+        }
+
+        fn contains(start: i32, item: &Item, number: i32) -> bool {
+            match *item {
+                Item::Field(_) => number == start,
+                Item::Range(end, _) | Item::Extension(end, _) => (start..end).contains(&number),
+            }
+        }
+
+        fn get_diagnostics(
+            ctx: &mut Context,
+            message: &DescriptorProto,
+            item: Item,
+        ) -> (NumberKind, Option<SourceSpan>) {
+            match item {
+                Item::Field(index) => (
+                    NumberKind::Field {
+                        name: message.field[index].name().to_owned(),
+                        number: message.field[index].number(),
+                    },
+                    ctx.resolve_span(&[tag::message::FIELD, index_to_i32(index), tag::field::NUMBER]),
+                ),
+                Item::Range(_, index) => (
+                    NumberKind::ReservedRange {
+                        start: message.reserved_range[index].start().to_owned(),
+                        end: message.reserved_range[index].end() - 1,
+                    },
+                    ctx.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]),
+                ),
+                Item::Extension(_, index) => (
+                    NumberKind::ExtensionRange {
+                        start: message.extension_range[index].start().to_owned(),
+                        end: message.extension_range[index].end() - 1,
+                    },
+                    ctx.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]),
+                ),
+            }
+        }
+
+        fn get_error(
+            ctx: &mut Context,
+            message: &DescriptorProto,
+            (first, second): (Item, Item),
+        ) -> DuplicateNumberError {
+            let (first, first_span) = get_diagnostics(ctx, message, first);
+            let (second, second_span) = get_diagnostics(ctx, message, second);
+
+            DuplicateNumberError {
+                first,
+                first_span,
+                second,
+                second_span,
+            }
+        }
+
+        let mut items: BTreeMap<i32, Item> = BTreeMap::new();
+
+        let valid_start_range = 1..=MAX_MESSAGE_FIELD_NUMBER;
+        let valid_end_range = 2..=MAX_MESSAGE_FIELD_NUMBER + 1;
+        for (index, range) in message.reserved_range.iter().enumerate() {
+            if !valid_start_range.contains(&range.start())
+                || !valid_end_range.contains(&range.end())
+            {
+                let span = self.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]);
+                self.errors.push(CheckError::InvalidMessageNumber { span });
+            } else if let Err(err) = number_map_insert_range(
+                &mut items,
+                range.start()..=(range.end() - 1),
+                Item::Range(range.end(), index),
+                contains,
+            ) {
+                let error = get_error(self, message, err);
+                self.errors.push(CheckError::DuplicateNumber(error));
+            }
+        }
+
+        for (index, range) in message.extension_range.iter().enumerate() {
+            if !valid_start_range.contains(&range.start())
+                || !valid_end_range.contains(&range.end())
+            {
+                let span = self.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]);
+                self.errors.push(CheckError::InvalidMessageNumber { span });
+            } else if let Err(err) = number_map_insert_range(
+                &mut items,
+                range.start()..=(range.end() - 1),
+                Item::Extension(range.end(), index),
+                contains,
+            ) {
+                let error = get_error(self, message, err);
+                self.errors.push(CheckError::DuplicateNumber(error));
+            }
+        }
+
+        for (index, field) in message.field.iter().enumerate() {
+            if let Err(err) =
+                number_map_insert(&mut items, field.number(), Item::Field(index), contains)
+            {
+                let error = get_error(self, message, err);
+                self.errors.push(CheckError::DuplicateNumber(error));
+            }
+        }
     }
 
     fn resolve_service_descriptor_proto(&mut self, service: &mut ServiceDescriptorProto) {
@@ -891,6 +1020,35 @@ impl<'a> Context<'a> {
     }
 }
 
+fn number_map_insert<T: Clone>(
+    map: &mut BTreeMap<i32, T>,
+    number: i32,
+    value: T,
+    contains: impl Fn(i32, &T, i32) -> bool,
+) -> Result<(), (T, T)> {
+    number_map_insert_range(map, number..=number, value, contains)
+}
+
+fn number_map_insert_range<T: Clone>(
+    map: &mut BTreeMap<i32, T>,
+    range: RangeInclusive<i32>,
+    value: T,
+    contains: impl Fn(i32, &T, i32) -> bool,
+) -> Result<(), (T, T)> {
+    match map.range(..=*range.end()).last() {
+        Some((key, existing))
+            if contains(*key, existing, *range.start())
+                || contains(*key, existing, *range.end()) =>
+        {
+            Err((existing.clone(), value))
+        }
+        _ => {
+            map.insert(*range.start(), value);
+            Ok(())
+        }
+    }
+}
+
 fn fmt_option_name(name: &[uninterpreted_option::NamePart]) -> String {
     let mut result = String::new();
     for part in name {
@@ -951,6 +1109,159 @@ fn fmt_valid_enum_values_help(name_map: &NameMap, enum_name: &str) -> Option<Str
             result.push_str(names[names.len() - 1]);
             result.push('\'');
             Some(result)
+        }
+    }
+}
+
+impl fmt::Display for DuplicateNumberError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use NumberKind::*;
+
+        match (&self.first, &self.second) {
+            (
+                EnumValue {
+                    name: first,
+                    number,
+                },
+                EnumValue { name: second, .. },
+            ) => {
+                write!(
+                    f,
+                    "enum number '{}' is used by both '{}' and '{}'",
+                    number, first, second
+                )
+            }
+            (
+                Field {
+                    name: first,
+                    number,
+                },
+                Field { name: second, .. },
+            ) => {
+                write!(
+                    f,
+                    "field number '{}' is used by both '{}' and '{}'",
+                    number, first, second
+                )
+            }
+            (EnumValue { number, .. }, ReservedRange { .. })
+            | (ReservedRange { .. }, EnumValue { number, .. }) => {
+                write!(f, "enum number '{}' is marked as reserved", number)
+            }
+            (Field { number, .. }, ReservedRange { .. })
+            | (ReservedRange { .. }, Field { number, .. }) => {
+                write!(f, "field number '{}' is marked as reserved", number)
+            }
+            (Field { number, .. }, ExtensionRange { .. })
+            | (ExtensionRange { .. }, Field { number, .. }) => {
+                write!(f, "field number '{}' is marked as an extension", number)
+            }
+            (first, second) => write!(f, "{} overlaps with {}", first, second),
+        }
+    }
+}
+
+impl std::error::Error for DuplicateNumberError {}
+
+impl Diagnostic for DuplicateNumberError {
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
+        use NumberKind::*;
+
+        match (&self.first, self.first_span, &self.second, self.second_span) {
+            (
+                EnumValue { .. } | Field { .. },
+                Some(first_span),
+                EnumValue { .. } | Field { .. },
+                Some(second_span),
+            ) => Some(Box::new(
+                [
+                    LabeledSpan::new_with_span(
+                        Some("number first used here…".to_owned()),
+                        first_span,
+                    ),
+                    LabeledSpan::new_with_span(
+                        Some("…and used again here".to_owned()),
+                        second_span,
+                    ),
+                ]
+                .into_iter(),
+            )),
+            (
+                Field { .. } | EnumValue { .. },
+                Some(used_span),
+                ReservedRange { .. },
+                Some(reserved_span),
+            )
+            | (
+                ReservedRange { .. },
+                Some(reserved_span),
+                Field { .. } | EnumValue { .. },
+                Some(used_span),
+            ) => Some(Box::new(
+                [
+                    LabeledSpan::new_with_span(Some("number used here…".to_owned()), used_span),
+                    LabeledSpan::new_with_span(
+                        Some("…but is marked as reserved here".to_owned()),
+                        reserved_span,
+                    ),
+                ]
+                .into_iter(),
+            )),
+            (Field { .. }, Some(used_span), ExtensionRange { .. }, Some(extension_span))
+            | (ExtensionRange { .. }, Some(extension_span), Field { .. }, Some(used_span)) => {
+                Some(Box::new(
+                    [
+                        LabeledSpan::new_with_span(Some("number used here…".to_owned()), used_span),
+                        LabeledSpan::new_with_span(
+                            Some("…but is marked an extension here".to_owned()),
+                            extension_span,
+                        ),
+                    ]
+                    .into_iter(),
+                ))
+            }
+            (
+                ReservedRange { .. } | ExtensionRange { .. },
+                Some(first_span),
+                ReservedRange { .. } | ExtensionRange { .. },
+                Some(second_span),
+            ) => Some(Box::new(
+                [
+                    LabeledSpan::new_with_span(Some("range defined here…".to_owned()), first_span),
+                    LabeledSpan::new_with_span(
+                        Some("…overlaps with range defined here".to_owned()),
+                        second_span,
+                    ),
+                ]
+                .into_iter(),
+            )),
+            _ => None,
+        }
+    }
+
+    fn help(&self) -> Option<Box<dyn fmt::Display + '_>> {
+        use NumberKind::*;
+
+        match (&self.first, &self.second) {
+            (EnumValue { .. }, EnumValue { .. }) => Some(Box::new(
+                "if this is intentional, consider setting the 'allow_alias' enum option to true",
+            )),
+            _ => None,
+        }
+    }
+}
+
+impl fmt::Display for NumberKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NumberKind::EnumValue { name, .. } => write!(f, "enum value '{}'", name),
+            NumberKind::Field { name, .. } => write!(f, "field '{}'", name),
+            NumberKind::ReservedRange { start, end } => {
+                write!(f, "reserved range '{} to {}'", start, end)
+            }
+            NumberKind::ExtensionRange { start, end } => {
+                write!(f, "extension range '{} to {}'", start, end)
+            }
         }
     }
 }
