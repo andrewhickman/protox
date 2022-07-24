@@ -321,7 +321,11 @@ impl Default for Syntax {
 impl Int {
     pub fn as_i32(&self) -> std::option::Option<i32> {
         if self.negative {
-            i32::try_from(self.value).ok()?.checked_neg()
+            if self.value == (i32::MAX as u64 + 1) {
+                Some(i32::MIN)
+            } else {
+                Some(-i32::try_from(self.value).ok()?)
+            }
         } else {
             i32::try_from(self.value).ok()
         }
@@ -329,7 +333,11 @@ impl Int {
 
     pub fn as_i64(&self) -> std::option::Option<i64> {
         if self.negative {
-            i64::try_from(self.value).ok()?.checked_neg()
+            if self.value == (i64::MAX as u64 + 1) {
+                Some(i64::MIN)
+            } else {
+                Some(-i64::try_from(self.value).ok()?)
+            }
         } else {
             i64::try_from(self.value).ok()
         }

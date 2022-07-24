@@ -1393,9 +1393,39 @@ fn empty_oneof() {
 }
 
 #[test]
-#[ignore]
 fn enum_value_extrema() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Extreme {
+                ZERO = 0;
+                MIN = -2147483649;
+                MAX = 2147483648;
+            }
+            "#
+        ),
+        vec![
+            InvalidEnumNumber {
+                span: Some(SourceSpan::from(108..119)),
+            },
+            InvalidEnumNumber {
+                span: Some(SourceSpan::from(143..153)),
+            }
+        ],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        syntax = "proto3";
+
+        enum Extreme {
+            ZERO = 0;
+            MIN = -2147483648;
+            MAX = 2147483647;
+        }
+        "#
+    ));
 }
 
 #[test]
