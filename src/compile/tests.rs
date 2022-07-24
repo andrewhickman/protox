@@ -594,7 +594,7 @@ fn complex_include_complex_file() {
 
 #[test]
 fn invalid_file() {
-    let dir = TempDir::new().unwrap().into_persistent();
+    let dir = TempDir::new().unwrap();
 
     std::fs::write(dir.join("foo.proto"), INVALID_UTF8).unwrap();
 
@@ -606,33 +606,79 @@ fn invalid_file() {
             assert_eq!(path, &dir.join("foo.proto"));
             assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
 #[test]
-fn shadow_file() {
-    let dir = TempDir::new().unwrap().into_persistent();
+fn shadow_file_rel() {
+    let dir = TempDir::new().unwrap();
+    with_current_dir(&dir, || {
+        std::fs::write("foo.proto", EMPTY).unwrap();
+        fs::create_dir_all("include").unwrap();
+        std::fs::write(Path::new("include").join("foo.proto"), EMPTY).unwrap();
+
+        let mut compiler = Compiler::new(&["include", "."]).unwrap();
+        let err = compiler.add_file("foo.proto").unwrap_err();
+
+        match err.kind() {
+            ErrorKind::FileShadowed { path, shadow } => {
+                assert_eq!(path, Path::new("foo.proto"));
+                assert_eq!(shadow, &Path::new("include").join("foo.proto"));
+            }
+            kind => panic!("unexpected error: {}", kind),
+        }
+    });
+}
+
+#[test]
+fn shadow_file_rel_subdir() {
+    let dir = TempDir::new().unwrap();
+    with_current_dir(&dir, || {
+        fs::create_dir_all("include1").unwrap();
+        std::fs::write(Path::new("include1").join("foo.proto"), EMPTY).unwrap();
+
+        fs::create_dir_all("include2").unwrap();
+        std::fs::write(Path::new("include2").join("foo.proto"), EMPTY).unwrap();
+
+        let mut compiler = Compiler::new(&["include1", "include2"]).unwrap();
+        let err = compiler
+            .add_file(Path::new("include2").join("foo.proto"))
+            .unwrap_err();
+
+        match err.kind() {
+            ErrorKind::FileShadowed { path, shadow } => {
+                assert_eq!(path, &Path::new("include2").join("foo.proto"));
+                assert_eq!(shadow, &Path::new("include1").join("foo.proto"));
+            }
+            kind => panic!("unexpected error: {}", kind),
+        }
+    });
+}
+
+#[test]
+fn shadow_file_abs() {
+    let dir = TempDir::new().unwrap();
 
     std::fs::write(dir.join("foo.proto"), EMPTY).unwrap();
     fs::create_dir_all(dir.join("include")).unwrap();
     std::fs::write(dir.join("include").join("foo.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new(&[dir.join("include").as_ref(), dir.path()]).unwrap();
-    let err = compiler.add_file("foo.proto").unwrap_err();
+    let err = compiler.add_file(dir.join("foo.proto")).unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
             assert_eq!(path, &dir.join("foo.proto"));
             assert_eq!(shadow, &dir.join("include").join("foo.proto"));
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
 #[test]
-fn shadow_file_dir() {
-    let dir = TempDir::new().unwrap().into_persistent();
+fn shadow_file_abs_subdir() {
+    let dir = TempDir::new().unwrap();
 
     fs::create_dir_all(dir.join("include1")).unwrap();
     std::fs::write(dir.join("include1").join("foo.proto"), EMPTY).unwrap();
@@ -650,7 +696,7 @@ fn shadow_file_dir() {
             assert_eq!(path, &dir.join("include2").join("foo.proto"));
             assert_eq!(shadow, &dir.join("include1").join("foo.proto"));
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
@@ -674,7 +720,7 @@ fn shadow_invalid_file() {
             assert_eq!(path, &dir.join("include1").join("foo.proto"));
             assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
@@ -699,7 +745,7 @@ fn shadow_already_imported_file() {
             assert_eq!(path, &dir.join("include2").join("foo.proto"));
             assert_eq!(shadow, &dir.join("include1").join("foo.proto"));
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
@@ -789,7 +835,7 @@ fn import_cycle() {
         ErrorKind::CircularImport { cycle } => {
             assert_eq!(cycle, "root.proto -> dep.proto -> dep2.proto -> root.proto")
         }
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 
@@ -804,7 +850,7 @@ fn import_cycle_short() {
 
     match err.kind() {
         ErrorKind::CircularImport { cycle } => assert_eq!(cycle, "root.proto -> root.proto"),
-        kind => panic!("unexpected error {}", kind),
+        kind => panic!("unexpected error: {}", kind),
     }
 }
 

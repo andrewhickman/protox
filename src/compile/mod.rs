@@ -102,23 +102,22 @@ impl Compiler {
     /// If the path is absolute, or relative to the current directory, it must reside under one of the
     /// include paths. Otherwise, it is looked up relative to the given include paths in the same way as
     /// `import` statements.
-    pub fn add_file(&mut self, relative_path: impl AsRef<Path>) -> Result<&mut Self, Error> {
-        let relative_path = relative_path.as_ref();
-        let name = match self
-            .resolver
-            .resolve_path(relative_path)
-            .or_else(|| path_to_file_name(relative_path))
-        {
-            Some(name) => name,
-            None => {
-                return Err(Error::from_kind(ErrorKind::FileNotIncluded {
-                    path: relative_path.to_owned(),
-                }))
-            }
+    pub fn add_file(&mut self, path: impl AsRef<Path>) -> Result<&mut Self, Error> {
+        let path = path.as_ref();
+        let (name, is_resolved) = if let Some(name) = self.resolver.resolve_path(path) {
+            (name, true)
+        } else if let Some(name) = path_to_file_name(path) {
+            (name, false)
+        } else {
+            return Err(Error::from_kind(ErrorKind::FileNotIncluded {
+                path: path.to_owned(),
+            }));
         };
 
         if let Some(parsed_file) = self.file_map.get_mut(&name) {
-            check_shadow(parsed_file.path.as_deref(), relative_path)?;
+            if is_resolved {
+                check_shadow(parsed_file.path.as_deref(), path)?;
+            }
             parsed_file.is_root = true;
             return Ok(self);
         }
@@ -126,13 +125,15 @@ impl Compiler {
         let file = self.resolver.open_file(&name).map_err(|err| {
             if err.is_file_not_found() {
                 Error::from_kind(ErrorKind::FileNotIncluded {
-                    path: relative_path.to_owned(),
+                    path: path.to_owned(),
                 })
             } else {
                 err
             }
         })?;
-        check_shadow(file.path(), relative_path)?;
+        if is_resolved {
+            check_shadow(file.path(), path)?;
+        }
 
         let mut import_stack = vec![name.clone()];
         for (index, import) in file.descriptor.dependency.iter().enumerate() {

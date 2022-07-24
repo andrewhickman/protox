@@ -88,7 +88,7 @@ impl File {
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("foo.proto", "message Foo { }").unwrap();
     ///
-    /// let file = File::read("foo.proto".as_ref()).unwrap();
+    /// let file = File::open("foo.proto".as_ref()).unwrap();
     /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
     /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
@@ -107,9 +107,9 @@ impl File {
     ///     ..Default::default()
     /// });
     ///
-    /// assert!(File::read("notfound.proto".as_ref()).unwrap_err().is_file_not_found());
+    /// assert!(File::open("notfound.proto".as_ref()).unwrap_err().is_file_not_found());
     /// ```
-    pub fn read(path: &Path) -> Result<Self, Error> {
+    pub fn open(path: &Path) -> Result<Self, Error> {
         let map_io_err = |err: io::Error| -> Error {
             Error::from_kind(ErrorKind::OpenFile {
                 path: path.to_owned(),
