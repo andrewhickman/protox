@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+message Message {
+    oneof oneof {
+        group Group = 1 {
+            optional int32 bar = 1;
+        }
+    }
+}

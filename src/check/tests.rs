@@ -1301,34 +1301,77 @@ fn proto3_required_field() {
 }
 
 #[test]
-#[ignore]
 fn proto2_field_missing_label() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto2';
+
+            message Message {
+                int32 foo = 1;
+            }
+            "#
+        ),
+        vec![Proto2FieldMissingLabel {
+            span: Some(SourceSpan::from(79..93)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn oneof_field_with_label() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                oneof foo {
+                    optional int32 bar = 1;
+                }
+            }
+            "#
+        ),
+        vec![OneofFieldWithLabel {
+            span: Some(SourceSpan::from(111..119)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn oneof_map_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                oneof foo {
+                    map<int32, bytes> bar = 1;
+                }
+            }
+            "#
+        ),
+        vec![InvalidOneofFieldKind {
+            kind: "map",
+            span: Some(SourceSpan::from(111..137)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn oneof_group_field() {
-    // allow
-    todo!()
-}
-
-#[test]
-#[ignore]
-fn oneof_oneof_field() {
-    todo!()
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        message Message {
+            oneof oneof {
+                group Group = 1 {
+                    repeated float bar = 1;
+                }
+            }
+        }
+        "#
+    ))
 }
 
 #[test]
