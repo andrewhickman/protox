@@ -1250,12 +1250,11 @@ fn extend_field_number_not_in_extensions() {
 #[test]
 #[ignore]
 fn extend_duplicate_field_number() {
-    todo!()
-}
-
-#[test]
-#[ignore]
-fn extend_oneof_field() {
+    // check same extend block
+    // different extend block in scope
+    // extend block in different scope (e.g. file vs message)
+    // defined in imported file
+    // defined in file not directly imported
     todo!()
 }
 
@@ -1266,27 +1265,39 @@ fn extend_non_options_type_proto3() {
 }
 
 #[test]
-#[ignore]
-fn extend_synthetic_oneof() {
-    todo!()
-}
-
-#[test]
-#[ignore]
-fn repeated_field_default_value() {
-    todo!()
-}
-
-#[test]
-#[ignore]
 fn proto3_group_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                optional group Foo = 1 {};
+            }
+            "#
+        ),
+        vec![Proto3GroupField {
+            span: Some(SourceSpan::from(79..104)),
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn proto3_required_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = 'proto3';
+
+            message Message {
+                required int32 foo = 1;
+            }
+            "#
+        ),
+        vec![Proto3RequiredField {
+            span: Some(SourceSpan::from(79..87)),
+        }],
+    );
 }
 
 #[test]
