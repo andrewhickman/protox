@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env};
 
-use insta::assert_yaml_snapshot;
+use insta::{assert_yaml_snapshot, assert_json_snapshot};
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -592,7 +592,7 @@ fn enum_field_invalid_default() {
                 ZERO = 0;
                 TWO = 2;
             }
-            
+
             enum Bar {
                 NONE = 0;
                 ONE = 1;
@@ -617,7 +617,7 @@ fn enum_field_invalid_default() {
                 "root.proto",
                 r#"
                 import "dep.proto";
-                
+
                 message Bar {
                     optional foo.Foo foo = 1 [default = ONE];
                 }"#
@@ -627,7 +627,7 @@ fn enum_field_invalid_default() {
         vec![InvalidEnumValue {
             value_name: "ONE".to_owned(),
             enum_name: "foo.Foo".to_owned(),
-            span: Some(SourceSpan::from(140..143)),
+            span: Some(SourceSpan::from(124..127)),
             help: Some("possible value is 'ZERO'".to_owned()),
         }],
     );
@@ -724,7 +724,7 @@ fn enum_field_invalid_default() {
         message Message {
             optional Parent.Foo foo = 1 [default = ZERO];
         }
-       
+
         message Parent {
             enum Foo {
                 ZERO = 0;
@@ -853,22 +853,110 @@ fn negative_ident_outside_default() {
 }
 
 #[test]
-#[ignore]
 fn message_field_json_name() {
-    // custom json name with option
-    todo!()
+    assert_eq!(
+        check_err(r#"message Message {
+            optional int32 field = 1 [json_name = "\xFF"];
+        }"#),
+        vec![StringValueInvalidUtf8 {
+            span: Some(SourceSpan::from(68..74))
+        }],
+    );
+    assert_json_snapshot!(check_ok(r#"message Message {
+        optional int32 field = 1 [json_name = '$FIELD'];
+    }"#));
 }
 
 #[test]
-#[ignore]
 fn map_field_with_label() {
-    todo!()
+    assert_eq!(
+        check_err(r#"message Message {
+            optional map<int32, string> field = 1;
+        }"#),
+        vec![MapFieldWithLabel {
+            span: Some(SourceSpan::from(30..38))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"
+            syntax = 'proto3';
+
+            message Message {
+                required map<int32, string> field = 1;
+            }"#),
+        vec![MapFieldWithLabel {
+            span: Some(SourceSpan::from(79..87))
+        }],
+    );
 }
 
 #[test]
-#[ignore]
 fn map_field_invalid_type() {
-    todo!()
+    assert_eq!(
+        check_err(r#"message Message {
+            map<Message, sfixed32> field = 1;
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..41))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"message Message {
+            map<.Message, fixed32> field = 1;
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..42))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"message Message {
+            map<.Message, bool> field = 1;
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..42))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"message Message {
+            map<float, string> field = 1;
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..39))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"message Message {
+            map<double, int64> field = 1;
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..40))
+        }],
+    );
+    assert_eq!(
+        check_err(r#"message Message {
+            map<Enum, int64> field = 1;
+
+            enum Enum {
+                ZERO = 0;
+            }
+        }"#),
+        vec![InvalidMapFieldKeyType {
+            span: Some(SourceSpan::from(34..38))
+        }],
+    );
+    assert_json_snapshot!(check_ok(r#"message Message {
+        map<int64, float> int64 = 1;
+        map<uint32, double> uint32 = 2;
+        map<uint64, .Message> uint64 = 3;
+        map<sint32, Message> sint32 = 4;
+        map<sint64, bytes> sint64 = 5;
+        map<fixed32, int64> fixed32 = 6;
+        map<fixed64, uint32> fixed64 = 7;
+        map<sfixed32, sint32> sfixed32 = 8;
+        map<sfixed64, sint64> sfixed64 = 9;
+        map<bool, fixed32> bool = 10;
+        map<string, fixed64> string = 11;
+    }"#))
 }
 
 #[test]

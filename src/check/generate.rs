@@ -483,9 +483,7 @@ impl<'a> Context<'a> {
 
                 if !matches!(
                     key_ty,
-                    ast::Ty::Double
-                        | ast::Ty::Float
-                        | ast::Ty::Int32
+                        ast::Ty::Int32
                         | ast::Ty::Int64
                         | ast::Ty::Uint32
                         | ast::Ty::Uint64

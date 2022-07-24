@@ -48,7 +48,7 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Option<SourceSpan>,
     },
-    #[error("a map field key type must be a numeric type or string")]
+    #[error("a map field key type must be an integer type, boolean or string")]
     InvalidMapFieldKeyType {
         #[label("defined here")]
         span: Option<SourceSpan>,
