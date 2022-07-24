@@ -11,7 +11,7 @@ impl InversionList {
             .into_iter()
             .filter(|range| !range.is_empty())
             .collect();
-        ranges.sort_by_key(|range| range.start);
+        ranges.sort_unstable_by_key(|range| range.start);
         ranges.dedup_by(|hi, lo| {
             debug_assert!(lo.start <= hi.start);
             debug_assert!(lo.start < lo.end);

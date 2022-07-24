@@ -1429,29 +1429,224 @@ fn enum_value_extrema() {
 }
 
 #[test]
-#[ignore]
 fn enum_reserved_range_extrema() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Extreme {
+                ZERO = 0;
+
+                reserved -2147483649 to -1, 1 to 2147483648;
+            }
+            "#
+        ),
+        vec![
+            InvalidEnumNumber {
+                span: Some(SourceSpan::from(112..123)),
+            },
+            InvalidEnumNumber {
+                span: Some(SourceSpan::from(136..146)),
+            }
+        ],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        syntax = "proto3";
+
+        enum Extreme {
+            ZERO = 0;
+            reserved -2147483648 to -1, 1 to 2147483647;
+        }
+        "#
+    ));
 }
 
 #[test]
-#[ignore]
 fn enum_reserved_range_invalid() {
-    // empty
-    // end < start
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"enum Enum {
+                reserved 1 to -1;
+            }"#
+        ),
+        vec![InvalidRange {
+            span: Some(SourceSpan::from(37..44)),
+        },],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"enum Enum {
+            reserved 1 to 1;
+        }"#
+    ));
 }
 
 #[test]
-#[ignore]
+fn enum_reserved_range_overlap() {
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+
+                reserved 3, 3;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 3, end: 3 },
+            first_span: Some(SourceSpan::from(109..110)),
+            second: resolve::NumberKind::ReservedRange { start: 3, end: 3 },
+            second_span: Some(SourceSpan::from(112..113)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+
+                reserved 1 to 5, 4;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 1, end: 5 },
+            first_span: Some(SourceSpan::from(109..115)),
+            second: resolve::NumberKind::ReservedRange { start: 4, end: 4 },
+            second_span: Some(SourceSpan::from(117..118)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+
+                reserved 3, 2 to max;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 3, end: 3 },
+            first_span: Some(SourceSpan::from(109..110)),
+            second: resolve::NumberKind::ReservedRange {
+                start: 2,
+                end: 2147483647
+            },
+            second_span: Some(SourceSpan::from(112..120)),
+        })],
+    );
+}
+
+#[test]
 fn enum_reserved_range_overlap_with_value() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+
+                reserved -5 to 5;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: -5, end: 5 },
+            first_span: Some(SourceSpan::from(109..116)),
+            second: resolve::NumberKind::EnumValue {
+                name: "ZERO".to_owned(),
+                number: 0
+            },
+            second_span: Some(SourceSpan::from(80..81)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+                FIVE = 5;
+
+                reserved 2 to max;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange {
+                start: 2,
+                end: 2147483647
+            },
+            first_span: Some(SourceSpan::from(135..143)),
+            second: resolve::NumberKind::EnumValue {
+                name: "FIVE".to_owned(),
+                number: 5,
+            },
+            second_span: Some(SourceSpan::from(106..107)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+                FIVE = 5;
+
+                reserved 5;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 5, end: 5 },
+            first_span: Some(SourceSpan::from(135..136)),
+            second: resolve::NumberKind::EnumValue {
+                name: "FIVE".to_owned(),
+                number: 5,
+            },
+            second_span: Some(SourceSpan::from(106..107)),
+        })],
+    );
 }
 
 #[test]
-#[ignore]
 fn enum_duplicate_number() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            enum Enum {
+                ZERO = 0;
+                ZERO2 = 0;
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::EnumValue {
+                name: "ZERO".to_owned(),
+                number: 0
+            },
+            first_span: Some(SourceSpan::from(80..81)),
+            second: resolve::NumberKind::EnumValue {
+                name: "ZERO2".to_owned(),
+                number: 0
+            },
+            second_span: Some(SourceSpan::from(107..108)),
+        })],
+    );
 }
 
 #[test]

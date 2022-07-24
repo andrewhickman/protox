@@ -343,6 +343,8 @@ impl<'a> Context<'a> {
         self.path.push(tag::enum_::OPTIONS);
         self.resolve_options(&mut enum_.options, "google.protobuf.EnumOptions");
         self.path.pop();
+
+        self.check_enum_value_numbers(enum_);
     }
 
     fn resolve_enum_value_descriptor_proto(&mut self, value: &mut EnumValueDescriptorProto) {
@@ -355,15 +357,8 @@ impl<'a> Context<'a> {
         #[derive(Clone)]
         enum Item {
             Field(usize),
-            Range(i32, usize),
-            Extension(i32, usize),
-        }
-
-        fn contains(start: i32, item: &Item, number: i32) -> bool {
-            match *item {
-                Item::Field(_) => number == start,
-                Item::Range(end, _) | Item::Extension(end, _) => (start..end).contains(&number),
-            }
+            Range(usize),
+            Extension(usize),
         }
 
         fn get_diagnostics(
@@ -383,16 +378,16 @@ impl<'a> Context<'a> {
                         tag::field::NUMBER,
                     ]),
                 ),
-                Item::Range(_, index) => (
+                Item::Range(index) => (
                     NumberKind::ReservedRange {
-                        start: message.reserved_range[index].start().to_owned(),
+                        start: message.reserved_range[index].start(),
                         end: message.reserved_range[index].end() - 1,
                     },
                     ctx.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]),
                 ),
-                Item::Extension(_, index) => (
+                Item::Extension(index) => (
                     NumberKind::ExtensionRange {
-                        start: message.extension_range[index].start().to_owned(),
+                        start: message.extension_range[index].start(),
                         end: message.extension_range[index].end() - 1,
                     },
                     ctx.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]),
@@ -416,7 +411,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        let mut items: BTreeMap<i32, Item> = BTreeMap::new();
+        let mut items = BTreeMap::new();
 
         let valid_start_range = 1..=MAX_MESSAGE_FIELD_NUMBER;
         let valid_end_range = 2..=MAX_MESSAGE_FIELD_NUMBER + 1;
@@ -432,8 +427,7 @@ impl<'a> Context<'a> {
             } else if let Err(err) = number_map_insert_range(
                 &mut items,
                 range.start()..=(range.end() - 1),
-                Item::Range(range.end(), index),
-                contains,
+                Item::Range(index),
             ) {
                 let error = get_error(self, message, err);
                 self.errors.push(CheckError::DuplicateNumber(error));
@@ -452,8 +446,7 @@ impl<'a> Context<'a> {
             } else if let Err(err) = number_map_insert_range(
                 &mut items,
                 range.start()..=(range.end() - 1),
-                Item::Extension(range.end(), index),
-                contains,
+                Item::Extension(index),
             ) {
                 let error = get_error(self, message, err);
                 self.errors.push(CheckError::DuplicateNumber(error));
@@ -461,10 +454,82 @@ impl<'a> Context<'a> {
         }
 
         for (index, field) in message.field.iter().enumerate() {
-            if let Err(err) =
-                number_map_insert(&mut items, field.number(), Item::Field(index), contains)
-            {
+            if let Err(err) = number_map_insert(&mut items, field.number(), Item::Field(index)) {
                 let error = get_error(self, message, err);
+                self.errors.push(CheckError::DuplicateNumber(error));
+            }
+        }
+    }
+
+    fn check_enum_value_numbers(&mut self, enum_: &EnumDescriptorProto) {
+        #[derive(Clone)]
+        enum Item {
+            Value(usize),
+            Range(i32, usize),
+        }
+
+        fn get_diagnostics(
+            ctx: &mut Context,
+            enum_: &EnumDescriptorProto,
+            item: Item,
+        ) -> (NumberKind, Option<SourceSpan>) {
+            match item {
+                Item::Value(index) => (
+                    NumberKind::EnumValue {
+                        name: enum_.value[index].name().to_owned(),
+                        number: enum_.value[index].number(),
+                    },
+                    ctx.resolve_span(&[
+                        tag::enum_::VALUE,
+                        index_to_i32(index),
+                        tag::enum_value::NUMBER,
+                    ]),
+                ),
+                Item::Range(_, index) => (
+                    NumberKind::ReservedRange {
+                        start: enum_.reserved_range[index].start(),
+                        end: enum_.reserved_range[index].end(),
+                    },
+                    ctx.resolve_span(&[tag::enum_::RESERVED_RANGE, index_to_i32(index)]),
+                ),
+            }
+        }
+
+        fn get_error(
+            ctx: &mut Context,
+            enum_: &EnumDescriptorProto,
+            (first, second): (Item, Item),
+        ) -> DuplicateNumberError {
+            let (first, first_span) = get_diagnostics(ctx, enum_, first);
+            let (second, second_span) = get_diagnostics(ctx, enum_, second);
+
+            DuplicateNumberError {
+                first,
+                first_span,
+                second,
+                second_span,
+            }
+        }
+
+        let mut items = BTreeMap::new();
+
+        for (index, range) in enum_.reserved_range.iter().enumerate() {
+            if range.start() > range.end() {
+                let span = self.resolve_span(&[tag::enum_::RESERVED_RANGE, index_to_i32(index)]);
+                self.errors.push(CheckError::InvalidRange { span });
+            } else if let Err(err) = number_map_insert_range(
+                &mut items,
+                range.start()..=range.end(),
+                Item::Range(range.end(), index),
+            ) {
+                let error = get_error(self, enum_, err);
+                self.errors.push(CheckError::DuplicateNumber(error));
+            }
+        }
+
+        for (index, field) in enum_.value.iter().enumerate() {
+            if let Err(err) = number_map_insert(&mut items, field.number(), Item::Value(index)) {
+                let error = get_error(self, enum_, err);
                 self.errors.push(CheckError::DuplicateNumber(error));
             }
         }
@@ -1060,32 +1125,33 @@ impl<'a> Context<'a> {
 }
 
 fn number_map_insert<T: Clone>(
-    map: &mut BTreeMap<i32, T>,
+    map: &mut BTreeMap<i32, (i32, T)>,
     number: i32,
     value: T,
-    contains: impl Fn(i32, &T, i32) -> bool,
 ) -> Result<(), (T, T)> {
-    number_map_insert_range(map, number..=number, value, contains)
+    number_map_insert_range(map, number..=number, value)
 }
 
 fn number_map_insert_range<T: Clone>(
-    map: &mut BTreeMap<i32, T>,
+    map: &mut BTreeMap<i32, (i32, T)>,
     range: RangeInclusive<i32>,
     value: T,
-    contains: impl Fn(i32, &T, i32) -> bool,
 ) -> Result<(), (T, T)> {
     match map.range(..=*range.end()).last() {
-        Some((key, existing))
-            if contains(*key, existing, *range.start())
-                || contains(*key, existing, *range.end()) =>
+        Some((&existing_start, &(existing_end, ref existing_value)))
+            if range_intersects(existing_start..=existing_end, range.clone()) =>
         {
-            Err((existing.clone(), value))
+            Err((existing_value.clone(), value))
         }
         _ => {
-            map.insert(*range.start(), value);
+            map.insert(*range.start(), (*range.end(), value));
             Ok(())
         }
     }
+}
+
+fn range_intersects(l: RangeInclusive<i32>, r: RangeInclusive<i32>) -> bool {
+    l.start() <= r.end() && r.start() <= l.end()
 }
 
 fn fmt_option_name(name: &[uninterpreted_option::NamePart]) -> String {
@@ -1300,7 +1366,7 @@ impl Diagnostic for DuplicateNumberError {
 
         match (&self.first, &self.second) {
             (EnumValue { .. }, EnumValue { .. }) => Some(Box::new(
-                "if this is intentional, consider setting the 'allow_alias' enum option to true",
+                "if this is intentional, set the 'allow_alias' enum option to true",
             )),
             _ => None,
         }
