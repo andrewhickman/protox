@@ -940,12 +940,10 @@ fn fmt_valid_enum_values_help(name_map: &NameMap, enum_name: &str) -> Option<Str
         1 => Some(format!("possible value is '{}'", names[0])),
         _ => {
             let mut result = "possible values are ".to_owned();
-            if names.len() > 2 {
-                for value in &names[..names.len() - 3] {
-                    result.push('\'');
-                    result.push_str(value);
-                    result.push_str("', ");
-                }
+            for value in &names[..names.len() - 2] {
+                result.push('\'');
+                result.push_str(value);
+                result.push_str("', ");
             }
             result.push('\'');
             result.push_str(names[names.len() - 2]);

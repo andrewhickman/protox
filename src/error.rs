@@ -64,7 +64,7 @@ pub(crate) enum ErrorKind {
     },
     #[error("import cycle detected: {cycle}")]
     CircularImport { cycle: String },
-    #[error("path '{path}' is not in any include path")]
+    #[error("file '{path}' is not in any include path")]
     FileNotIncluded { path: PathBuf },
     #[error("path '{path}' is shadowed by '{shadow}' in the include paths")]
     #[help("Either pass '{shadow}' as the input file, or re-order the include paths so that '{path}' comes first")]
