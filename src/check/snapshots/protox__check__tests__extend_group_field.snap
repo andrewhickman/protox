@@ -1,10 +1,13 @@
 ---
 source: src/check/tests.rs
-expression: "check_ok(r#\"\n        message Message {}\n\n        extend Message {\n            repeated group Foo = 1 {\n                required int32 bar = 1;\n            };\n        }\n    \"#)"
+expression: "check_ok(r#\"\n        message Message {\n            extensions 1;\n        }\n\n        extend Message {\n            repeated group Foo = 1 {\n                required int32 bar = 1;\n            };\n        }\n    \"#)"
 ---
 name: root.proto
 messageType:
   - name: Message
+    extensionRange:
+      - start: 1
+        end: 2
   - name: Foo
     field:
       - name: bar
@@ -25,7 +28,7 @@ sourceCodeInfo:
     - span:
         - 1
         - 8
-        - 7
+        - 9
         - 9
     - path:
         - 4
@@ -33,7 +36,8 @@ sourceCodeInfo:
       span:
         - 1
         - 8
-        - 26
+        - 3
+        - 9
     - path:
         - 4
         - 0
@@ -44,18 +48,55 @@ sourceCodeInfo:
         - 23
     - path:
         - 4
+        - 0
+        - 5
+      span:
+        - 2
+        - 12
+        - 25
+    - path:
+        - 4
+        - 0
+        - 5
+        - 0
+      span:
+        - 2
+        - 23
+        - 24
+    - path:
+        - 4
+        - 0
+        - 5
+        - 0
         - 1
       span:
+        - 2
+        - 23
+        - 24
+    - path:
         - 4
-        - 12
+        - 0
+        - 5
+        - 0
+        - 2
+      span:
+        - 2
+        - 23
+        - 24
+    - path:
+        - 4
+        - 1
+      span:
         - 6
+        - 12
+        - 8
         - 13
     - path:
         - 4
         - 1
         - 1
       span:
-        - 4
+        - 6
         - 27
         - 30
     - path:
@@ -64,7 +105,7 @@ sourceCodeInfo:
         - 2
         - 0
       span:
-        - 5
+        - 7
         - 16
         - 39
     - path:
@@ -74,7 +115,7 @@ sourceCodeInfo:
         - 0
         - 1
       span:
-        - 5
+        - 7
         - 31
         - 34
     - path:
@@ -84,7 +125,7 @@ sourceCodeInfo:
         - 0
         - 3
       span:
-        - 5
+        - 7
         - 37
         - 38
     - path:
@@ -94,7 +135,7 @@ sourceCodeInfo:
         - 0
         - 4
       span:
-        - 5
+        - 7
         - 16
         - 24
     - path:
@@ -104,30 +145,30 @@ sourceCodeInfo:
         - 0
         - 5
       span:
-        - 5
+        - 7
         - 25
         - 30
     - path:
         - 7
       span:
-        - 3
+        - 5
         - 8
-        - 7
+        - 9
         - 9
     - path:
         - 7
         - 0
       span:
-        - 4
-        - 12
         - 6
+        - 12
+        - 8
         - 13
     - path:
         - 7
         - 0
         - 1
       span:
-        - 4
+        - 6
         - 27
         - 30
     - path:
@@ -135,7 +176,7 @@ sourceCodeInfo:
         - 0
         - 2
       span:
-        - 3
+        - 5
         - 15
         - 22
     - path:
@@ -143,7 +184,7 @@ sourceCodeInfo:
         - 0
         - 3
       span:
-        - 4
+        - 6
         - 33
         - 34
     - path:
@@ -151,7 +192,7 @@ sourceCodeInfo:
         - 0
         - 4
       span:
-        - 4
+        - 6
         - 12
         - 20
     - path:
@@ -159,7 +200,7 @@ sourceCodeInfo:
         - 0
         - 5
       span:
-        - 4
+        - 6
         - 21
         - 26
     - path:
@@ -167,7 +208,7 @@ sourceCodeInfo:
         - 0
         - 6
       span:
-        - 4
+        - 6
         - 27
         - 30
 

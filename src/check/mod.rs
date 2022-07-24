@@ -62,6 +62,15 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Option<SourceSpan>,
     },
+    #[error("message type '{message_name}' does not declare '{number}' as an extension number")]
+    InvalidExtensionNumber {
+        number: i32,
+        message_name: String,
+        #[help]
+        help: Option<String>,
+        #[label("used here")]
+        span: Option<SourceSpan>,
+    },
     #[error("method {kind} type '{name}' is not a message")]
     InvalidMethodTypeName {
         name: String,

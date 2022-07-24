@@ -14,6 +14,7 @@ use crate::{
     compile::{ParsedFile, ParsedFileMap},
     file::GoogleFileResolver,
     index_to_i32,
+    inversion_list::InversionList,
     lines::LineResolver,
     make_absolute_name, make_name, parse_namespace, resolve_span, tag,
     types::{
@@ -53,10 +54,12 @@ struct Entry {
     file: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub(crate) enum DefinitionKind {
     Package,
-    Message,
+    Message {
+        extension_numbers: InversionList,
+    },
     Enum,
     EnumValue {
         parent: String,
@@ -171,7 +174,7 @@ impl NameMap {
                 self.add(
                     name.clone(),
                     entry.kind.clone(),
-                    entry.span.clone(), // todo None?
+                    entry.span.clone(),
                     Some(&file),
                     public,
                 )?;
@@ -266,9 +269,16 @@ impl<'a> NamePass<'a> {
     }
 
     fn add_descriptor_proto(&mut self, message: &DescriptorProto) {
+        let extension_numbers = InversionList::new(
+            message
+                .extension_range
+                .iter()
+                .map(|range| range.start()..range.end()),
+        );
+
         self.add_name(
             message.name(),
-            DefinitionKind::Message,
+            DefinitionKind::Message { extension_numbers },
             &[tag::message::NAME],
         );
         self.enter_scope(message.name());

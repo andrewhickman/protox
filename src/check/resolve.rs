@@ -2,7 +2,8 @@ use std::{
     borrow::Cow,
     collections::{hash_map, BTreeMap, HashMap},
     convert::{TryFrom, TryInto},
-    fmt, mem,
+    fmt::{self, Write},
+    mem,
     ops::RangeInclusive,
 };
 
@@ -14,6 +15,7 @@ use crate::{
     case::to_lower_without_underscores,
     check::MAX_MESSAGE_FIELD_NUMBER,
     index_to_i32,
+    inversion_list::InversionList,
     lines::LineResolver,
     make_name,
     options::{self, OptionSet},
@@ -89,10 +91,23 @@ pub(crate) struct DuplicateNumberError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum NumberKind {
-    EnumValue { name: String, number: i32 },
-    Field { name: String, number: i32 },
-    ReservedRange { start: i32, end: i32 },
-    ExtensionRange { start: i32, end: i32 },
+    #[allow(dead_code)]
+    EnumValue {
+        name: String,
+        number: i32,
+    },
+    Field {
+        name: String,
+        number: i32,
+    },
+    ReservedRange {
+        start: i32,
+        end: i32,
+    },
+    ExtensionRange {
+        start: i32,
+        end: i32,
+    },
 }
 
 struct Context<'a> {
@@ -190,18 +205,32 @@ impl<'a> Context<'a> {
 
     fn resolve_field_descriptor_proto(&mut self, field: &mut FieldDescriptorProto) {
         if let Some(def) = self.resolve_type_name(&mut field.extendee, &[tag::field::EXTENDEE]) {
-            if !matches!(def, DefinitionKind::Message) {
-                let span = self.resolve_span(&[tag::field::EXTENDEE]);
-                self.errors.push(CheckError::InvalidExtendeeTypeName {
-                    name: field.extendee().to_owned(),
-                    span,
-                });
+            match def {
+                DefinitionKind::Message { extension_numbers } => {
+                    if !extension_numbers.contains(field.number()) {
+                        let help = fmt_valid_extension_numbers_help(extension_numbers);
+                        let span = self.resolve_span(&[tag::field::NUMBER]);
+                        self.errors.push(CheckError::InvalidExtensionNumber {
+                            number: field.number(),
+                            message_name: strip_leading_dot(field.extendee()).to_owned(),
+                            help,
+                            span,
+                        });
+                    }
+                }
+                _ => {
+                    let span = self.resolve_span(&[tag::field::EXTENDEE]);
+                    self.errors.push(CheckError::InvalidExtendeeTypeName {
+                        name: field.extendee().to_owned(),
+                        span,
+                    });
+                }
             }
         }
 
         if let Some(def) = self.resolve_type_name(&mut field.type_name, &[tag::field::TYPE_NAME]) {
             match def {
-                DefinitionKind::Message => {
+                DefinitionKind::Message { .. } => {
                     if field.r#type != Some(field_descriptor_proto::Type::Group as _) {
                         field.r#type = Some(field_descriptor_proto::Type::Message as _);
                     }
@@ -460,7 +489,7 @@ impl<'a> Context<'a> {
 
     fn resolve_method_descriptor_proto(&mut self, method: &mut MethodDescriptorProto) {
         let input_ty = self.resolve_type_name(&mut method.input_type, &[tag::method::INPUT_TYPE]);
-        if !matches!(input_ty, None | Some(DefinitionKind::Message)) {
+        if !matches!(input_ty, None | Some(DefinitionKind::Message { .. })) {
             let span = self.resolve_span(&[tag::method::INPUT_TYPE]);
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.input_type().to_owned(),
@@ -471,7 +500,7 @@ impl<'a> Context<'a> {
 
         let output_ty =
             self.resolve_type_name(&mut method.output_type, &[tag::method::OUTPUT_TYPE]);
-        if !matches!(output_ty, None | Some(DefinitionKind::Message)) {
+        if !matches!(output_ty, None | Some(DefinitionKind::Message { .. })) {
             let span = self.resolve_span(&[tag::method::OUTPUT_TYPE]);
             self.errors.push(CheckError::InvalidMethodTypeName {
                 name: method.output_type().to_owned(),
@@ -653,7 +682,7 @@ impl<'a> Context<'a> {
             None | Some(Type::Message | Type::Group | Type::Enum) => {
                 let type_name = type_name.unwrap_or_default();
                 match self.resolve_option_def(type_name_context, type_name) {
-                    Some((full_type_name, DefinitionKind::Message)) => {
+                    Some((full_type_name, DefinitionKind::Message { .. })) => {
                         let value = self.check_option_value_message(
                             option,
                             option_span,
@@ -1103,22 +1132,39 @@ fn fmt_valid_enum_values_help(name_map: &NameMap, enum_name: &str) -> Option<Str
     }
 
     names.sort_unstable();
-    match names.len() {
-        0 => None,
-        1 => Some(format!("possible value is '{}'", names[0])),
+    if names.is_empty() {
+        None
+    } else {
+        let mut result = "possible values are ".to_string();
+        fmt_list(&mut result, &names, |s, name| write!(s, "'{}'", name));
+        Some(result)
+    }
+}
+
+fn fmt_valid_extension_numbers_help(ranges: &InversionList) -> Option<String> {
+    if ranges.is_empty() {
+        return None;
+    }
+
+    let mut result = "available extension numbers are ".to_owned();
+    fmt_list(&mut result, ranges.as_slice(), |s, range| {
+        write!(s, "{} to {}", range.start, range.end - 1)
+    });
+    Some(result)
+}
+
+fn fmt_list<T>(result: &mut String, items: &[T], f: impl Fn(&mut String, &T) -> fmt::Result) {
+    match items.len() {
+        0 => (),
+        1 => f(result, &items[0]).unwrap(),
         _ => {
-            let mut result = "possible values are ".to_owned();
-            for value in &names[..names.len() - 2] {
-                result.push('\'');
-                result.push_str(value);
+            for value in &items[..items.len() - 2] {
+                f(result, value).unwrap();
                 result.push_str("', ");
             }
-            result.push('\'');
-            result.push_str(names[names.len() - 2]);
-            result.push_str("' and '");
-            result.push_str(names[names.len() - 1]);
-            result.push('\'');
-            Some(result)
+            f(result, &items[items.len() - 2]).unwrap();
+            result.push_str(" and ");
+            f(result, &items[items.len() - 1]).unwrap();
         }
     }
 }

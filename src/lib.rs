@@ -10,6 +10,7 @@ mod case;
 mod check;
 mod compile;
 mod error;
+mod inversion_list;
 mod lines;
 mod options;
 mod parse;

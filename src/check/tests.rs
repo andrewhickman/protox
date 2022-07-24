@@ -578,7 +578,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "Foo".to_owned(),
             span: Some(SourceSpan::from(79..82)),
-            help: Some("possible value is 'ZERO'".to_owned())
+            help: Some("possible values are 'ZERO'".to_owned())
         }],
     );
     assert_eq!(
@@ -628,7 +628,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "foo.Foo".to_owned(),
             span: Some(SourceSpan::from(124..127)),
-            help: Some("possible value is 'ZERO'".to_owned()),
+            help: Some("possible values are 'ZERO'".to_owned()),
         }],
     );
     assert_eq!(
@@ -648,7 +648,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "foo.Foo".to_owned(),
             span: Some(SourceSpan::from(105..108)),
-            help: Some("possible value is 'ZERO'".to_owned()),
+            help: Some("possible values are 'ZERO'".to_owned()),
         }],
     );
     assert_yaml_snapshot!(check_ok(
@@ -680,7 +680,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "foo.Message.Foo".to_owned(),
             span: Some(SourceSpan::from(105..108)),
-            help: Some("possible value is 'ZERO'".to_owned()),
+            help: Some("possible values are 'ZERO'".to_owned()),
         }],
     );
     assert_yaml_snapshot!(check_ok(
@@ -714,7 +714,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "foo.Parent.Foo".to_owned(),
             span: Some(SourceSpan::from(112..115)),
-            help: Some("possible value is 'ZERO'".to_owned()),
+            help: Some("possible values are 'ZERO'".to_owned()),
         }],
     );
     assert_yaml_snapshot!(check_ok(
@@ -1162,7 +1162,9 @@ fn extend_required_field() {
     assert_eq!(
         check_err(
             r#"
-            message Message {}
+            message Message {
+                extensions 1;
+            }
 
             extend Message {
                 required int32 foo = 1;
@@ -1170,7 +1172,7 @@ fn extend_required_field() {
             "#
         ),
         vec![RequiredExtendField {
-            span: Some(SourceSpan::from(78..86)),
+            span: Some(SourceSpan::from(121..129)),
         }],
     );
 }
@@ -1180,7 +1182,9 @@ fn extend_map_field() {
     assert_eq!(
         check_err(
             r#"
-            message Message {}
+            message Message {
+                extensions 1;
+            }
 
             extend Message {
                 map<int32, string> foo = 1;
@@ -1189,7 +1193,7 @@ fn extend_map_field() {
         ),
         vec![InvalidExtendFieldKind {
             kind: "map",
-            span: Some(SourceSpan::from(78..105)),
+            span: Some(SourceSpan::from(121..148)),
         }],
     );
 }
@@ -1198,7 +1202,9 @@ fn extend_map_field() {
 fn extend_group_field() {
     assert_yaml_snapshot!(check_ok(
         r#"
-        message Message {}
+        message Message {
+            extensions 1;
+        }
 
         extend Message {
             repeated group Foo = 1 {
@@ -1210,9 +1216,35 @@ fn extend_group_field() {
 }
 
 #[test]
-#[ignore]
 fn extend_field_number_not_in_extensions() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                extensions 2 to 5;
+            }
+
+            extend Message {
+                optional int32 a = 1;
+                repeated int32 b = 6;
+            }
+            "#
+        ),
+        vec![
+            InvalidExtensionNumber {
+                number: 1,
+                message_name: "Message".to_owned(),
+                help: Some("available extension numbers are 2 to 5".to_owned()),
+                span: Some(SourceSpan::from(145..146)),
+            },
+            InvalidExtensionNumber {
+                number: 6,
+                message_name: "Message".to_owned(),
+                help: Some("available extension numbers are 2 to 5".to_owned()),
+                span: Some(SourceSpan::from(183..184)),
+            }
+        ],
+    );
 }
 
 #[test]
