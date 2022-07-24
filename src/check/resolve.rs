@@ -511,33 +511,26 @@ impl<'a> Context<'a> {
             Some(Type::Bytes) => {
                 options::Value::Bytes(self.check_option_value_bytes(option, option_span)?)
             }
-            Some(Type::Enum) => {
-                let value = self.check_option_value_enum(
-                    option,
-                    option_span,
-                    type_name_context,
-                    type_name.unwrap_or_default(),
-                )?;
-                options::Value::Int32(value)
-            }
-            None | Some(Type::Message | Type::Group) => {
+            None | Some(Type::Message | Type::Group | Type::Enum) => {
                 let type_name = type_name.unwrap_or_default();
                 match self.resolve_option_def(type_name_context, type_name) {
-                    Some(DefinitionKind::Message) => {
-                        let value =
-                            self.check_option_value_message(option, option_span, type_name)?;
+                    Some((full_type_name, DefinitionKind::Message)) => {
+                        let value = self.check_option_value_message(
+                            option,
+                            option_span,
+                            strip_leading_dot(&full_type_name),
+                        )?;
                         if ty == Some(Type::Group) {
                             options::Value::Group(value)
                         } else {
                             options::Value::Message(value)
                         }
                     }
-                    Some(DefinitionKind::Enum) => {
+                    Some((full_type_name, DefinitionKind::Enum)) => {
                         let value = self.check_option_value_enum(
                             option,
                             option_span,
-                            type_name_context,
-                            type_name,
+                            strip_leading_dot(&full_type_name),
                         )?;
                         options::Value::Int32(value)
                     }
@@ -742,28 +735,31 @@ impl<'a> Context<'a> {
         &mut self,
         value: UninterpretedOption,
         span: Option<SourceSpan>,
-        context: &str,
         enum_name: &str,
     ) -> Result<i32, ()> {
         let enum_namespace = parse_namespace(enum_name);
 
         match value.identifier_value {
-            Some(ident) => {
-                match self.resolve_option_def(context, &make_name(enum_namespace, &ident)) {
-                    Some(DefinitionKind::EnumValue { parent, number }) if parent == enum_name => {
-                        Ok(*number)
-                    }
-                    _ => {
-                        self.errors.push(CheckError::InvalidEnumValue {
-                            value_name: ident,
-                            enum_name: enum_name.to_owned(),
-                            help: fmt_valid_enum_values_help(self.name_map, enum_name),
-                            span,
-                        });
-                        Err(())
-                    }
+            Some(ident) => match self.get_option_def(&make_name(enum_namespace, &ident)) {
+                Some(DefinitionKind::EnumValue { parent, number }) if parent == enum_name => {
+                    Ok(*number)
                 }
-            }
+                _ => {
+                    let source_name_map = if self.name_map.get(enum_name).is_some() {
+                        self.name_map
+                    } else {
+                        NameMap::google_descriptor()
+                    };
+
+                    self.errors.push(CheckError::InvalidEnumValue {
+                        value_name: ident,
+                        enum_name: enum_name.to_owned(),
+                        help: fmt_valid_enum_values_help(source_name_map, enum_name),
+                        span,
+                    });
+                    Err(())
+                }
+            },
             _ => {
                 self.errors.push(CheckError::ValueInvalidType {
                     expected: "an enum value identifier".to_owned(),
@@ -787,14 +783,18 @@ impl<'a> Context<'a> {
         None
     }
 
-    fn resolve_option_def(&self, context: &str, name: &str) -> Option<&DefinitionKind> {
-        if let Some((_, def)) = self.name_map.resolve(context, name) {
-            return Some(def);
+    fn resolve_option_def<'b>(
+        &self,
+        context: &str,
+        name: &'b str,
+    ) -> Option<(Cow<'b, str>, &DefinitionKind)> {
+        if let Some((name, def)) = self.name_map.resolve(context, name) {
+            return Some((name, def));
         }
 
         if !self.is_google_descriptor {
-            if let Some((_, def)) = NameMap::google_descriptor().resolve(context, name) {
-                return Some(def);
+            if let Some((name, def)) = NameMap::google_descriptor().resolve(context, name) {
+                return Some((name, def));
             }
         }
 

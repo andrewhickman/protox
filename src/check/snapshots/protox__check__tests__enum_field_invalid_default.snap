@@ -1,6 +1,5 @@
 ---
 source: src/check/tests.rs
-assertion_line: 654
 expression: "check_ok(\"\n        package foo;\n\n        message Message {\n            optional Foo foo = 1 [default = ZERO];\n        }\n\n        enum Foo {\n            ZERO = 0;\n        }\")"
 ---
 name: root.proto

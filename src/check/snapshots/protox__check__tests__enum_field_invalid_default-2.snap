@@ -1,7 +1,6 @@
 ---
 source: src/check/tests.rs
-assertion_line: 720
-expression: "check_ok(\"\n        package foo;\n\n        message Message {\n            optional Parent.Foo foo = 1 [default = ZERO];\n        }\n       \n        message Parent {\n            enum Foo {\n                ZERO = 0;\n            }\n        }\")"
+expression: "check_ok(\"\n        package foo;\n\n        message Message {\n            optional Foo foo = 1 [default = ZERO];\n\n            enum Foo {\n                ZERO = 0;\n            }\n        }\")"
 ---
 name: root.proto
 package: foo
@@ -12,10 +11,9 @@ messageType:
         number: 1
         label: LABEL_OPTIONAL
         type: TYPE_ENUM
-        typeName: ".foo.Parent.Foo"
+        typeName: ".foo.Message.Foo"
         defaultValue: ZERO
         jsonName: foo
-  - name: Parent
     enumType:
       - name: Foo
         value:
@@ -26,7 +24,7 @@ sourceCodeInfo:
     - span:
         - 1
         - 8
-        - 11
+        - 9
         - 9
     - path:
         - 2
@@ -40,7 +38,7 @@ sourceCodeInfo:
       span:
         - 3
         - 8
-        - 5
+        - 9
         - 9
     - path:
         - 4
@@ -58,7 +56,7 @@ sourceCodeInfo:
       span:
         - 4
         - 12
-        - 57
+        - 50
     - path:
         - 4
         - 0
@@ -67,8 +65,8 @@ sourceCodeInfo:
         - 1
       span:
         - 4
-        - 32
-        - 35
+        - 25
+        - 28
     - path:
         - 4
         - 0
@@ -77,8 +75,8 @@ sourceCodeInfo:
         - 3
       span:
         - 4
-        - 38
-        - 39
+        - 31
+        - 32
     - path:
         - 4
         - 0
@@ -98,7 +96,7 @@ sourceCodeInfo:
       span:
         - 4
         - 21
-        - 31
+        - 24
     - path:
         - 4
         - 0
@@ -107,8 +105,8 @@ sourceCodeInfo:
         - 7
       span:
         - 4
-        - 51
-        - 55
+        - 44
+        - 48
     - path:
         - 4
         - 0
@@ -117,77 +115,61 @@ sourceCodeInfo:
         - 8
       span:
         - 4
-        - 40
-        - 56
+        - 33
+        - 49
     - path:
         - 4
-        - 1
-      span:
-        - 7
-        - 8
-        - 11
-        - 9
-    - path:
-        - 4
-        - 1
-        - 1
-      span:
-        - 7
-        - 16
-        - 22
-    - path:
-        - 4
-        - 1
+        - 0
         - 4
         - 0
       span:
-        - 8
+        - 6
         - 12
-        - 10
+        - 8
         - 13
     - path:
         - 4
-        - 1
+        - 0
         - 4
         - 0
         - 1
       span:
-        - 8
+        - 6
         - 17
         - 20
     - path:
         - 4
-        - 1
+        - 0
         - 4
         - 0
         - 2
         - 0
       span:
-        - 9
+        - 7
         - 16
         - 25
     - path:
         - 4
-        - 1
+        - 0
         - 4
         - 0
         - 2
         - 0
         - 1
       span:
-        - 9
+        - 7
         - 16
         - 20
     - path:
         - 4
-        - 1
+        - 0
         - 4
         - 0
         - 2
         - 0
         - 2
       span:
-        - 9
+        - 7
         - 23
         - 24
 
