@@ -927,18 +927,32 @@ fn fmt_option_value(value: &UninterpretedOption) -> String {
 }
 
 fn fmt_valid_enum_values_help(name_map: &NameMap, enum_name: &str) -> Option<String> {
-    use std::fmt::Write;
-
-    let mut result = None;
-
+    let mut names = Vec::new();
     for (name, def) in name_map.iter() {
         if matches!(def, DefinitionKind::EnumValue { parent, .. } if parent == enum_name) {
-            match &mut result {
-                None => result = Some(format!("possible values are: {}", parse_name(name))),
-                Some(result) => write!(result, ", {}", parse_name(name)).unwrap(),
-            }
+            names.push(parse_name(name));
         }
     }
 
-    result
+    names.sort_unstable();
+    match names.len() {
+        0 => None,
+        1 => Some(format!("possible value is '{}'", names[0])),
+        _ => {
+            let mut result = "possible values are ".to_owned();
+            if names.len() > 2 {
+                for value in &names[..names.len() - 3] {
+                    result.push('\'');
+                    result.push_str(value);
+                    result.push_str("', ");
+                }
+            }
+            result.push('\'');
+            result.push_str(names[names.len() - 2]);
+            result.push_str("' and '");
+            result.push_str(names[names.len() - 1]);
+            result.push('\'');
+            Some(result)
+        }
+    }
 }

@@ -578,7 +578,7 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "Foo".to_owned(),
             span: Some(SourceSpan::from(79..82)),
-            help: Some("possible values are: ZERO".to_owned())
+            help: Some("possible value is 'ZERO'".to_owned())
         }],
     );
     assert_eq!(
@@ -602,9 +602,135 @@ fn enum_field_invalid_default() {
             value_name: "ONE".to_owned(),
             enum_name: "Foo".to_owned(),
             span: Some(SourceSpan::from(79..82)),
-            help: Some("possible values are: ZERO, TWO".to_owned()),
+            help: Some("possible values are 'TWO' and 'ZERO'".to_owned()),
         }],
     );
+    assert_eq!(
+        check_with_imports(vec![
+            (
+                "dep.proto",
+                "
+                package foo;
+                enum Foo { ZERO = 1; }"
+            ),
+            (
+                "root.proto",
+                r#"
+                import "dep.proto";
+                
+                message Bar {
+                    optional foo.Foo foo = 1 [default = ONE];
+                }"#
+            )
+        ])
+        .unwrap_err(),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "foo.Foo".to_owned(),
+            span: Some(SourceSpan::from(140..143)),
+            help: Some("possible value is 'ZERO'".to_owned()),
+        }],
+    );
+    assert_eq!(
+        check_err(
+            "
+            package foo;
+
+            message Message {
+                optional Foo foo = 1 [default = ONE];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"
+        ),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "foo.Foo".to_owned(),
+            span: Some(SourceSpan::from(105..108)),
+            help: Some("possible value is 'ZERO'".to_owned()),
+        }],
+    );
+    assert_yaml_snapshot!(check_ok(
+        "
+        package foo;
+
+        message Message {
+            optional Foo foo = 1 [default = ZERO];
+        }
+
+        enum Foo {
+            ZERO = 0;
+        }"
+    ));
+    assert_eq!(
+        check_err(
+            "
+            package foo;
+
+            message Message {
+                optional Foo foo = 1 [default = ONE];
+
+                enum Foo {
+                    ZERO = 0;
+                }
+            }"
+        ),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "foo.Message.Foo".to_owned(),
+            span: Some(SourceSpan::from(105..108)),
+            help: Some("possible value is 'ZERO'".to_owned()),
+        }],
+    );
+    assert_yaml_snapshot!(check_ok(
+        "
+        package foo;
+
+        message Message {
+            optional Foo foo = 1 [default = ZERO];
+
+            enum Foo {
+                ZERO = 0;
+            }
+        }"
+    ));
+    assert_eq!(
+        check_err(
+            "
+            package foo;
+
+            message Message {
+                optional Parent.Foo foo = 1 [default = ONE];
+            }
+
+            message Parent {
+                enum Foo {
+                    ZERO = 0;
+                }
+            }"
+        ),
+        vec![InvalidEnumValue {
+            value_name: "ONE".to_owned(),
+            enum_name: "foo.Parent.Foo".to_owned(),
+            span: Some(SourceSpan::from(112..115)),
+            help: Some("possible value is 'ZERO'".to_owned()),
+        }],
+    );
+    assert_yaml_snapshot!(check_ok(
+        "
+        package foo;
+
+        message Message {
+            optional Parent.Foo foo = 1 [default = ZERO];
+        }
+       
+        message Parent {
+            enum Foo {
+                ZERO = 0;
+            }
+        }"
+    ));
 }
 
 #[test]
