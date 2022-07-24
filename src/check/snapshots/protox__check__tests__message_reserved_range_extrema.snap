@@ -1,0 +1,71 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(r#\"message Message {\n            reserved 1 to 536870911;\n        }\"#)"
+---
+name: root.proto
+messageType:
+  - name: Message
+    reservedRange:
+      - start: 1
+        end: 536870912
+sourceCodeInfo:
+  location:
+    - span:
+        - 0
+        - 0
+        - 2
+        - 9
+    - path:
+        - 4
+        - 0
+      span:
+        - 0
+        - 0
+        - 2
+        - 9
+    - path:
+        - 4
+        - 0
+        - 1
+      span:
+        - 0
+        - 8
+        - 15
+    - path:
+        - 4
+        - 0
+        - 9
+      span:
+        - 1
+        - 12
+        - 36
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+      span:
+        - 1
+        - 21
+        - 35
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+        - 1
+      span:
+        - 1
+        - 21
+        - 22
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+        - 2
+      span:
+        - 1
+        - 26
+        - 35
+

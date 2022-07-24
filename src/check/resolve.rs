@@ -81,14 +81,15 @@ pub(crate) fn resolve(
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DuplicateNumberError {
-    first: NumberKind,
-    first_span: Option<SourceSpan>,
-    second: NumberKind,
-    second_span: Option<SourceSpan>,
+    pub first: NumberKind,
+    pub first_span: Option<SourceSpan>,
+    pub second: NumberKind,
+    pub second_span: Option<SourceSpan>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum NumberKind {
+pub(crate) enum NumberKind {
+    #[allow(unused)]
     EnumValue { name: String, number: i32 },
     Field { name: String, number: i32 },
     ReservedRange { start: i32, end: i32 },
@@ -348,7 +349,11 @@ impl<'a> Context<'a> {
                         name: message.field[index].name().to_owned(),
                         number: message.field[index].number(),
                     },
-                    ctx.resolve_span(&[tag::message::FIELD, index_to_i32(index), tag::field::NUMBER]),
+                    ctx.resolve_span(&[
+                        tag::message::FIELD,
+                        index_to_i32(index),
+                        tag::field::NUMBER,
+                    ]),
                 ),
                 Item::Range(_, index) => (
                     NumberKind::ReservedRange {
@@ -393,6 +398,9 @@ impl<'a> Context<'a> {
             {
                 let span = self.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]);
                 self.errors.push(CheckError::InvalidMessageNumber { span });
+            } else if range.start() >= range.end() {
+                let span = self.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]);
+                self.errors.push(CheckError::InvalidRange { span });
             } else if let Err(err) = number_map_insert_range(
                 &mut items,
                 range.start()..=(range.end() - 1),
@@ -410,6 +418,9 @@ impl<'a> Context<'a> {
             {
                 let span = self.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]);
                 self.errors.push(CheckError::InvalidMessageNumber { span });
+            } else if range.start() >= range.end() {
+                let span = self.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]);
+                self.errors.push(CheckError::InvalidRange { span });
             } else if let Err(err) = number_map_insert_range(
                 &mut items,
                 range.start()..=(range.end() - 1),

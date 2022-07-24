@@ -79,6 +79,11 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
+    #[error("range end number must be greater than start number")]
+    InvalidRange {
+        #[label("defined here")]
+        span: Option<SourceSpan>,
+    },
     #[error("enum numbers must be between {} and {}", i32::MIN, i32::MAX)]
     InvalidEnumNumber {
         #[label("defined here")]

@@ -982,35 +982,179 @@ fn map_field_invalid_type() {
 }
 
 #[test]
-#[ignore]
 fn message_field_duplicate_number() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                optional int32 foo = 1;
+                optional int32 bar = 1;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::Field {
+                name: "foo".to_owned(),
+                number: 1
+            },
+            first_span: Some(SourceSpan::from(55..56)),
+            second: resolve::NumberKind::Field {
+                name: "bar".to_owned(),
+                number: 1
+            },
+            second_span: Some(SourceSpan::from(95..96)),
+        })],
+    );
 }
 
 #[test]
-#[ignore]
 fn message_reserved_range_extrema() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 0 to 1;
+            }"#
+        ),
+        vec![InvalidMessageNumber {
+            span: Some(SourceSpan::from(43..44))
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 1 to 536870912;
+            }"#
+        ),
+        vec![InvalidMessageNumber {
+            span: Some(SourceSpan::from(48..57))
+        }],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"message Message {
+            reserved 1 to 536870911;
+        }"#
+    ));
 }
 
 #[test]
-#[ignore]
 fn message_reserved_range_invalid() {
-    // empty
-    // end < start
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 5 to 1;
+            }"#
+        ),
+        vec![InvalidRange {
+            span: Some(SourceSpan::from(43..49))
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 2 to 1;
+            }"#
+        ),
+        vec![InvalidRange {
+            span: Some(SourceSpan::from(43..49))
+        }],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"message Message {
+            reserved 1 to 1;
+        }"#
+    ));
 }
 
 #[test]
-#[ignore]
 fn message_reserved_range_overlap() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 1;
+                reserved 1;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 1, end: 1 },
+            first_span: Some(SourceSpan::from(43..44)),
+            second: resolve::NumberKind::ReservedRange { start: 1, end: 1 },
+            second_span: Some(SourceSpan::from(71..72)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 1 to 3;
+                reserved 2 to 4;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 1, end: 3 },
+            first_span: Some(SourceSpan::from(43..49)),
+            second: resolve::NumberKind::ReservedRange { start: 2, end: 4 },
+            second_span: Some(SourceSpan::from(76..82)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                reserved 1 to 3;
+                extensions 3 to max;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 1, end: 3 },
+            first_span: Some(SourceSpan::from(43..49)),
+            second: resolve::NumberKind::ExtensionRange {
+                start: 3,
+                end: 536870911,
+            },
+            second_span: Some(SourceSpan::from(78..86)),
+        })],
+    );
+    assert_yaml_snapshot!(check_ok(
+        r#"message Message {
+            reserved 1;
+            extensions 2 to 3;
+            reserved 4 to max;
+        }"#
+    ));
 }
 
 #[test]
-#[ignore]
 fn message_reserved_range_overlap_with_field() {
-    todo!()
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                optional int32 field = 2;
+                reserved 2;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ReservedRange { start: 2, end: 2 },
+            first_span: Some(SourceSpan::from(85..86)),
+            second: resolve::NumberKind::Field {
+                name: "field".to_owned(),
+                number: 2,
+            },
+            second_span: Some(SourceSpan::from(57..58)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                optional int32 field = 2;
+                extensions 1 to 5;
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::ExtensionRange { start: 1, end: 5 },
+            first_span: Some(SourceSpan::from(87..93)),
+            second: resolve::NumberKind::Field {
+                name: "field".to_owned(),
+                number: 2,
+            },
+            second_span: Some(SourceSpan::from(57..58)),
+        })],
+    );
 }
 
 #[test]

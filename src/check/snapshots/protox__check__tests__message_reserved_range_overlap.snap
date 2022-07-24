@@ -1,0 +1,150 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(r#\"message Message {\n            reserved 1;\n            extensions 2 to 3;\n            reserved 4 to max;\n        }\"#)"
+---
+name: root.proto
+messageType:
+  - name: Message
+    extensionRange:
+      - start: 2
+        end: 4
+    reservedRange:
+      - start: 1
+        end: 2
+      - start: 4
+        end: 536870912
+sourceCodeInfo:
+  location:
+    - span:
+        - 0
+        - 0
+        - 4
+        - 9
+    - path:
+        - 4
+        - 0
+      span:
+        - 0
+        - 0
+        - 4
+        - 9
+    - path:
+        - 4
+        - 0
+        - 1
+      span:
+        - 0
+        - 8
+        - 15
+    - path:
+        - 4
+        - 0
+        - 5
+      span:
+        - 2
+        - 12
+        - 30
+    - path:
+        - 4
+        - 0
+        - 5
+        - 0
+      span:
+        - 2
+        - 23
+        - 29
+    - path:
+        - 4
+        - 0
+        - 5
+        - 0
+        - 1
+      span:
+        - 2
+        - 23
+        - 24
+    - path:
+        - 4
+        - 0
+        - 5
+        - 0
+        - 2
+      span:
+        - 2
+        - 28
+        - 29
+    - path:
+        - 4
+        - 0
+        - 9
+      span:
+        - 1
+        - 12
+        - 23
+    - path:
+        - 4
+        - 0
+        - 9
+      span:
+        - 3
+        - 12
+        - 30
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+      span:
+        - 1
+        - 21
+        - 22
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+        - 1
+      span:
+        - 1
+        - 21
+        - 22
+    - path:
+        - 4
+        - 0
+        - 9
+        - 0
+        - 2
+      span:
+        - 1
+        - 21
+        - 22
+    - path:
+        - 4
+        - 0
+        - 9
+        - 1
+      span:
+        - 3
+        - 21
+        - 29
+    - path:
+        - 4
+        - 0
+        - 9
+        - 1
+        - 1
+      span:
+        - 3
+        - 21
+        - 22
+    - path:
+        - 4
+        - 0
+        - 9
+        - 1
+        - 2
+      span:
+        - 3
+        - 26
+        - 29
+
