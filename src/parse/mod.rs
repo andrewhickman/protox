@@ -66,21 +66,23 @@ pub(crate) enum ParseError {
         span: Span,
     },
     #[error("invalid identifier")]
-    #[help("identifiers must consist of an letter followed by letters or numbers")]
+    #[diagnostic(help("identifiers must consist of letters, numbers and underscores, and may not start with a number"))]
     InvalidIdentifier {
         #[label("defined here")]
         span: Span,
     },
     #[error("invalid group name")]
-    #[help("group names must consist of a capital letter followed by letters or numbers")]
+    #[diagnostic(help(
+        "group names must consist of a capital letter followed by letters, numbers and underscores"
+    ))]
     InvalidGroupName {
         #[label("defined here")]
         span: Span,
     },
     #[error("invalid group name")]
-    #[help(
+    #[diagnostic(help(
         "imports may not contain backslashes, repeated forward slashes, '.' or '..' components"
-    )]
+    ))]
     InvalidImport {
         #[label("defined here")]
         span: Span,

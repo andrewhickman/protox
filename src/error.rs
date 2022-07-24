@@ -47,7 +47,7 @@ pub(crate) enum ErrorKind {
         span: Option<SourceSpan>,
     },
     #[error("file is too large")]
-    #[help("the maximum file length is 2,147,483,647 bytes")]
+    #[diagnostic(help("the maximum file length is 2,147,483,647 bytes"))]
     FileTooLarge {
         #[source_code]
         src: DynSourceCode,
