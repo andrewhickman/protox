@@ -67,7 +67,7 @@ pub(crate) enum ErrorKind {
     #[error("file '{path}' is not in any include path")]
     FileNotIncluded { path: PathBuf },
     #[error("path '{path}' is shadowed by '{shadow}' in the include paths")]
-    #[help("Either pass '{shadow}' as the input file, or re-order the include paths so that '{path}' comes first")]
+    #[diagnostic(help("either pass '{}' as the input file, or re-order the include paths so that '{}' comes first", shadow.display(), path.display()))]
     FileShadowed { path: PathBuf, shadow: PathBuf },
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),

@@ -614,6 +614,26 @@ fn invalid_file() {
 fn shadow_file() {
     let dir = TempDir::new().unwrap().into_persistent();
 
+    std::fs::write(dir.join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.join("include")).unwrap();
+    std::fs::write(dir.join("include").join("foo.proto"), EMPTY).unwrap();
+
+    let mut compiler = Compiler::new(&[dir.join("include").as_ref(), dir.path()]).unwrap();
+    let err = compiler.add_file("foo.proto").unwrap_err();
+
+    match err.kind() {
+        ErrorKind::FileShadowed { path, shadow } => {
+            assert_eq!(path, &dir.join("foo.proto"));
+            assert_eq!(shadow, &dir.join("include").join("foo.proto"));
+        }
+        kind => panic!("unexpected error {}", kind),
+    }
+}
+
+#[test]
+fn shadow_file_dir() {
+    let dir = TempDir::new().unwrap().into_persistent();
+
     fs::create_dir_all(dir.join("include1")).unwrap();
     std::fs::write(dir.join("include1").join("foo.proto"), EMPTY).unwrap();
 
