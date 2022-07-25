@@ -18,9 +18,7 @@ Ok(
             leading_comment: Some(
                 "leading\n",
             ),
-            trailing_comment: Some(
-                "trailing",
-            ),
+            trailing_comment: None,
         },
         span: 36..65,
     },

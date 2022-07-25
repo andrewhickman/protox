@@ -350,51 +350,24 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
 }
 
 fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
-    fn strip_line_comment(s: &str) -> Option<&str> {
-        let s = s.trim_start();
-        s.strip_prefix("//").or_else(|| s.strip_prefix('#'))
-    }
-
     if !lex.extras.text_format_mode && lex.slice().starts_with('#') {
         lex.extras
             .errors
             .push(ParseError::HashCommentOutsideTextFormat { span: lex.span() });
     }
 
-    let mut is_trailing = false;
-    for ch in lex.source()[..lex.span().start].chars().rev() {
-        if ch == '\n' {
-            is_trailing = false;
-            break;
-        } else if !ch.is_ascii_whitespace() {
-            is_trailing = true;
-            break;
-        }
-    }
-
-    let mut result = Cow::Borrowed(strip_line_comment(lex.slice()).expect("expected comment"));
-    if !is_trailing {
-        // Merge comments on subsequent lines
-        let mut start = 0;
-        for (end, _) in lex.remainder().match_indices('\n') {
-            if let Some(comment) = strip_line_comment(&lex.remainder()[start..=end]) {
-                result.to_mut().push_str(comment);
-                start = end + 1;
-            } else {
-                break;
-            }
-        }
-        lex.bump(start);
-    }
-
-    normalize_newlines(result)
+    let content = lex
+        .slice()
+        .strip_prefix("//")
+        .or_else(|| lex.slice().strip_prefix('#'))
+        .expect("invalid line comment");
+    normalize_newlines(content.into())
 }
 
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     #[derive(Logos)]
     enum Component {
-        // Optionally include a trailing newline for consistency with line comments
-        #[regex(r#"\*/[\t\v\f\r ]*\n?"#)]
+        #[regex(r#"\*/[\t\v\f\r ]*"#)]
         EndComment,
         #[token("/*")]
         StartComment,
@@ -728,7 +701,10 @@ mod tests {
         let source = "/* foo\n * bar\n quz*/";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::BlockComment(" foo\n bar\nquz".into())));
+        assert_eq!(
+            lexer.next(),
+            Some(Token::BlockComment(" foo\n bar\nquz".into()))
+        );
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -781,6 +757,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::BlockComment(" bar ".into())));
+        assert_eq!(lexer.next(), Some(Token::Newline));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);

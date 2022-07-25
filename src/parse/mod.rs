@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
 
         let mut syntax = ast::Syntax::default();
         let mut syntax_span = None;
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::SYNTAX, _)) => {
                 let (parsed_syntax, span, comments) = self.parse_syntax()?;
                 file_span = span.clone();
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
         let start = self.expect_eq(Token::SYNTAX)?;
         self.expect_eq(Token::Equals)?;
 
-        let syntax = match self.peek() {
+        let syntax = match self.peek_collect_comments() {
             Some((Token::StringLiteral(_), _)) => {
                 let value = self.parse_string()?;
                 match value.value.as_slice() {
@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> Result<Option<Statement>, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::Semicolon, span)) => {
                 self.bump();
                 Ok(Some(Statement::Empty(span)))
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
 
         let start = self.expect_eq(Token::IMPORT)?;
 
-        let kind = match self.peek() {
+        let kind = match self.peek_collect_comments() {
             Some((Token::WEAK, span)) => {
                 self.bump();
                 Some((ast::ImportKind::Weak, span))
@@ -373,7 +373,7 @@ impl<'a> Parser<'a> {
         let mut extensions = Vec::new();
 
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::ONEOF, _)) => items.push(ast::MessageItem::Oneof(self.parse_oneof()?)),
                 Some((Token::ENUM, _)) => items.push(ast::MessageItem::Enum(self.parse_enum()?)),
                 Some((Token::MESSAGE, _)) => {
@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
     fn parse_field(&mut self) -> Result<ast::Field, ()> {
         let leading_comments = self.parse_leading_comments();
 
-        let (label, start) = match self.peek() {
+        let (label, start) = match self.peek_collect_comments() {
             Some((Token::OPTIONAL, span)) => {
                 self.bump();
                 (Some((FieldLabel::Optional, span.clone())), span)
@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("a message field")?,
         };
 
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::MAP, _)) => self.parse_map(leading_comments, start, label),
             Some((Token::GROUP, _)) => self.parse_group(leading_comments, start, label),
             _ => self.parse_normal_field(leading_comments, start, label),
@@ -458,7 +458,7 @@ impl<'a> Parser<'a> {
 
         let number = self.parse_int()?;
 
-        let options = match self.peek() {
+        let options = match self.peek_collect_comments() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
             Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
@@ -503,7 +503,7 @@ impl<'a> Parser<'a> {
 
         let number = self.parse_int()?;
 
-        let options = match self.peek() {
+        let options = match self.peek_collect_comments() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
             Some((Token::LeftBrace, _)) => None,
             _ => self.unexpected_token("'{' or '['")?,
@@ -540,7 +540,7 @@ impl<'a> Parser<'a> {
 
         let number = self.parse_int()?;
 
-        let options = match self.peek() {
+        let options = match self.peek_collect_comments() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
             Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
@@ -572,7 +572,7 @@ impl<'a> Parser<'a> {
 
         let mut fields = Vec::new();
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Semicolon, _)) => {
                     self.bump();
                     continue;
@@ -605,7 +605,7 @@ impl<'a> Parser<'a> {
         let mut methods = Vec::new();
 
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::RPC, _)) => {
                     methods.push(self.parse_service_rpc()?);
                 }
@@ -639,7 +639,7 @@ impl<'a> Parser<'a> {
 
         self.expect_eq(Token::LeftParen)?;
 
-        let client_streaming = match self.peek() {
+        let client_streaming = match self.peek_collect_comments() {
             Some((Token::STREAM, _)) => Some(self.bump()),
             Some((Token::Dot | Token::Ident(_), _)) => None,
             _ => self.unexpected_token("'stream' or a type name")?,
@@ -651,7 +651,7 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::RETURNS)?;
         self.expect_eq(Token::LeftParen)?;
 
-        let server_streaming = match self.peek() {
+        let server_streaming = match self.peek_collect_comments() {
             Some((Token::STREAM, _)) => Some(self.bump()),
             Some((Token::Dot | Token::Ident(_), _)) => None,
             _ => self.unexpected_token("'stream' or a type name")?,
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::RightParen)?;
 
         let mut options = Vec::new();
-        let end = match self.peek() {
+        let end = match self.peek_collect_comments() {
             Some((Token::Semicolon, span)) => {
                 self.bump();
                 span
@@ -670,7 +670,7 @@ impl<'a> Parser<'a> {
             Some((Token::LeftBrace, _)) => {
                 self.bump();
                 loop {
-                    match self.peek() {
+                    match self.peek_collect_comments() {
                         Some((Token::OPTION, _)) => {
                             options.push(self.parse_option()?);
                         }
@@ -715,7 +715,7 @@ impl<'a> Parser<'a> {
         let mut reserved = Vec::new();
 
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::OPTION, _)) => {
                     options.push(self.parse_option()?);
                 }
@@ -753,7 +753,7 @@ impl<'a> Parser<'a> {
 
         let number = self.parse_int()?;
 
-        let options = match self.peek() {
+        let options = match self.peek_collect_comments() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
             Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
@@ -784,7 +784,7 @@ impl<'a> Parser<'a> {
         let mut options = Vec::new();
 
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::OPTION, _)) => options.push(self.parse_option()?),
                 Some((Token::Semicolon, _)) => {
                     self.bump();
@@ -806,7 +806,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field_type(&mut self, terminators: &[ExpectedToken]) -> Result<(ast::Ty, Span), ()> {
-        let scalar_ty = match self.peek() {
+        let scalar_ty = match self.peek_collect_comments() {
             Some((Token::DOUBLE, span)) => (ast::Ty::Double, span),
             Some((Token::FLOAT, span)) => (ast::Ty::Float, span),
             Some((Token::INT32, span)) => (ast::Ty::Int32, span),
@@ -838,7 +838,7 @@ impl<'a> Parser<'a> {
         let leading_comments = self.parse_leading_comments();
         let start = self.expect_eq(Token::RESERVED)?;
 
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::IntLiteral(_) | Token::Minus, _)) => {
                 let ranges = self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON])?;
                 let end = self.expect_eq(Token::Semicolon)?;
@@ -869,7 +869,7 @@ impl<'a> Parser<'a> {
         let ranges =
             self.parse_reserved_ranges(&[ExpectedToken::SEMICOLON, ExpectedToken::LEFT_BRACKET])?;
 
-        let options = match self.peek() {
+        let options = match self.peek_collect_comments() {
             Some((Token::LeftBracket, _)) => Some(self.parse_options_list()?),
             Some((Token::Semicolon, _)) => None,
             _ => self.unexpected_token("';' or '['")?,
@@ -891,7 +891,7 @@ impl<'a> Parser<'a> {
         let mut names = vec![self.parse_ident_string()?];
 
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Comma, _)) => {
                     self.bump();
                     names.push(self.parse_ident_string()?);
@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
         let mut ranges = vec![self.parse_reserved_range()?];
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Comma, _)) => {
                     self.bump();
                     ranges.push(self.parse_reserved_range()?);
@@ -938,10 +938,10 @@ impl<'a> Parser<'a> {
     fn parse_reserved_range(&mut self) -> Result<ast::ReservedRange, ()> {
         let start = self.parse_int()?;
 
-        let end = match self.peek() {
+        let end = match self.peek_collect_comments() {
             Some((Token::TO, _)) => {
                 self.bump();
-                match self.peek() {
+                match self.peek_collect_comments() {
                     Some((Token::IntLiteral(_) | Token::Minus, _)) => {
                         ast::ReservedRangeEnd::Int(self.parse_int()?)
                     }
@@ -964,7 +964,7 @@ impl<'a> Parser<'a> {
 
         let mut options = vec![self.parse_option_body()?];
         let end = loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Comma, _)) => {
                     self.bump();
                     options.push(self.parse_option_body()?);
@@ -1000,7 +1000,7 @@ impl<'a> Parser<'a> {
         let mut name = vec![self.parse_option_name_part()?];
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Dot, _)) => {
                     self.bump();
                     name.push(self.parse_option_name_part()?);
@@ -1013,10 +1013,10 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let value = match self.peek() {
+        let value = match self.peek_collect_comments() {
             Some((Token::Minus, start)) => {
                 self.bump();
-                match self.peek() {
+                match self.peek_collect_comments() {
                     Some((Token::Ident(_), end)) => ast::OptionValue::Ident {
                         negative: true,
                         ident: self.parse_ident()?,
@@ -1071,7 +1071,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_option_name_part(&mut self) -> Result<ast::OptionNamePart, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::Ident(_), _)) => Ok(ast::OptionNamePart::Ident(self.parse_ident()?)),
             Some((Token::LeftParen, start)) => {
                 self.bump();
@@ -1084,7 +1084,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type_name(&mut self, terminators: &[ExpectedToken]) -> Result<ast::TypeName, ()> {
-        let leading_dot = match self.peek() {
+        let leading_dot = match self.peek_collect_comments() {
             Some((Token::Dot, span)) => {
                 self.bump();
                 Some(span)
@@ -1102,7 +1102,7 @@ impl<'a> Parser<'a> {
         let mut result = vec![self.parse_ident()?];
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Dot, _)) => {
                     self.bump();
                 }
@@ -1129,7 +1129,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_int(&mut self) -> Result<ast::Int, ()> {
-        let (negative, start) = match self.peek() {
+        let (negative, start) = match self.peek_collect_comments() {
             Some((Token::Minus, span)) => {
                 self.bump();
                 (true, Some(span))
@@ -1137,7 +1137,7 @@ impl<'a> Parser<'a> {
             _ => (false, None),
         };
 
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::IntLiteral(value), end)) => {
                 self.bump();
 
@@ -1174,7 +1174,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_string(&mut self) -> Result<ast::String, ()> {
-        let mut result = match self.peek() {
+        let mut result = match self.peek_collect_comments() {
             Some((Token::StringLiteral(value), span)) => {
                 self.bump();
                 Ok(ast::String {
@@ -1185,7 +1185,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("a string literal")?,
         }?;
 
-        while let Some((Token::StringLiteral(value), span)) = self.peek() {
+        while let Some((Token::StringLiteral(value), span)) = self.peek_collect_comments() {
             self.bump();
             result.value.extend(value.as_ref());
             result.span = join_span(result.span.clone(), span);
@@ -1195,39 +1195,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_leading_comments(&mut self) -> (Vec<String>, Option<String>) {
-        if self.peek.is_none() {
-            self.peek();
-        }
-        self.comments.take()
+        self.peek_collect_comments();
+        self.comments.take_leading()
     }
 
     fn parse_trailing_comment(
         &mut self,
         (leading_detached_comments, leading_comment): (Vec<String>, std::option::Option<String>),
     ) -> ast::Comments {
-        let mut on_new_line = false;
-        if let Some((Token::Newline, _)) = self.peek_comments() {
-            self.bump_comment();
-            on_new_line = true;
-        }
-
-        let trailing_comment = if let Some((Token::BlockComment(comment) | Token::LineComment(comment), _)) = self.peek_comments() {
-            self.bump_comment();
-
-            if !on_new_line
-                || matches!(
-                    self.peek_comments(),
-                    Some((Token::Newline | Token::RightBrace, _)) | None
-                )
-            {
-                Some(comment.into())
-            } else {
-                self.comments.comment(comment.into());
-                None
-            }
-        } else {
-            None
-        };
+        self.peek_collect_comments();
+        let trailing_comment = self.comments.take_trailing();
 
         ast::Comments {
             leading_detached_comments,
@@ -1237,7 +1214,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_eq(&mut self, t: Token) -> Result<Span, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((tok, _)) if tok == t => Ok(self.bump()),
             _ => self.unexpected_token(format!("'{}'", t))?,
         }
@@ -1248,7 +1225,7 @@ impl<'a> Parser<'a> {
         mut f: impl FnMut(Token, Span) -> Option<T>,
         expected: impl ToString,
     ) -> Result<T, ()> {
-        if let Some((tok, span)) = self.peek() {
+        if let Some((tok, span)) = self.peek_collect_comments() {
             if let Some(value) = f(tok, span) {
                 self.bump();
                 return Ok(value);
@@ -1267,7 +1244,7 @@ impl<'a> Parser<'a> {
     }
 
     fn bump_if(&mut self, mut f: impl FnMut(&Token) -> bool) -> bool {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((tok, _)) if f(&tok) => {
                 self.bump();
                 true
@@ -1277,29 +1254,70 @@ impl<'a> Parser<'a> {
     }
 
     fn bump(&mut self) -> Span {
-        match self.bump_comment() {
-            (Token::LineComment(comment) | Token::BlockComment(comment), span) => {
-                self.comments.comment(comment.into());
-                span
+        let (tok, span) = self
+            .peek
+            .take()
+            .expect("called bump_comments without peek_comments returning Some()");
+        match tok {
+            Token::LineComment(_) | Token::BlockComment(_) | Token::Newline => (),
+            _ => self.comments.reset(),
+        }
+        span
+    }
+
+    fn peek_collect_comments(&mut self) -> Option<(Token<'a>, Span)> {
+        if self.lexer.span() != Span::default() {
+            match self.peek_comments() {
+                Some((Token::LineComment(comment), _)) => {
+                    self.bump();
+                    self.comments.line_comment(comment);
+                    self.comments.flush();
+                }
+                Some((Token::BlockComment(comment), _)) => {
+                    self.bump();
+                    if let Some((Token::Newline, _)) = self.peek_comments() {
+                        self.bump();
+                        self.comments.block_comment(comment);
+                    } else {
+                        return self.peek_skip_comments();
+                    }
+                }
+                Some((Token::Newline, _)) => {
+                    self.bump();
+                }
+                tok => return tok,
             }
-            (Token::Newline, span) => {
-                self.comments.newline();
-                span
-            }
-            (_, span) => {
-                self.comments.reset();
-                span
+        }
+
+        loop {
+            match self.peek_comments() {
+                Some((Token::LineComment(comment), _)) => {
+                    self.bump();
+                    self.comments.line_comment(comment);
+                }
+                Some((Token::BlockComment(comment), _)) => {
+                    self.bump();
+                    self.comments.block_comment(comment);
+                    if let Some((Token::Newline, _)) = self.peek_comments() {
+                        self.bump();
+                    }
+                }
+                Some((Token::Newline, _)) => {
+                    self.bump();
+                    self.comments.flush();
+                    self.comments.detach();
+                }
+                tok @ (None
+                | Some((Token::RightBrace | Token::RightBracket | Token::RightParen, _))) => {
+                    self.comments.flush();
+                    return tok;
+                }
+                tok => return tok,
             }
         }
     }
 
-    fn bump_comment(&mut self) -> (Token<'a>, Span) {
-        self.peek
-            .take()
-            .expect("called bump without peek returning Some()")
-    }
-
-    fn peek(&mut self) -> Option<(Token<'a>, Span)> {
+    fn peek_skip_comments(&mut self) -> Option<(Token<'a>, Span)> {
         loop {
             match self.peek_comments() {
                 Some((Token::LineComment(_) | Token::BlockComment(_) | Token::Newline, _)) => {
@@ -1335,7 +1353,7 @@ impl<'a> Parser<'a> {
     }
 
     fn unexpected_token<T>(&mut self, expected: impl ToString) -> Result<T, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::Error, _)) => Err(()),
             Some((found, span)) => {
                 self.add_error(ParseError::UnexpectedToken {

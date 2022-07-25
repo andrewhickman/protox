@@ -7,7 +7,7 @@ use std::{
 use assert_fs::TempDir;
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage, SerializeOptions};
-use prost_types::{DescriptorProto, FileDescriptorSet, field_descriptor_proto::Type};
+use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
 use similar_asserts::assert_serde_eq;
 
 fn test_data_dir() -> PathBuf {
@@ -26,7 +26,10 @@ fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
 
-    assert_serde_eq!(actual, expected);
+    // std::fs::write("expected.yml", to_yaml(&expected));
+    // std::fs::write("actual.yml", to_yaml(&actual));
+
+    assert_serde_eq!(expected, actual);
 }
 
 #[allow(unused)]
@@ -286,7 +289,6 @@ fn google_unittest_well_known_types() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest() {
     compare("unittest");
 }

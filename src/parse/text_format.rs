@@ -18,7 +18,7 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Ident(_) | Token::LeftBracket, _)) => {
                     fields.push(self.parse_text_format_field()?)
                 }
@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
     fn parse_text_format_field(&mut self) -> Result<ast::text_format::Field, ()> {
         let name = self.parse_text_format_field_name()?;
 
-        let colon = match self.peek() {
+        let colon = match self.peek_collect_comments() {
             Some((Token::Colon, _)) => Some(self.bump()),
             Some((tok, _)) if is_text_format_field_value_start_token(&tok) => None,
             _ => self.unexpected_token("':' or a message value")?,
@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let end = match self.peek() {
+        let end = match self.peek_collect_comments() {
             Some((Token::Comma | Token::Semicolon, _)) => self.bump(),
             _ => value.span(),
         };
@@ -78,7 +78,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_text_format_field_name(&mut self) -> Result<ast::text_format::FieldName, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::Ident(_), _)) => {
                 Ok(ast::text_format::FieldName::Ident(self.parse_ident()?))
             }
@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
                     ExpectedToken::RIGHT_BRACKET,
                     ExpectedToken::FORWARD_SLASH,
                 ])?;
-                match self.peek() {
+                match self.peek_collect_comments() {
                     Some((Token::RightBracket, end)) => {
                         self.bump();
                         Ok(ast::text_format::FieldName::Extension(
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_text_format_field_value(&mut self) -> Result<ast::text_format::FieldValue, ()> {
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((
                 Token::Minus
                 | Token::Ident(_)
@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
             }
             Some((Token::LeftBracket, start)) => {
                 self.bump();
-                match self.peek() {
+                match self.peek_collect_comments() {
                     Some((
                         Token::Minus
                         | Token::Ident(_)
@@ -164,7 +164,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_text_format_scalar_value(&mut self) -> Result<ast::text_format::Scalar, ()> {
-        let (negative, start) = match self.peek() {
+        let (negative, start) = match self.peek_collect_comments() {
             Some((Token::Minus, _)) => (true, self.bump()),
             Some((
                 Token::Ident(_)
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
             _ => self.unexpected_token("an identifier, string or number")?,
         };
 
-        match self.peek() {
+        match self.peek_collect_comments() {
             Some((Token::StringLiteral(_), _)) => {
                 if negative {
                     let _: Result<(), ()> = self.unexpected_token("an identifier or number");
@@ -214,7 +214,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_text_format_message_value(&mut self) -> Result<(ast::text_format::Message, Span), ()> {
-        let (delimiter, start) = match self.peek() {
+        let (delimiter, start) = match self.peek_collect_comments() {
             Some((Token::LeftBrace, _)) => (Token::RightBrace, self.bump()),
             Some((Token::LeftAngleBracket, _)) => (Token::RightAngleBracket, self.bump()),
             _ => self.unexpected_token("'{' or '<'")?,
@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
         let message =
             self.parse_text_format_message_inner(&[ExpectedToken::Token(delimiter.clone())])?;
 
-        let end = match self.peek() {
+        let end = match self.peek_collect_comments() {
             Some((tok, _)) if tok == delimiter => self.bump(),
             _ => self.unexpected_token(format!("a field name or '{}'", delimiter))?,
         };
@@ -235,7 +235,7 @@ impl<'a> Parser<'a> {
         let mut values = vec![self.parse_text_format_scalar_value()?];
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Comma, _)) => {
                     self.bump();
                     values.push(self.parse_text_format_scalar_value()?);
@@ -254,7 +254,7 @@ impl<'a> Parser<'a> {
         let mut values = vec![self.parse_text_format_message_value()?];
 
         loop {
-            match self.peek() {
+            match self.peek_collect_comments() {
                 Some((Token::Comma, _)) => {
                     self.bump();
                     values.push(self.parse_text_format_message_value()?);
