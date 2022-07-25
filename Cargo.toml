@@ -1,6 +1,8 @@
 [package]
 name = "protox"
-description = "protox."
+description = "A rust implementation of the protobuf compiler."
+keywords = ["protobuf", "serialization"]
+categories = ["compilers", "encoding"]
 version = "0.0.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/protox"
@@ -8,6 +10,7 @@ documentation = "https://docs.rs/protox"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2021"
+rust-version = "1.61.0"
 include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
@@ -58,3 +61,44 @@ prost-reflect = { version = "0.8.1", features = [
 scopeguard = "1.1.0"
 serde_yaml = "0.8.25"
 similar-asserts = { version = "1.2.0", features = ["serde"] }
+
+[package.metadata.release]
+tag-name = "{{version}}"
+sign-tag = true
+sign-commit = true
+allow-branch = ["main"]
+pre-release-commit-message = "(cargo-release) {{crate_name}} version {{version}}"
+
+[[package.metadata.release.pre-release-replacements]]
+file = "README.md"
+search = "https://deps\\.rs/crate/protox/[^/]*/status.svg"
+replace = "https://deps.rs/crate/protox/{{version}}/status.svg"
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "README.md"
+search = "https://docs\\.rs/protox/[^/]*/protox"
+replace = "https://docs.rs/protox/{{version}}/protox"
+min = 0
+
+[[package.metadata.release.pre-release-replacements]]
+file = "src/lib.rs"
+search = "html_root_url = \"https://docs.rs/protox/[^/]*/\""
+replace = "html_root_url = \"https://docs.rs/protox/{{version}}/\""
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "## \\[Unreleased\\]"
+replace = "## [Unreleased]\n\n## [{{version}}] - {{date}}"
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "\\[Unreleased\\]: https://github\\.com/andrewhickman/protox/compare/.*?...HEAD"
+replace = "[Unreleased]: https://github.com/andrewhickman/protox/compare/{{version}}...HEAD\n[{{version}}]: https://github.com/andrewhickman/protox/compare/{{prev_version}}...{{version}}"
+exactly = 1
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
