@@ -3,7 +3,6 @@
 
 use prost::Message;
 
-#[allow(unused_imports)]
 pub(crate) use prost_types::{
     enum_descriptor_proto, field_descriptor_proto, source_code_info, uninterpreted_option,
     SourceCodeInfo, UninterpretedOption,

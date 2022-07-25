@@ -91,23 +91,10 @@ pub(crate) struct DuplicateNumberError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum NumberKind {
-    #[allow(dead_code)]
-    EnumValue {
-        name: String,
-        number: i32,
-    },
-    Field {
-        name: String,
-        number: i32,
-    },
-    ReservedRange {
-        start: i32,
-        end: i32,
-    },
-    ExtensionRange {
-        start: i32,
-        end: i32,
-    },
+    EnumValue { name: String, number: i32 },
+    Field { name: String, number: i32 },
+    ReservedRange { start: i32, end: i32 },
+    ExtensionRange { start: i32, end: i32 },
 }
 
 struct Context<'a> {
