@@ -1050,6 +1050,7 @@ impl<'a> Context<'a> {
             method.push(self.generate_method_descriptor(method_ast));
             self.path.pop();
         }
+        self.path.pop();
 
         self.path.push(tag::service::OPTIONS);
         let options = self.generate_options(service.options);
@@ -1073,11 +1074,11 @@ impl<'a> Context<'a> {
         self.add_span_for(&[tag::method::OUTPUT_TYPE], ast.output_ty.span());
         let output_type = ast.output_ty.to_string();
 
-        let client_streaming = ast.client_streaming.is_some();
+        let client_streaming = ast.client_streaming.is_some().then_some(true);
         if let Some(span) = ast.client_streaming {
             self.add_span_for(&[tag::method::CLIENT_STREAMING], span);
         }
-        let server_streaming = ast.server_streaming.is_some();
+        let server_streaming = ast.server_streaming.is_some().then_some(true);
         if let Some(span) = ast.server_streaming {
             self.add_span_for(&[tag::method::SERVER_STREAMING], span);
         }
@@ -1091,8 +1092,8 @@ impl<'a> Context<'a> {
             input_type: Some(input_type),
             output_type: Some(output_type),
             options,
-            client_streaming: Some(client_streaming),
-            server_streaming: Some(server_streaming),
+            client_streaming,
+            server_streaming,
         }
     }
 

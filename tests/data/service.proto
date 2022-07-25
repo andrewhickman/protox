@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+message Foo {}
+
+service Service {
+    rpc unary(Foo) returns (Foo);
+    rpc client_streaming(stream Foo) returns (Foo);
+    rpc server_streaming(Foo) returns (stream Foo);
+    rpc streaming(stream Foo) returns (stream Foo);
+}
+

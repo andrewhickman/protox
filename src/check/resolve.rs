@@ -13,7 +13,6 @@ use prost_types::field_descriptor_proto;
 use crate::{
     ast::{HexEscaped, Syntax},
     case::to_lower_without_underscores,
-    check::MAX_MESSAGE_FIELD_NUMBER,
     index_to_i32,
     inversion_list::InversionList,
     lines::LineResolver,

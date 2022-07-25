@@ -145,6 +145,7 @@ compare!(option_merge_message);
 compare!(custom_json_name);
 compare!(reserved_ranges);
 compare!(oneof_group_field);
+compare!(service);
 
 #[test]
 fn google_protobuf_any() {
