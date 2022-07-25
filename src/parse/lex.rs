@@ -396,7 +396,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
         EndComment,
         #[token("/*")]
         StartComment,
-        #[regex("\n")]
+        #[token("\n")]
         Newline,
         #[error]
         Text,
