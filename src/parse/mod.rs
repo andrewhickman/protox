@@ -1211,7 +1211,7 @@ impl<'a> Parser<'a> {
             on_new_line = true;
         }
 
-        let trailing_comment = if let Some((Token::Comment(comment), _)) = self.peek_comments() {
+        let trailing_comment = if let Some((Token::BlockComment(comment) | Token::LineComment(comment), _)) = self.peek_comments() {
             self.bump_comment();
 
             if !on_new_line
@@ -1278,7 +1278,7 @@ impl<'a> Parser<'a> {
 
     fn bump(&mut self) -> Span {
         match self.bump_comment() {
-            (Token::Comment(comment), span) => {
+            (Token::LineComment(comment) | Token::BlockComment(comment), span) => {
                 self.comments.comment(comment.into());
                 span
             }
@@ -1302,7 +1302,7 @@ impl<'a> Parser<'a> {
     fn peek(&mut self) -> Option<(Token<'a>, Span)> {
         loop {
             match self.peek_comments() {
-                Some((Token::Comment(_) | Token::Newline, _)) => {
+                Some((Token::LineComment(_) | Token::BlockComment(_) | Token::Newline, _)) => {
                     self.bump();
                 }
                 tok => {

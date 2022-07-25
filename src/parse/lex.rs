@@ -56,8 +56,9 @@ pub(crate) enum Token<'a> {
     #[token("/")]
     ForwardSlash,
     #[regex(r#"(//|#)[^\n]*\n?"#, line_comment)]
+    LineComment(Cow<'a, str>),
     #[token(r#"/*"#, block_comment)]
-    Comment(Cow<'a, str>),
+    BlockComment(Cow<'a, str>),
     #[token("\n")]
     Newline,
     #[error]
@@ -154,7 +155,8 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Colon => write!(f, ":"),
             Token::Semicolon => write!(f, ";"),
             Token::ForwardSlash => write!(f, "/"),
-            Token::Comment(value) => write!(f, "/*{}*/", value),
+            Token::LineComment(value) => writeln!(f, "//{}", value),
+            Token::BlockComment(value) => write!(f, "/*{}*/", value),
             Token::Newline => writeln!(f),
             Token::Error => write!(f, "<ERROR>"),
         }
@@ -701,25 +703,8 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar \n".into())));
+        assert_eq!(lexer.next(), Some(Token::LineComment(" bar \n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz")));
-        assert_eq!(lexer.next(), None);
-
-        debug_assert_eq!(lexer.extras.errors, vec![]);
-    }
-
-    #[test]
-    fn line_comment_merge() {
-        let source = "// merge\n// me\n 5\n // merge\n // me2\n quz // no\n//merge";
-        let mut lexer = Token::lexer(source);
-
-        assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me\n".into())));
-        assert_eq!(lexer.next(), Some(Token::IntLiteral(5)));
-        assert_eq!(lexer.next(), Some(Token::Newline));
-        assert_eq!(lexer.next(), Some(Token::Comment(" merge\n me2\n".into())));
-        assert_eq!(lexer.next(), Some(Token::Ident("quz")));
-        assert_eq!(lexer.next(), Some(Token::Comment(" no\n".into())));
-        assert_eq!(lexer.next(), Some(Token::Comment("merge".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -731,7 +716,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
 
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar\n".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment(" bar\n".into())));
         assert_eq!(lexer.next(), Some(Token::Ident("quz")));
         assert_eq!(lexer.next(), None);
 
@@ -743,7 +728,7 @@ mod tests {
         let source = "/* foo\n * bar\n quz*/";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Comment(" foo\n bar\nquz".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment(" foo\n bar\nquz".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -795,7 +780,7 @@ mod tests {
         let source = "/* bar */\n";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar ".into())));
+        assert_eq!(lexer.next(), Some(Token::BlockComment(" bar ".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -806,7 +791,7 @@ mod tests {
         let source = "# bar";
         let mut lexer = Token::lexer(source);
 
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
+        assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(
@@ -817,7 +802,7 @@ mod tests {
         let mut lexer = Token::lexer(source);
         lexer.extras.text_format_mode = true;
 
-        assert_eq!(lexer.next(), Some(Token::Comment(" bar".into())));
+        assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
         assert_eq!(lexer.next(), None);
 
         debug_assert_eq!(lexer.extras.errors, vec![]);
@@ -850,7 +835,7 @@ mod tests {
                 Token::Colon,
                 Token::Minus,
                 Token::Newline,
-                Token::Comment("comment\n".into()),
+                Token::LineComment("comment\n".into()),
                 Token::FloatLiteral(EqFloat(2.0)),
             ]
         );
