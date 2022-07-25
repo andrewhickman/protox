@@ -845,7 +845,7 @@ impl<'a> Context<'a> {
         fields: &mut Vec<FieldDescriptorProto>,
     ) -> OneofDescriptorProto {
         self.path.extend(&[oneof_tag, index_to_i32(oneof_index)]);
-        self.add_span(oneof.span.clone());
+        self.add_comments(oneof.span.clone(), oneof.comments);
         self.add_span_for(&[tag::oneof::NAME], oneof.name.span);
 
         self.path.push(tag::oneof::OPTIONS);

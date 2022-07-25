@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed name resolution in nested messages
+- Fixed source info for oneofs not including comments
 
 ## [0.1.0] - 2022-07-25
 

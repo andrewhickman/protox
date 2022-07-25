@@ -9,7 +9,7 @@ message Bar {
 
     map<int32, string> x = 5;
 
-    oneof foo {
+    oneof foo { // foo
         group Quz = 3 {}
     }
 
