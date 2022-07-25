@@ -746,7 +746,7 @@ impl<'a> Context<'a> {
                 });
                 None
             }
-            (None | Some(Type::Message | Type::Group | Type::Enum), _) => todo!(),
+            (None | Some(Type::Message | Type::Group | Type::Enum), _) => None,
         }
     }
 

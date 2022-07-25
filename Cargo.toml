@@ -53,7 +53,7 @@ thiserror = "1.0.31"
 assert_fs = "1.0.7"
 insta = "1.15.0"
 proptest = "1.0.0"
-prost-build = { version = "0.10.4", features = ["vendored"] }
+prost-build = { version = "0.10.4", default-features = false }
 prost-reflect = { version = "0.8.1", features = [
     "serde",
     "reflect-well-known-types"

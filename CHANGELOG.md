@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release, implementing the functionality of protoc in rust
+- Initial release, implementing most of the functionality of protoc in rust. The main unimplemented features are:
+  - Setting extension options in .proto source files is not supported
+  - Some validation checks are missing
 
 [Unreleased]: https://github.com/andrewhickman/protox/compare/0.0.0...HEAD

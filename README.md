@@ -8,7 +8,7 @@
 
 # protox
 
-An implementation of the protobuf compiler in rust, intended for use as a library with crates such as [`prost-build`](https://crates.io/crates/prost-build).
+An implementation of the protobuf compiler in rust, intended for use as a library with crates such as [`prost-build`](https://crates.io/crates/prost-build) to avoid needing to build `protoc`.
 
 ## Usage
 
@@ -27,7 +27,18 @@ assert_eq!(protox::compile(&["root.proto"], &["."]).unwrap(), FileDescriptorSet 
 
 Usage with `prost-build`:
 
-TODO
+```rust
+let file_descriptors = compile(&["root.proto"], &["."]).unwrap();
+let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
+    .join("file_descriptor_set.bin");
+fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
+
+prost_build::Config::new()
+    .file_descriptor_set_path(&file_descriptor_path)
+    .skip_protoc_run()
+    .compile_protos(&["root.proto"], &["."])
+    .unwrap();
+```
 
 ## Minimum Supported Rust Version
 

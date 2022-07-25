@@ -1,4 +1,31 @@
 //! A rust implementation of the protobuf compiler.
+//!
+//! For convenient compilation of protobuf source files in a single function, see
+//! [`compile()`]. For more options see [`Compiler`].
+//!
+//! # Examples
+//!
+//! Usage with prost-build:
+//!
+//! ```
+//! # use std::{env, fs, path::PathBuf};
+//! # use prost::Message;
+//! # use protox::compile;
+//! # let tempdir = assert_fs::TempDir::new().unwrap();
+//! # env::set_current_dir(&tempdir).unwrap();
+//! # env::set_var("OUT_DIR", tempdir.path());
+//! # fs::write("root.proto", "").unwrap();
+//! let file_descriptors = compile(&["root.proto"], &["."]).unwrap();
+//! let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
+//!     .join("file_descriptor_set.bin");
+//! fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
+//!
+//! prost_build::Config::new()
+//!     .file_descriptor_set_path(&file_descriptor_path)
+//!     .skip_protoc_run()
+//!     .compile_protos(&["root.proto"], &["."])
+//!     .unwrap();
+//! ```
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/protox/0.0.0/")]
