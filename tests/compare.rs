@@ -202,7 +202,6 @@ fn google_test_messages_proto2() {
 }
 
 #[test]
-#[ignore]
 fn google_test_messages_proto3() {
     compare("test_messages_proto3");
 }
