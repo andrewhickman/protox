@@ -41,6 +41,7 @@ pub fn parse_option() {
     case!(parse_option("option foo = {"));
     case!(parse_option("option foo = { x:1"));
     case!(parse_option("option optimize_for = google.protobuf.SPEED;"));
+    case!(parse_option("option ext.(.foo.bar) = 42;"));
 }
 
 #[test]

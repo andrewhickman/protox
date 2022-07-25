@@ -7,17 +7,20 @@ Ok(
         body: OptionBody {
             name: [
                 Extension(
-                    FullIdent {
-                        parts: [
-                            Ident {
-                                value: "foo",
-                                span: 8..11,
-                            },
-                            Ident {
-                                value: "bar",
-                                span: 12..15,
-                            },
-                        ],
+                    TypeName {
+                        leading_dot: None,
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "foo",
+                                    span: 8..11,
+                                },
+                                Ident {
+                                    value: "bar",
+                                    span: 12..15,
+                                },
+                            ],
+                        },
                     },
                     7..16,
                 ),

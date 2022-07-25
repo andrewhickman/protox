@@ -13,17 +13,20 @@ Ok(
                     },
                 ),
                 Extension(
-                    FullIdent {
-                        parts: [
-                            Ident {
-                                value: "bar",
-                                span: 12..15,
-                            },
-                            Ident {
-                                value: "baz",
-                                span: 16..19,
-                            },
-                        ],
+                    TypeName {
+                        leading_dot: None,
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "bar",
+                                    span: 12..15,
+                                },
+                                Ident {
+                                    value: "baz",
+                                    span: 16..19,
+                                },
+                            ],
+                        },
                     },
                     11..20,
                 ),

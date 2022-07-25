@@ -124,7 +124,7 @@ pub(crate) struct Option {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum OptionNamePart {
     Ident(Ident),
-    Extension(FullIdent, Span),
+    Extension(TypeName, Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]

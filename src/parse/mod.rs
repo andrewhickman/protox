@@ -1075,9 +1075,9 @@ impl<'a> Parser<'a> {
             Some((Token::Ident(_), _)) => Ok(ast::OptionNamePart::Ident(self.parse_ident()?)),
             Some((Token::LeftParen, start)) => {
                 self.bump();
-                let ident = self.parse_full_ident(&[ExpectedToken::RIGHT_PAREN])?;
+                let name = self.parse_type_name(&[ExpectedToken::RIGHT_PAREN])?;
                 let end = self.expect_eq(Token::RightParen)?;
-                Ok(ast::OptionNamePart::Extension(ident, join_span(start, end)))
+                Ok(ast::OptionNamePart::Extension(name, join_span(start, end)))
             }
             _ => self.unexpected_token("an identifier or '('"),
         }

@@ -13,13 +13,16 @@ Ok(
                     },
                 ),
                 Extension(
-                    FullIdent {
-                        parts: [
-                            Ident {
-                                value: "bar",
-                                span: 12..15,
-                            },
-                        ],
+                    TypeName {
+                        leading_dot: None,
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "bar",
+                                    span: 12..15,
+                                },
+                            ],
+                        },
                     },
                     11..16,
                 ),
