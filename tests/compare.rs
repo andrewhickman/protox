@@ -18,6 +18,10 @@ fn google_proto_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("protobuf/src/google/protobuf")
 }
 
+fn google_src_dir() -> PathBuf {
+    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("protobuf/src")
+}
+
 fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
@@ -36,6 +40,8 @@ fn protoc(name: &str) -> String {
         .arg(test_data_dir())
         .arg("--proto_path")
         .arg(google_proto_dir())
+        .arg("--proto_path")
+        .arg(google_src_dir())
         .arg("--include_imports")
         .arg("--include_source_info")
         .arg(format!("--descriptor_set_out={}", result.display()))
@@ -59,7 +65,7 @@ fn protoc(name: &str) -> String {
 fn protox(name: &str) -> String {
     let descriptor = protox::compile(
         &[format!("{}.proto", name)],
-        &[test_data_dir(), google_proto_dir()],
+        &[test_data_dir(), google_proto_dir(), google_src_dir()],
     )
     .unwrap();
     file_descriptor_to_yaml(descriptor)
@@ -179,4 +185,91 @@ fn google_protobuf_compiler_plugin() {
     compare("compiler/plugin");
 }
 
-// TODO borrow some test protos from protobuf repository
+#[test]
+fn google_map_proto2_unittest() {
+    compare("map_proto2_unittest");
+}
+
+#[test]
+#[ignore]
+fn google_map_unittest() {
+    compare("map_unittest");
+}
+
+#[test]
+#[ignore]
+fn google_test_messages_proto2() {
+    compare("test_messages_proto2");
+}
+
+#[test]
+#[ignore]
+fn google_test_messages_proto3() {
+    compare("test_messages_proto3");
+}
+
+#[test]
+#[ignore]
+fn google_unittest_custom_options() {
+    compare("unittest_custom_options");
+}
+
+#[test]
+fn google_unittest_empty() {
+    compare("unittest_empty");
+}
+
+#[test]
+fn google_unittest_enormous_descriptor() {
+    compare("unittest_enormous_descriptor");
+}
+
+#[test]
+#[ignore]
+fn google_unittest_import() {
+    compare("unittest_import");
+}
+
+#[test]
+#[ignore]
+fn google_unittest_lazy_dependencies() {
+    compare("unittest_lazy_dependencies");
+}
+
+#[test]
+#[ignore]
+fn google_unittest_no_field_presence() {
+    compare("unittest_no_field_presence");
+}
+
+#[test]
+fn google_unittest_preserve_unknown_enum() {
+    compare("unittest_preserve_unknown_enum");
+}
+
+#[test]
+fn google_unittest_preserve_unknown_enum2() {
+    compare("unittest_preserve_unknown_enum2");
+}
+
+#[test]
+#[ignore]
+fn google_unittest_proto3_optional() {
+    compare("unittest_proto3_optional");
+}
+
+#[test]
+fn google_unittest_proto3() {
+    compare("unittest_proto3");
+}
+
+#[test]
+fn google_unittest_well_known_types() {
+    compare("unittest_well_known_types");
+}
+
+#[test]
+#[ignore]
+fn google_unittest() {
+    compare("unittest");
+}
