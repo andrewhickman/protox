@@ -559,6 +559,14 @@ fn field_default_value() {
             span: Some(SourceSpan::from(71..82)),
         }],
     );
+    assert_yaml_snapshot!(check_ok(
+        r#"
+            message Message {
+                optional float default_float_exp = 23 [ default = 9e6];
+                optional double default_double_exp = 24 [ default = 9e22];
+            }
+        "#
+    ));
 }
 
 #[test]

@@ -6,9 +6,9 @@ use std::{
 
 use assert_fs::TempDir;
 use prost::Message;
-use prost_reflect::{ReflectMessage, SerializeOptions};
+use prost_reflect::{ReflectMessage, SerializeOptions, DynamicMessage};
 use prost_types::FileDescriptorSet;
-use similar_asserts::assert_serde_eq;
+use similar_asserts::{assert_str_eq, assert_serde_eq};
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
@@ -26,13 +26,10 @@ fn compare(name: &str) {
     let expected = protoc(name);
     let actual = protox(name);
 
-    // std::fs::write("expected.yml", &expected);
-    // std::fs::write("actual.yml", &actual);
-
     assert_serde_eq!(actual, expected);
 }
 
-fn protoc(name: &str) -> String {
+fn protoc(name: &str) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();
     let result = tempdir.join("desc.bin");
     let output = Command::new(prost_build::protoc())
@@ -59,19 +56,19 @@ fn protoc(name: &str) -> String {
 
     let descriptor = FileDescriptorSet::decode(bytes.as_ref()).unwrap();
 
-    file_descriptor_to_yaml(descriptor)
+    file_descriptor_to_dynamic(descriptor)
 }
 
-fn protox(name: &str) -> String {
+fn protox(name: &str) -> DynamicMessage {
     let descriptor = protox::compile(
         &[format!("{}.proto", name)],
         &[test_data_dir(), google_proto_dir(), google_src_dir()],
     )
     .unwrap();
-    file_descriptor_to_yaml(descriptor)
+    file_descriptor_to_dynamic(descriptor)
 }
 
-fn file_descriptor_to_yaml(mut descriptor: FileDescriptorSet) -> String {
+fn file_descriptor_to_dynamic(mut descriptor: FileDescriptorSet) -> DynamicMessage {
     for file in &mut descriptor.file {
         // Normalize ordering of spans
         if let Some(source_code_info) = &mut file.source_code_info {
@@ -88,17 +85,7 @@ fn file_descriptor_to_yaml(mut descriptor: FileDescriptorSet) -> String {
         .retain(|f| !f.name().starts_with("google/protobuf/"));
     debug_assert!(!descriptor.file.is_empty());
 
-    let message = descriptor.transcode_to_dynamic();
-    let mut serializer = serde_yaml::Serializer::new(Vec::new());
-    message
-        .serialize_with_options(
-            &mut serializer,
-            &SerializeOptions::new()
-                .skip_default_fields(true)
-                .stringify_64_bit_integers(false),
-        )
-        .unwrap();
-    String::from_utf8(serializer.into_inner()).unwrap()
+    descriptor.transcode_to_dynamic()
 }
 
 macro_rules! compare {
@@ -193,12 +180,6 @@ fn google_map_proto2_unittest() {
 #[test]
 fn google_map_unittest() {
     compare("map_unittest");
-}
-
-#[test]
-#[ignore]
-fn google_test_messages_proto2() {
-    compare("test_messages_proto2");
 }
 
 #[test]
