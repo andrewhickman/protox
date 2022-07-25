@@ -283,7 +283,7 @@ impl<'a> Context<'a> {
 
         self.path.push(tag::message::EXTENSION_RANGE);
         for extensions in ast.extensions {
-            self.add_comments(extensions.span.clone(), extensions.comments.clone());
+            self.add_comments(extensions.span.clone(), extensions.comments);
 
             for range in extensions.ranges {
                 self.path.push(index_to_i32(extension_range.len()));
