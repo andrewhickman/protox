@@ -80,29 +80,29 @@ impl<'a> Context<'a> {
 
             self.add_comments_for(
                 &[tag::file::DEPENDENCY, index],
-                import.span.clone(),
+                import.span,
                 import.comments,
             );
 
-            dependency.push(import.value.clone());
-            match &import.kind {
-                Some((ast::ImportKind::Public, _)) => {
+            dependency.push(import.value);
+            match import.kind {
+                Some((ast::ImportKind::Public, span)) => {
                     self.add_span_for(
                         &[
                             tag::file::PUBLIC_DEPENDENCY,
                             index_to_i32(public_dependency.len()),
                         ],
-                        import.span,
+                        span,
                     );
                     public_dependency.push(index);
                 }
-                Some((ast::ImportKind::Weak, _)) => {
+                Some((ast::ImportKind::Weak, span)) => {
                     self.add_span_for(
                         &[
                             tag::file::WEAK_DEPENDENCY,
                             index_to_i32(public_dependency.len()),
                         ],
-                        import.span,
+                        span,
                     );
                     weak_dependency.push(index);
                 }

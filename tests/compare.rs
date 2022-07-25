@@ -6,9 +6,9 @@ use std::{
 
 use assert_fs::TempDir;
 use prost::Message;
-use prost_reflect::{ReflectMessage, SerializeOptions, DynamicMessage};
+use prost_reflect::{ReflectMessage, DynamicMessage};
 use prost_types::FileDescriptorSet;
-use similar_asserts::{assert_str_eq, assert_serde_eq};
+use similar_asserts::assert_serde_eq;
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
@@ -204,7 +204,6 @@ fn google_unittest_enormous_descriptor() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest_import() {
     compare("unittest_import");
 }
