@@ -63,7 +63,7 @@ pub use self::error::Error;
 
 /// Convenience function for compiling a set of protobuf files.
 ///
-/// This function is equivalent to:
+/// For more control over how files are compiled, see [`Compiler`]. This function is equivalent to:
 /// ```rust
 /// # use protox::Compiler;
 /// # fn main() -> Result<(), protox::Error> {
