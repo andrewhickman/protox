@@ -6,7 +6,7 @@ use super::ParseError;
 
 #[derive(Debug, Clone, Logos, PartialEq, Eq)]
 #[logos(extras = TokenExtras)]
-#[logos(subpattern exponent = r"[eE][+\-][0-9]+")]
+#[logos(subpattern exponent = r"[eE][+\-]?[0-9]+")]
 pub(crate) enum Token<'a> {
     #[regex("[A-Za-z_][A-Za-z0-9_]*")]
     Ident(&'a str),
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn simple_tokens() {
-        let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 true
+        let source = r#"hell0 052 42 0x2A 5. 0.5 0.42e+2 2e-4 .2e+3 52e3 true
             false "hello \a\b\f\n\r\t\v\?\\\'\" \052 \x2a" 'hello 😀' _foo"#;
         let mut lexer = Token::lexer(source);
 
@@ -503,6 +503,7 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
+        assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(52e3)));
         assert_eq!(lexer.next().unwrap(), Token::Ident("true"));
         assert_eq!(lexer.next().unwrap(), Token::Newline);
         assert_eq!(lexer.next().unwrap(), Token::Ident("false"));
