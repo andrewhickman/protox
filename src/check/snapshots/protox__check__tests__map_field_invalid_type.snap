@@ -156,6 +156,7 @@ expression: "check_ok(r#\"message Message {\n        map<int64, float> int64 = 1
               "name": "value",
               "number": 2,
               "label": "LABEL_OPTIONAL",
+              "type": "TYPE_MESSAGE",
               "typeName": ".Message",
               "jsonName": "value"
             }
@@ -178,7 +179,8 @@ expression: "check_ok(r#\"message Message {\n        map<int64, float> int64 = 1
               "name": "value",
               "number": 2,
               "label": "LABEL_OPTIONAL",
-              "typeName": "Message",
+              "type": "TYPE_MESSAGE",
+              "typeName": ".Message",
               "jsonName": "value"
             }
           ],

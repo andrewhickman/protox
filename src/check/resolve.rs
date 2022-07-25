@@ -160,16 +160,32 @@ impl<'a> Context<'a> {
             self.resolve_field_descriptor_proto(field);
             self.bump_path();
         }
-        self.pop_path(2);
 
-        self.path.extend(&[tag::message::EXTENSION_RANGE, 0]);
+        self.replace_path(&[tag::message::NESTED_TYPE, 0]);
+        for message in &mut message.nested_type {
+            self.resolve_descriptor_proto(message);
+            self.bump_path();
+        }
+
+        self.replace_path(&[tag::message::ENUM_TYPE, 0]);
+        for enum_ in &mut message.enum_type {
+            self.resolve_enum_descriptor_proto(enum_);
+            self.bump_path();
+        }
+
+        self.replace_path(&[tag::message::EXTENSION, 0]);
+        for extend in &mut message.extension {
+            self.resolve_field_descriptor_proto(extend);
+            self.bump_path();
+        }
+
+        self.replace_path(&[tag::message::EXTENSION_RANGE, 0]);
         for range in &mut message.extension_range {
             self.resolve_extension_range(range);
             self.bump_path();
         }
-        self.pop_path(2);
 
-        self.path.extend(&[tag::message::ONEOF_DECL, 0]);
+        self.replace_path(&[tag::message::ONEOF_DECL, 0]);
         for oneof in &mut message.oneof_decl {
             self.resolve_oneof_descriptor_proto(oneof);
             self.bump_path();

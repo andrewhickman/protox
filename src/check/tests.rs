@@ -1003,6 +1003,28 @@ fn message_field_duplicate_number() {
             second_span: Some(SourceSpan::from(95..96)),
         })],
     );
+    assert_eq!(
+        check_err(
+            r#"message Message {
+                message Nested {
+                    optional int32 foo = 1;
+                    optional int32 bar = 1;
+                }
+            }"#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::Field {
+                name: "foo".to_owned(),
+                number: 1
+            },
+            first_span: Some(SourceSpan::from(92..93)),
+            second: resolve::NumberKind::Field {
+                name: "bar".to_owned(),
+                number: 1
+            },
+            second_span: Some(SourceSpan::from(136..137)),
+        })],
+    );
 }
 
 #[test]
@@ -1242,6 +1264,34 @@ fn extend_field_number_not_in_extensions() {
                 message_name: "Message".to_owned(),
                 help: Some("available extension numbers are 2 to 5".to_owned()),
                 span: Some(SourceSpan::from(183..184)),
+            }
+        ],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
+                extensions 2 to 5;
+
+                extend Message {
+                    optional int32 a = 1;
+                    repeated int32 b = 6;
+                }
+            }
+            "#
+        ),
+        vec![
+            InvalidExtensionNumber {
+                number: 1,
+                message_name: "Message".to_owned(),
+                help: Some("available extension numbers are 2 to 5".to_owned()),
+                span: Some(SourceSpan::from(139..140)),
+            },
+            InvalidExtensionNumber {
+                number: 6,
+                message_name: "Message".to_owned(),
+                help: Some("available extension numbers are 2 to 5".to_owned()),
+                span: Some(SourceSpan::from(181..182)),
             }
         ],
     );
@@ -1645,6 +1695,32 @@ fn enum_duplicate_number() {
                 number: 0
             },
             second_span: Some(SourceSpan::from(107..108)),
+        })],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            syntax = "proto3";
+
+            message Message {
+                enum Enum {
+                    ZERO = 0;
+                    ZERO2 = 0;
+                }
+            }
+            "#
+        ),
+        vec![DuplicateNumber(DuplicateNumberError {
+            first: resolve::NumberKind::EnumValue {
+                name: "ZERO".to_owned(),
+                number: 0
+            },
+            first_span: Some(SourceSpan::from(118..119)),
+            second: resolve::NumberKind::EnumValue {
+                name: "ZERO2".to_owned(),
+                number: 0
+            },
+            second_span: Some(SourceSpan::from(149..150)),
         })],
     );
 }
