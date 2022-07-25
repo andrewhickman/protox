@@ -63,13 +63,14 @@ impl FileResolver for IncludeFileResolver {
     /// ```
     fn open_file(&self, name: &str) -> Result<File, Error> {
         let path = self.include.join(name);
-        File::open(&path).map_err(|err| {
-            if err.is_file_not_found() {
-                Error::file_not_found(name)
-            } else {
-                err
+        match File::open(&path) {
+            Ok(mut file) => {
+                file.descriptor.name = Some(name.to_owned());
+                Ok(file)
             }
-        })
+            Err(err) if err.is_file_not_found() => Err(Error::file_not_found(name)),
+            Err(err) => Err(err),
+        }
     }
 }
 
