@@ -1,0 +1,113 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(r#\"\n        enum Enum {\n            option allow_alias = true;\n\n            ZERO = 0;\n            ZERO2 = 0;\n        }\n        \"#)"
+---
+name: root.proto
+enumType:
+  - name: Enum
+    value:
+      - name: ZERO
+        number: 0
+      - name: ZERO2
+        number: 0
+    options:
+      allowAlias: true
+sourceCodeInfo:
+  location:
+    - span:
+        - 1
+        - 8
+        - 6
+        - 9
+    - path:
+        - 5
+        - 0
+      span:
+        - 1
+        - 8
+        - 6
+        - 9
+    - path:
+        - 5
+        - 0
+        - 1
+      span:
+        - 1
+        - 13
+        - 17
+    - path:
+        - 5
+        - 0
+        - 2
+        - 0
+      span:
+        - 4
+        - 12
+        - 21
+    - path:
+        - 5
+        - 0
+        - 2
+        - 0
+        - 1
+      span:
+        - 4
+        - 12
+        - 16
+    - path:
+        - 5
+        - 0
+        - 2
+        - 0
+        - 2
+      span:
+        - 4
+        - 19
+        - 20
+    - path:
+        - 5
+        - 0
+        - 2
+        - 1
+      span:
+        - 5
+        - 12
+        - 22
+    - path:
+        - 5
+        - 0
+        - 2
+        - 1
+        - 1
+      span:
+        - 5
+        - 12
+        - 17
+    - path:
+        - 5
+        - 0
+        - 2
+        - 1
+        - 2
+      span:
+        - 5
+        - 20
+        - 21
+    - path:
+        - 5
+        - 0
+        - 3
+      span:
+        - 2
+        - 12
+        - 38
+    - path:
+        - 5
+        - 0
+        - 3
+        - 2
+      span:
+        - 2
+        - 12
+        - 38
+

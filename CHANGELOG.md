@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed name resolution in nested messages
 - Fixed source info for oneofs not including comments
+- Enums now respect the allow_alias option
 
 ## [0.1.0] - 2022-07-25
 

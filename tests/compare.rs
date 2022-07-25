@@ -191,7 +191,6 @@ fn google_map_proto2_unittest() {
 }
 
 #[test]
-#[ignore]
 fn google_map_unittest() {
     compare("map_unittest");
 }

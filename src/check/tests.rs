@@ -1704,6 +1704,8 @@ fn enum_duplicate_number() {
 
             message Message {
                 enum Enum {
+                    option allow_alias = false;
+
                     ZERO = 0;
                     ZERO2 = 0;
                 }
@@ -1715,14 +1717,24 @@ fn enum_duplicate_number() {
                 name: "ZERO".to_owned(),
                 number: 0
             },
-            first_span: Some(SourceSpan::from(118..119)),
+            first_span: Some(SourceSpan::from(167..168)),
             second: resolve::NumberKind::EnumValue {
                 name: "ZERO2".to_owned(),
                 number: 0
             },
-            second_span: Some(SourceSpan::from(149..150)),
+            second_span: Some(SourceSpan::from(198..199)),
         })],
     );
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        enum Enum {
+            option allow_alias = true;
+
+            ZERO = 0;
+            ZERO2 = 0;
+        }
+        "#
+    ));
 }
 
 #[test]

@@ -347,7 +347,9 @@ impl<'a> Context<'a> {
         self.resolve_options(&mut enum_.options, "google.protobuf.EnumOptions");
         self.path.pop();
 
-        self.check_enum_value_numbers(enum_);
+        let allow_alias = matches!(&enum_.options, Some(o) if o.get(options::ENUM_ALLOW_ALIAS) == Some(&options::Value::Bool(true)));
+
+        self.check_enum_value_numbers(enum_, allow_alias);
     }
 
     fn resolve_enum_value_descriptor_proto(&mut self, value: &mut EnumValueDescriptorProto) {
@@ -464,7 +466,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn check_enum_value_numbers(&mut self, enum_: &EnumDescriptorProto) {
+    fn check_enum_value_numbers(&mut self, enum_: &EnumDescriptorProto, allow_alias: bool) {
         #[derive(Clone)]
         enum Item {
             Value(usize),
@@ -532,8 +534,10 @@ impl<'a> Context<'a> {
 
         for (index, field) in enum_.value.iter().enumerate() {
             if let Err(err) = number_map_insert(&mut items, field.number(), Item::Value(index)) {
-                let error = get_error(self, enum_, err);
-                self.errors.push(CheckError::DuplicateNumber(error));
+                if !allow_alias || !matches!(err, (Item::Value(_), Item::Value(_))) {
+                    let error = get_error(self, enum_, err);
+                    self.errors.push(CheckError::DuplicateNumber(error));
+                }
             }
         }
     }

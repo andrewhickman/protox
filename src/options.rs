@@ -174,6 +174,10 @@ impl OptionSet {
         }
     }
 
+    pub fn get(&self, key: i32) -> Option<&Value> {
+        self.fields.get(&(key as u32))
+    }
+
     pub fn set(&mut self, key: i32, value: Value) -> Result<(), ()> {
         match self.fields.entry(key as u32) {
             btree_map::Entry::Vacant(entry) => {
