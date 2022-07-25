@@ -257,6 +257,15 @@ impl<'a> Context<'a> {
             }
         }
 
+        let is_message_set = match ast
+            .options
+            .iter()
+            .find(|o| o.body.has_name("message_set_wire_format"))
+        {
+            Some(o) => o.body.value.as_bool().unwrap_or(false),
+            _ => false,
+        };
+
         for reserved in ast.reserved {
             match reserved.kind {
                 ast::ReservedKind::Ranges(ranges) => {
@@ -264,7 +273,8 @@ impl<'a> Context<'a> {
                     self.add_comments(reserved.span, reserved.comments);
                     for range in ranges {
                         self.path.push(index_to_i32(reserved_range.len()));
-                        reserved_range.push(self.generate_message_reserved_range(range));
+                        reserved_range
+                            .push(self.generate_message_reserved_range(range, is_message_set));
                         self.path.pop();
                     }
                     self.path.pop();
@@ -287,8 +297,11 @@ impl<'a> Context<'a> {
 
             for range in extensions.ranges {
                 self.path.push(index_to_i32(extension_range.len()));
-                extension_range
-                    .push(self.generate_message_extension_range(range, extensions.options.clone()));
+                extension_range.push(self.generate_message_extension_range(
+                    range,
+                    is_message_set,
+                    extensions.options.clone(),
+                ));
                 self.path.pop();
             }
         }
@@ -722,19 +735,17 @@ impl<'a> Context<'a> {
                 });
                 None
             }
-            (Some(Type::Bool), ast::OptionValue::Ident { ident, .. }) if ident.value == "true" => {
-                Some(true.to_string())
-            }
-            (Some(Type::Bool), ast::OptionValue::Ident { ident, .. }) if ident.value == "false" => {
-                Some(false.to_string())
-            }
             (Some(Type::Bool), value) => {
-                self.errors.push(CheckError::ValueInvalidType {
-                    expected: "either 'true' or 'false'".to_owned(),
-                    actual: value.to_string(),
-                    span: Some(value.span().into()),
-                });
-                None
+                if let Some(bool) = value.as_bool() {
+                    Some(bool.to_string())
+                } else {
+                    self.errors.push(CheckError::ValueInvalidType {
+                        expected: "either 'true' or 'false'".to_owned(),
+                        actual: value.to_string(),
+                        span: Some(value.span().into()),
+                    });
+                    None
+                }
             }
             (Some(Type::String), value) => self.generate_string_option_value(value),
             (Some(Type::Bytes), ast::OptionValue::String(string)) => Some(string.to_string()),
@@ -788,6 +799,7 @@ impl<'a> Context<'a> {
     fn generate_message_reserved_range(
         &mut self,
         range: ast::ReservedRange,
+        is_message_set: bool,
     ) -> descriptor_proto::ReservedRange {
         self.add_span(range.span());
         self.add_span_for(&[tag::message::reserved_range::START], range.start_span());
@@ -797,7 +809,11 @@ impl<'a> Context<'a> {
         let end = match range.end {
             ast::ReservedRangeEnd::None => start,
             ast::ReservedRangeEnd::Int(value) => self.generate_message_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER),
+            ast::ReservedRangeEnd::Max(_) => Some(if is_message_set {
+                i32::MAX - 1
+            } else {
+                MAX_MESSAGE_FIELD_NUMBER
+            }),
         };
 
         descriptor_proto::ReservedRange {
@@ -809,6 +825,7 @@ impl<'a> Context<'a> {
     fn generate_message_extension_range(
         &mut self,
         range: ast::ReservedRange,
+        is_message_set: bool,
         options: Option<ast::OptionList>,
     ) -> descriptor_proto::ExtensionRange {
         self.add_span(range.span());
@@ -823,7 +840,11 @@ impl<'a> Context<'a> {
         let end = match range.end {
             ast::ReservedRangeEnd::None => start,
             ast::ReservedRangeEnd::Int(value) => self.generate_message_number(value),
-            ast::ReservedRangeEnd::Max(_) => Some(MAX_MESSAGE_FIELD_NUMBER),
+            ast::ReservedRangeEnd::Max(_) => Some(if is_message_set {
+                i32::MAX - 1
+            } else {
+                MAX_MESSAGE_FIELD_NUMBER
+            }),
         };
 
         descriptor_proto::ExtensionRange {

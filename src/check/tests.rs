@@ -841,6 +841,23 @@ fn field_default_invalid_type() {
         check_err(
             r#"
             message Message {
+                optional bool foo = 1 [default = -false];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        vec![ValueInvalidType {
+            expected: "either 'true' or 'false'".to_owned(),
+            actual: "-false".to_owned(),
+            span: Some(SourceSpan::from(80..86)),
+        }],
+    );
+    assert_eq!(
+        check_err(
+            r#"
+            message Message {
                 optional string foo = 1 [default = '\xFF'];
             }"#
         ),
@@ -1185,6 +1202,28 @@ fn message_reserved_range_overlap_with_field() {
             second_span: Some(SourceSpan::from(57..58)),
         })],
     );
+}
+
+#[test]
+fn message_reserved_range_message_set() {
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        message Foo {
+            reserved 1 to max;
+
+            option message_set_wire_format = true;
+        }
+        "#
+    ));
+    assert_yaml_snapshot!(check_ok(
+        r#"
+        message Foo {
+            extensions 1 to max;
+
+            option message_set_wire_format = true;
+        }
+        "#
+    ));
 }
 
 #[test]

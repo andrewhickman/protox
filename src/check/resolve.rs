@@ -418,15 +418,8 @@ impl<'a> Context<'a> {
 
         let mut items = BTreeMap::new();
 
-        let valid_start_range = 1..=MAX_MESSAGE_FIELD_NUMBER;
-        let valid_end_range = 2..=MAX_MESSAGE_FIELD_NUMBER + 1;
         for (index, range) in message.reserved_range.iter().enumerate() {
-            if !valid_start_range.contains(&range.start())
-                || !valid_end_range.contains(&range.end())
-            {
-                let span = self.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]);
-                self.errors.push(CheckError::InvalidMessageNumber { span });
-            } else if range.start() >= range.end() {
+            if range.start() >= range.end() {
                 let span = self.resolve_span(&[tag::message::RESERVED_RANGE, index_to_i32(index)]);
                 self.errors.push(CheckError::InvalidRange { span });
             } else if let Err(err) = number_map_insert_range(
@@ -440,12 +433,7 @@ impl<'a> Context<'a> {
         }
 
         for (index, range) in message.extension_range.iter().enumerate() {
-            if !valid_start_range.contains(&range.start())
-                || !valid_end_range.contains(&range.end())
-            {
-                let span = self.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]);
-                self.errors.push(CheckError::InvalidMessageNumber { span });
-            } else if range.start() >= range.end() {
+            if range.start() >= range.end() {
                 let span = self.resolve_span(&[tag::message::EXTENSION_RANGE, index_to_i32(index)]);
                 self.errors.push(CheckError::InvalidRange { span });
             } else if let Err(err) = number_map_insert_range(

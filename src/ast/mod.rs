@@ -502,6 +502,22 @@ impl OptionValue {
             OptionValue::String(_) | OptionValue::Aggregate(_, _) => None,
         }
     }
+
+    pub fn as_bool(&self) -> std::option::Option<bool> {
+        match self {
+            OptionValue::Ident {
+                negative: false,
+                ident,
+                ..
+            } if ident.value == "false" => Some(false),
+            OptionValue::Ident {
+                negative: false,
+                ident,
+                ..
+            } if ident.value == "true" => Some(true),
+            _ => None,
+        }
+    }
 }
 
 impl ReservedRange {

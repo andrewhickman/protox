@@ -6,8 +6,8 @@ use std::{
 
 use assert_fs::TempDir;
 use prost::Message;
-use prost_reflect::{ReflectMessage, DynamicMessage};
-use prost_types::FileDescriptorSet;
+use prost_reflect::{DynamicMessage, ReflectMessage, SerializeOptions};
+use prost_types::{DescriptorProto, FileDescriptorSet, field_descriptor_proto::Type};
 use similar_asserts::assert_serde_eq;
 
 fn test_data_dir() -> PathBuf {
@@ -27,6 +27,20 @@ fn compare(name: &str) {
     let actual = protox(name);
 
     assert_serde_eq!(actual, expected);
+}
+
+#[allow(unused)]
+fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
+    let mut serializer = serde_yaml::Serializer::new(Vec::new());
+    message
+        .serialize_with_options(
+            &mut serializer,
+            &SerializeOptions::new()
+                .skip_default_fields(true)
+                .stringify_64_bit_integers(false),
+        )
+        .unwrap();
+    serializer.into_inner()
 }
 
 fn protoc(name: &str) -> DynamicMessage {
@@ -76,6 +90,19 @@ fn file_descriptor_to_dynamic(mut descriptor: FileDescriptorSet) -> DynamicMessa
                 .location
                 .sort_unstable_by(|l, r| l.path.cmp(&r.path).then_with(|| l.span.cmp(&r.span)));
         }
+
+        // Our formatting of floats is slightly different to protoc (and exact conformance is tricky), so we normalize
+        // them in default values
+        visit_messages(&mut file.message_type, &|message| {
+            for field in &mut message.field {
+                if !field.default_value().is_empty()
+                    && matches!(field.r#type(), Type::Float | Type::Double)
+                {
+                    field.default_value =
+                        Some(field.default_value().parse::<f64>().unwrap().to_string());
+                }
+            }
+        })
     }
 
     // We can't compare google.protobuf files directly since they are baked into protoc and may be a different version to
@@ -86,6 +113,13 @@ fn file_descriptor_to_dynamic(mut descriptor: FileDescriptorSet) -> DynamicMessa
     debug_assert!(!descriptor.file.is_empty());
 
     descriptor.transcode_to_dynamic()
+}
+
+fn visit_messages(messages: &mut [DescriptorProto], f: &impl Fn(&mut DescriptorProto)) {
+    for message in messages {
+        f(message);
+        visit_messages(&mut message.nested_type, f);
+    }
 }
 
 macro_rules! compare {
@@ -183,6 +217,11 @@ fn google_map_unittest() {
 }
 
 #[test]
+fn google_test_messages_proto2() {
+    compare("test_messages_proto2");
+}
+
+#[test]
 fn google_test_messages_proto3() {
     compare("test_messages_proto3");
 }
@@ -215,7 +254,6 @@ fn google_unittest_lazy_dependencies() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest_no_field_presence() {
     compare("unittest_no_field_presence");
 }
