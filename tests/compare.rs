@@ -67,7 +67,7 @@ fn file_descriptor_to_yaml(mut descriptor: FileDescriptorSet) -> String {
         if let Some(source_code_info) = &mut file.source_code_info {
             source_code_info
                 .location
-                .sort_by(|l, r| l.span.cmp(&r.span).then_with(|| l.path.cmp(&r.path)));
+                .sort_unstable_by(|l, r| l.path.cmp(&r.path).then_with(|| l.span.cmp(&r.span)));
         }
     }
 

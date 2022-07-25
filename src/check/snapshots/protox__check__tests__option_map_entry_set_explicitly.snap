@@ -1,0 +1,48 @@
+---
+source: src/check/tests.rs
+expression: "check_ok(\"message Foo { option map_entry = true; }\")"
+---
+name: root.proto
+messageType:
+  - name: Foo
+    options:
+      mapEntry: true
+sourceCodeInfo:
+  location:
+    - span:
+        - 0
+        - 0
+        - 40
+    - path:
+        - 4
+        - 0
+      span:
+        - 0
+        - 0
+        - 40
+    - path:
+        - 4
+        - 0
+        - 1
+      span:
+        - 0
+        - 8
+        - 11
+    - path:
+        - 4
+        - 0
+        - 7
+      span:
+        - 0
+        - 14
+        - 38
+    - path:
+        - 4
+        - 0
+        - 7
+        - 7
+      span:
+        - 0
+        - 14
+        - 38
+

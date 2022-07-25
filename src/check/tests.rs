@@ -1699,9 +1699,8 @@ fn option_ignore() {
 }
 
 #[test]
-#[ignore]
 fn option_map_entry_set_explicitly() {
-    todo!()
+    assert_yaml_snapshot!(check_ok("message Foo { option map_entry = true; }"));
 }
 
 #[test]
