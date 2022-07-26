@@ -623,7 +623,43 @@ impl<'a> Context<'a> {
             }
 
             if part.is_extension {
-                todo!()
+                if let Some((
+                    extension_name,
+                    DefinitionKind::Field {
+                        number: field_number,
+                        label,
+                        ty: field_ty,
+                        type_name: field_type_name,
+                        extendee: Some(extendee),
+                        ..
+                    },
+                )) = self.resolve_option_def(self.scope_name(), &part.name_part)
+                {
+                    if extendee == namespace {
+                        numbers.push(*field_number);
+                        ty = *field_ty;
+                        is_repeated = matches!(label, Some(Label::Repeated));
+                        type_name_context =
+                            Some(strip_leading_dot(parse_namespace(&extension_name)).to_owned());
+                        type_name = field_type_name.clone().map(Cow::Owned);
+                    } else {
+                        self.errors
+                            .push(CheckError::OptionExtensionInvalidExtendee {
+                                extension_name: extension_name.into_owned(),
+                                expected_extendee: namespace.to_owned(),
+                                actual_extendee: extendee.clone(),
+                                span: option_span,
+                            });
+                        return;
+                    }
+                } else {
+                    self.errors.push(CheckError::OptionUnknownField {
+                        name: part.name_part.clone(),
+                        namespace: namespace.to_owned(),
+                        span: option_span,
+                    });
+                    return;
+                }
             } else {
                 let full_name = make_name(namespace, &part.name_part);
                 if let Some(DefinitionKind::Field {
@@ -955,7 +991,7 @@ impl<'a> Context<'a> {
         _span: Option<SourceSpan>,
         _type_name: &str,
     ) -> Result<OptionSet, ()> {
-        todo!()
+        Ok(OptionSet::default())
     }
 
     fn check_option_value_enum(

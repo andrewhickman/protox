@@ -163,6 +163,15 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
+    #[error("extension '{extension_name}' not found for message '{expected_extendee}'")]
+    #[diagnostic(help("the extension exists, but it extends '{actual_extendee}'"))]
+    OptionExtensionInvalidExtendee {
+        extension_name: String,
+        expected_extendee: String,
+        actual_extendee: String,
+        #[label("defined here")]
+        span: Option<SourceSpan>,
+    },
     #[error("cannot set field for scalar type")]
     OptionScalarFieldAccess {
         #[label("defined here")]
