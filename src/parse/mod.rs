@@ -6,19 +6,28 @@ use std::{
 
 use logos::{Lexer, Logos, Span};
 use miette::Diagnostic;
+use prost_types::source_code_info;
 use thiserror::Error;
 
+mod ast;
+mod case;
 mod comments;
+mod generate;
 mod lex;
+mod lines;
 #[cfg(test)]
 mod tests;
 mod text_format;
 
+pub(crate) use lines::LineResolver;
+
 use self::lex::Token;
 use self::{comments::Comments, lex::EqFloat};
+use self::case::{is_valid_group_name, is_valid_ident};
 use crate::{
-    ast::{self, FieldLabel},
-    join_span,
+    error::DynSourceCode,
+    types::FileDescriptorProto,
+    Error, Syntax,
 };
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -125,12 +134,37 @@ pub(crate) enum ParseError {
     UnexpectedEof { expected: String },
 }
 
-pub(crate) fn parse(source: &str) -> Result<ast::File, Vec<ParseError>> {
+pub(crate) fn parse(
+    name: Option<&str>,
+    path: Option<&Path>,
+    source: &str,
+    lines: &LineResolver,
+) -> Result<FileDescriptorProto, Error> {
     let mut parser = Parser::new(source);
-    match parser.parse_file() {
-        Ok(file) if parser.lexer.extras.errors.is_empty() => Ok(file),
-        _ => Err(parser.lexer.extras.errors),
-    }
+    let ast = match parser.parse_file() {
+        Ok(ast) if parser.lexer.extras.errors.is_empty() => ast,
+        _ => {
+            return Err(Error::parse_errors(
+                parser.lexer.extras.errors,
+                DynSourceCode::new(name, path, Some(source)),
+            ))
+        }
+    };
+
+    generate::generate(ast, lines)
+        .map_err(|errors| Error::check_errors(errors, DynSourceCode::new(name, path, Some(source))))
+}
+
+pub(crate) fn resolve_span(
+    lines: Option<&LineResolver>,
+    locations: &[source_code_info::Location],
+    path: &[i32],
+) -> Option<Span> {
+    let lines = lines?;
+    let index = locations
+        .binary_search_by(|location| location.path.as_slice().cmp(path))
+        .ok()?;
+    lines.resolve_proto_span(&locations[index].span)
 }
 
 struct Parser<'a> {
@@ -168,7 +202,7 @@ impl<'a> Parser<'a> {
     fn parse_file(&mut self) -> Result<ast::File, ()> {
         let mut file_span = self.lexer.source().len()..0;
 
-        let mut syntax = ast::Syntax::default();
+        let mut syntax = Syntax::default();
         let mut syntax_span = None;
         match self.peek() {
             Some((Token::SYNTAX, _)) => {
@@ -239,7 +273,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_syntax(&mut self) -> Result<(ast::Syntax, Span, ast::Comments), ()> {
+    fn parse_syntax(&mut self) -> Result<(Syntax, Span, ast::Comments), ()> {
         let leading_comments = self.parse_leading_comments();
 
         let start = self.expect_eq(Token::SYNTAX)?;
@@ -249,8 +283,8 @@ impl<'a> Parser<'a> {
             Some((Token::StringLiteral(_), _)) => {
                 let value = self.parse_string()?;
                 match value.value.as_slice() {
-                    b"proto2" => ast::Syntax::Proto2,
-                    b"proto3" => ast::Syntax::Proto3,
+                    b"proto2" => Syntax::Proto2,
+                    b"proto3" => Syntax::Proto3,
                     bytes => {
                         self.add_error(ParseError::UnknownSyntax {
                             syntax: String::from_utf8_lossy(bytes).into_owned(),
@@ -416,15 +450,15 @@ impl<'a> Parser<'a> {
         let (label, start) = match self.peek() {
             Some((Token::OPTIONAL, span)) => {
                 self.bump();
-                (Some((FieldLabel::Optional, span.clone())), span)
+                (Some((ast::FieldLabel::Optional, span.clone())), span)
             }
             Some((Token::REQUIRED, span)) => {
                 self.bump();
-                (Some((FieldLabel::Required, span.clone())), span)
+                (Some((ast::FieldLabel::Required, span.clone())), span)
             }
             Some((Token::REPEATED, span)) => {
                 self.bump();
-                (Some((FieldLabel::Repeated, span.clone())), span)
+                (Some((ast::FieldLabel::Repeated, span.clone())), span)
             }
             Some((Token::Dot | Token::Ident(_), span)) => (None, span),
             _ => self.unexpected_token("a message field")?,
@@ -441,7 +475,7 @@ impl<'a> Parser<'a> {
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
         start: Span,
-        label: Option<(FieldLabel, Span)>,
+        label: Option<(ast::FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
         let ty_start = self.expect_eq(Token::MAP)?;
 
@@ -488,7 +522,7 @@ impl<'a> Parser<'a> {
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
         start: Span,
-        label: Option<(FieldLabel, Span)>,
+        label: Option<(ast::FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
         let ty_span = self.expect_eq(Token::GROUP)?;
 
@@ -530,7 +564,7 @@ impl<'a> Parser<'a> {
         &mut self,
         leading_comments: (Vec<String>, Option<String>),
         start: Span,
-        label: Option<(FieldLabel, Span)>,
+        label: Option<(ast::FieldLabel, Span)>,
     ) -> Result<ast::Field, ()> {
         let (ty, ty_span) = self.parse_field_type(&[ExpectedToken::Ident])?;
 
@@ -1418,6 +1452,10 @@ impl Statement {
     }
 }
 
+fn join_span(start: Span, end: Span) -> Span {
+    start.start..end.end
+}
+
 fn fmt_expected(ts: impl Iterator<Item = ExpectedToken>) -> String {
     let ts: Vec<_> = ts.collect();
 
@@ -1432,22 +1470,6 @@ fn fmt_expected(ts: impl Iterator<Item = ExpectedToken>) -> String {
         write!(s, "{}", ts[ts.len() - 1]).unwrap();
     }
     s
-}
-
-pub(crate) fn is_valid_ident(s: &str) -> bool {
-    !s.is_empty()
-        && s.as_bytes()[0].is_ascii_alphabetic()
-        && s.as_bytes()[1..]
-            .iter()
-            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
-}
-
-fn is_valid_group_name(s: &str) -> bool {
-    !s.is_empty()
-        && s.as_bytes()[0].is_ascii_uppercase()
-        && s.as_bytes()[1..]
-            .iter()
-            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
 }
 
 fn is_valid_import(s: &str) -> bool {

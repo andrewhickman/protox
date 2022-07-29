@@ -3,28 +3,24 @@ use std::{
     collections::{hash_map, HashMap},
     fmt,
     iter::once,
-    mem,
 };
 
-use logos::Span;
 use miette::{Diagnostic, LabeledSpan};
-use once_cell::sync::Lazy;
 
+use super::{CheckError, LineResolver};
 use crate::{
     compile::{ParsedFile, ParsedFileMap},
-    file::GoogleFileResolver,
     index_to_i32,
     inversion_list::InversionList,
-    lines::LineResolver,
-    make_absolute_name, make_name, parse_namespace, resolve_span, tag,
+    make_absolute_name, make_name,
+    parse::resolve_span,
+    parse_namespace, tag,
     types::{
         field_descriptor_proto, source_code_info::Location, DescriptorProto, EnumDescriptorProto,
         FieldDescriptorProto, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
     },
-    Compiler,
+    Span,
 };
-
-use super::CheckError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DuplicateNameError {
@@ -83,7 +79,7 @@ struct NamePass<'a> {
     scope: String,
     path: Vec<i32>,
     locations: &'a [Location],
-    lines: Option<&'a LineResolver>,
+    lines: Option<&'a crate::parse::LineResolver>,
     errors: Vec<CheckError>,
 }
 
@@ -116,17 +112,28 @@ impl NameMap {
         }
     }
 
+    #[cfg(feature = "parse")]
+    // TODO include descriptor
     pub fn google_descriptor() -> &'static Self {
+        use once_cell::sync::Lazy;
+
         static INSTANCE: Lazy<NameMap> = Lazy::new(|| {
-            let mut compiler = Compiler::with_file_resolver(GoogleFileResolver::new());
+            let mut compiler =
+                crate::Compiler::with_file_resolver(crate::file::GoogleFileResolver::new());
             compiler
                 .add_file("google/protobuf/descriptor.proto")
                 .expect("invalid descriptor.proto");
             let mut file_map = compiler.into_parsed_file_map();
-            mem::take(&mut file_map["google/protobuf/descriptor.proto"].name_map)
+            std::mem::take(&mut file_map["google/protobuf/descriptor.proto"].name_map)
         });
 
         &INSTANCE
+    }
+
+    #[cfg(not(feature = "parse"))]
+    // TODO include descriptor
+    pub fn google_descriptor() -> &'static Self {
+        todo!()
     }
 
     fn new() -> Self {

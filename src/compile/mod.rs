@@ -5,18 +5,17 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use logos::Span;
 use prost::Message;
 
 use crate::{
     check::{self, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
-    file::{
-        check_shadow, path_to_file_name, ChainFileResolver, File, FileResolver, GoogleFileResolver,
-        IncludeFileResolver,
-    },
-    index_to_i32, resolve_span, tag, transcode_file,
+    file::{path_to_file_name, File, FileResolver},
+    index_to_i32,
+    parse::resolve_span,
+    tag, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
+    Span,
 };
 
 #[cfg(test)]
@@ -49,11 +48,14 @@ impl Compiler {
     ///
     /// In addition to the given include paths, the [`Compiler`] instance will be able to import
     /// standard files like `google/protobuf/descriptor.proto`.
+    #[cfg(feature = "parse")]
     pub fn new<I, P>(includes: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = P>,
         P: AsRef<Path>,
     {
+        use crate::file::{ChainFileResolver, GoogleFileResolver, IncludeFileResolver};
+
         let mut resolver = ChainFileResolver::new();
 
         for include in includes {
@@ -116,7 +118,8 @@ impl Compiler {
 
         if let Some(parsed_file) = self.file_map.get_mut(&name) {
             if is_resolved {
-                check_shadow(parsed_file.path.as_deref(), path)?;
+                #[cfg(feature = "parse")]
+                crate::file::check_shadow(parsed_file.path.as_deref(), path)?;
             }
             parsed_file.is_root = true;
             return Ok(self);
@@ -132,7 +135,8 @@ impl Compiler {
             }
         })?;
         if is_resolved {
-            check_shadow(file.path(), path)?;
+            #[cfg(feature = "parse")]
+            crate::file::check_shadow(file.path(), path)?;
         }
 
         let mut import_stack = vec![name.clone()];

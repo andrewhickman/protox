@@ -32,31 +32,36 @@
 
 pub mod file;
 
-mod ast;
-mod case;
 mod check;
 mod compile;
 mod error;
+mod fmt;
 mod inversion_list;
-mod lines;
 mod options;
+#[cfg(feature = "parse")]
 mod parse;
 mod tag;
 #[cfg(test)]
 mod tests;
 mod types;
 
-use std::fmt;
-use std::{convert::TryInto, path::Path};
+#[cfg(not(feature = "parse"))]
+mod parse {
+    pub(crate) type LineResolver = ();
+    pub(crate) fn resolve_span(
+        _: Option<&LineResolver>,
+        _: &[crate::types::source_code_info::Location],
+        _: &[i32],
+    ) -> Option<crate::Span> {
+        None
+    }
+}
 
-use lines::LineResolver;
-use logos::Span;
+#[cfg(feature = "parse")]
+use std::path::Path;
+use std::{convert::TryInto, ops::Range};
+
 use prost::Message;
-
-use crate::{
-    error::DynSourceCode,
-    types::{source_code_info, FileDescriptorProto},
-};
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -157,6 +162,7 @@ pub use self::error::Error;
 ///     ..Default::default()
 /// });
 /// ```
+#[cfg(feature = "parse")]
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
@@ -225,24 +231,21 @@ pub fn compile(
 ///     ..Default::default()
 /// })
 /// ```
+#[cfg(feature = "parse")]
 pub fn parse(source: &str) -> Result<prost_types::FileDescriptorProto, Error> {
-    parse_internal(None, None, source, &LineResolver::new(source))
+    parse::parse(None, None, source, &parse::LineResolver::new(source))
         .map(|file| transcode_file(&file, &mut Vec::new()))
 }
 
-fn parse_internal(
-    name: Option<&str>,
-    path: Option<&Path>,
-    source: &str,
-    lines: &LineResolver,
-) -> Result<FileDescriptorProto, Error> {
-    let ast = parse::parse(source).map_err(|errors| {
-        Error::parse_errors(errors, DynSourceCode::new(name, path, Some(source)))
-    })?;
-    check::generate(ast, lines)
-        .map_err(|errors| Error::check_errors(errors, DynSourceCode::new(name, path, Some(source))))
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Syntax {
+    Proto2,
+    Proto3,
 }
 
+type Span = Range<usize>;
+
+#[cfg(feature = "parse")]
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 fn index_to_i32(index: usize) -> i32 {
@@ -251,11 +254,7 @@ fn index_to_i32(index: usize) -> i32 {
     index.try_into().unwrap()
 }
 
-fn join_span(start: Span, end: Span) -> Span {
-    start.start..end.end
-}
-
-fn make_name(namespace: &str, name: impl fmt::Display) -> String {
+fn make_name(namespace: &str, name: impl std::fmt::Display) -> String {
     if namespace.is_empty() {
         name.to_string()
     } else {
@@ -263,7 +262,7 @@ fn make_name(namespace: &str, name: impl fmt::Display) -> String {
     }
 }
 
-fn make_absolute_name(namespace: &str, name: impl fmt::Display) -> String {
+fn make_absolute_name(namespace: &str, name: impl std::fmt::Display) -> String {
     if namespace.is_empty() {
         format!(".{}", name)
     } else {
@@ -287,18 +286,6 @@ fn parse_namespace(name: &str) -> &str {
         Some((namespace, _)) => namespace,
         None => "",
     }
-}
-
-fn resolve_span(
-    lines: Option<&LineResolver>,
-    locations: &[source_code_info::Location],
-    path: &[i32],
-) -> Option<Span> {
-    let lines = lines?;
-    let index = locations
-        .binary_search_by(|location| location.path.as_slice().cmp(path))
-        .ok()?;
-    lines.resolve_proto_span(&locations[index].span)
 }
 
 fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U

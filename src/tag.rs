@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "parse"), allow(dead_code))]
+
 pub(crate) const UNINTERPRETED_OPTION: i32 = 999;
 
 pub(crate) mod file {

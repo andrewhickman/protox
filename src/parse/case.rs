@@ -1,4 +1,20 @@
-pub fn to_json_name(name: &str) -> String {
+pub(crate) fn is_valid_ident(s: &str) -> bool {
+    !s.is_empty()
+        && s.as_bytes()[0].is_ascii_alphabetic()
+        && s.as_bytes()[1..]
+            .iter()
+            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
+}
+
+pub(crate) fn is_valid_group_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.as_bytes()[0].is_ascii_uppercase()
+        && s.as_bytes()[1..]
+            .iter()
+            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
+}
+
+pub(crate) fn to_json_name(name: &str) -> String {
     let mut result = String::with_capacity(name.len());
     let mut uppercase_next = false;
 
@@ -16,7 +32,7 @@ pub fn to_json_name(name: &str) -> String {
     result
 }
 
-pub fn to_pascal_case(name: &str) -> String {
+pub(crate) fn to_pascal_case(name: &str) -> String {
     let mut result = String::with_capacity(name.len());
     let mut uppercase_next = true;
 
@@ -32,13 +48,4 @@ pub fn to_pascal_case(name: &str) -> String {
     }
 
     result
-}
-
-pub fn to_lower_without_underscores(name: &str) -> String {
-    name.chars()
-        .filter_map(|ch| match ch {
-            '_' => None,
-            _ => Some(ch.to_ascii_lowercase()),
-        })
-        .collect()
 }

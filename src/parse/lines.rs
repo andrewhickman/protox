@@ -1,6 +1,4 @@
-use logos::Span;
-
-use crate::index_to_i32;
+use crate::{index_to_i32, Span};
 
 #[derive(Debug, Clone)]
 pub(crate) struct LineResolver {

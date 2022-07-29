@@ -1,30 +1,28 @@
 use std::fmt::{self, Write};
 
-use logos::Span;
-
-use super::{Float, FullIdent, Ident, Int, String};
+use super::{Float, FullIdent, Ident, Int, Span, String};
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Message {
+pub(in crate::parse) struct Message {
     pub fields: Vec<Field>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Field {
+pub(in crate::parse) struct Field {
     pub name: FieldName,
     pub value: FieldValue,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum FieldName {
+pub(in crate::parse) enum FieldName {
     Ident(Ident),
     Extension(FullIdent, Span),
     Any(FullIdent, FullIdent, Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum FieldValue {
+pub(in crate::parse) enum FieldValue {
     Message(Message, Span),
     MessageList(Vec<(Message, Span)>, Span),
     Scalar(Scalar),
@@ -32,7 +30,7 @@ pub(crate) enum FieldValue {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Scalar {
+pub(in crate::parse) enum Scalar {
     String(String),
     Float(Float),
     Ident {

@@ -6,7 +6,9 @@ use std::{
 use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
 use thiserror::Error;
 
-use crate::{check::CheckError, parse::ParseError};
+use crate::check::CheckError;
+#[cfg(feature = "parse")]
+use crate::parse::ParseError;
 
 /// An error that can occur when compiling protobuf files.
 #[derive(Debug, Diagnostic, Error)]
@@ -17,7 +19,9 @@ pub struct Error {
 }
 
 #[derive(Debug, Diagnostic, Error)]
+#[cfg_attr(not(feature = "parse"), allow(dead_code))]
 pub(crate) enum ErrorKind {
+    #[cfg(feature = "parse")]
     #[error("{}", err)]
     #[diagnostic(forward(err))]
     ParseErrors {
@@ -158,6 +162,7 @@ impl Error {
         }
     }
 
+    #[cfg(feature = "parse")]
     pub(crate) fn parse_errors(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
         let err = errors.remove(0);
         Error::from_kind(ErrorKind::ParseErrors {

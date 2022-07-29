@@ -10,23 +10,21 @@ use std::{
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use prost_types::field_descriptor_proto;
 
+use super::{names::DefinitionKind, CheckError, LineResolver, NameMap};
 use crate::{
-    ast::{HexEscaped, Syntax},
-    case::to_lower_without_underscores,
     index_to_i32,
     inversion_list::InversionList,
-    lines::LineResolver,
     make_name,
     options::{self, OptionSet},
-    parse, parse_name, parse_namespace, resolve_span, strip_leading_dot, tag,
+    parse::resolve_span,
+    parse_name, parse_namespace, strip_leading_dot, tag,
     types::{
         descriptor_proto, source_code_info::Location, uninterpreted_option, DescriptorProto,
         EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
         MethodDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto, UninterpretedOption,
     },
+    Syntax,
 };
-
-use super::{names::DefinitionKind, CheckError, NameMap};
 
 /// Resolve and check relative type names and options.
 pub(crate) fn resolve(
@@ -260,7 +258,7 @@ impl<'a> Context<'a> {
                     });
                 }
                 field_descriptor_proto::Type::Enum => {
-                    if !parse::is_valid_ident(field.default_value()) {
+                    if !is_valid_ident(field.default_value()) {
                         let span = self.resolve_span(&[tag::field::DEFAULT_VALUE]);
                         self.errors.push(CheckError::ValueInvalidType {
                             expected: "an enum value identifier".to_owned(),
@@ -595,6 +593,7 @@ impl<'a> Context<'a> {
         use field_descriptor_proto::{Label, Type};
 
         let option_span = match (self.lines, &location) {
+            #[cfg(feature = "parse")]
             (Some(lines), Some(location)) => lines
                 .resolve_proto_span(&location.span)
                 .map(SourceSpan::from),
@@ -1184,6 +1183,23 @@ fn range_intersects(l: RangeInclusive<i32>, r: RangeInclusive<i32>) -> bool {
     l.start() <= r.end() && r.start() <= l.end()
 }
 
+fn is_valid_ident(s: &str) -> bool {
+    !s.is_empty()
+        && s.as_bytes()[0].is_ascii_alphabetic()
+        && s.as_bytes()[1..]
+            .iter()
+            .all(|&ch| ch.is_ascii_alphanumeric() || ch == b'_')
+}
+
+fn to_lower_without_underscores(name: &str) -> String {
+    name.chars()
+        .filter_map(|ch| match ch {
+            '_' => None,
+            _ => Some(ch.to_ascii_lowercase()),
+        })
+        .collect()
+}
+
 fn fmt_option_name(name: &[uninterpreted_option::NamePart]) -> String {
     let mut result = String::new();
     for part in name {
@@ -1211,7 +1227,7 @@ fn fmt_option_value(value: &UninterpretedOption) -> String {
     } else if let Some(double_value) = value.double_value {
         double_value.to_string()
     } else if let Some(string_value) = &value.string_value {
-        HexEscaped(string_value.as_slice()).to_string()
+        crate::fmt::HexEscaped(string_value.as_slice()).to_string()
     } else if let Some(aggregate_value) = &value.aggregate_value {
         format!("{{{}}}", aggregate_value)
     } else {

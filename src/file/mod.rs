@@ -2,31 +2,27 @@
 
 mod chain;
 mod descriptor_set;
+#[cfg(feature = "parse")]
 mod google;
+#[cfg(feature = "parse")]
 mod include;
 
 use bytes::Buf;
 pub use chain::ChainFileResolver;
 pub use descriptor_set::DescriptorSetFileResolver;
+// TODO compiler descriptor sets at build time
+#[cfg(feature = "parse")]
 pub use google::GoogleFileResolver;
+#[cfg(feature = "parse")]
 pub use include::IncludeFileResolver;
 
-pub(crate) use include::{check_shadow, path_to_file_name};
+#[cfg(feature = "parse")]
+pub(crate) use include::check_shadow;
 use prost::{DecodeError, Message};
 
-use std::{
-    fs,
-    io::{self, Read},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use crate::{
-    error::{DynSourceCode, ErrorKind},
-    lines::LineResolver,
-    parse_internal, transcode_file,
-    types::FileDescriptorProto,
-    Error, MAX_FILE_LEN,
-};
+use crate::{transcode_file, types::FileDescriptorProto, Error};
 
 /// A strategy for locating protobuf source files.
 ///
@@ -64,7 +60,10 @@ where
 pub struct File {
     pub(crate) path: Option<PathBuf>,
     pub(crate) source: Option<String>,
-    pub(crate) lines: Option<LineResolver>,
+    #[cfg(feature = "parse")]
+    pub(crate) lines: Option<crate::parse::LineResolver>,
+    #[cfg(not(feature = "parse"))]
+    pub(crate) lines: Option<()>,
     pub(crate) descriptor: FileDescriptorProto,
 }
 
@@ -109,7 +108,18 @@ impl File {
     ///
     /// assert!(File::open("notfound.proto".as_ref()).unwrap_err().is_file_not_found());
     /// ```
+    #[cfg(feature = "parse")]
     pub fn open(path: &Path) -> Result<Self, Error> {
+        use crate::{
+            error::{DynSourceCode, ErrorKind},
+            parse::{parse, LineResolver},
+            MAX_FILE_LEN,
+        };
+        use std::{
+            fs,
+            io::{self, Read},
+        };
+
         let map_io_err = |err: io::Error| -> Error {
             Error::from_kind(ErrorKind::OpenFile {
                 path: path.to_owned(),
@@ -135,7 +145,7 @@ impl File {
             .map_err(map_io_err)?;
 
         let lines = LineResolver::new(&buf);
-        let descriptor = parse_internal(None, Some(path), &buf, &lines)?;
+        let descriptor = parse(None, Some(path), &buf, &lines)?;
 
         Ok(File {
             path: Some(path.to_owned()),
@@ -176,7 +186,14 @@ impl File {
     ///     ..Default::default()
     /// });
     /// ```
+    #[cfg(feature = "parse")]
     pub fn from_source(source: &str) -> Result<Self, Error> {
+        use crate::{
+            error::{DynSourceCode, ErrorKind},
+            parse::{parse, LineResolver},
+            MAX_FILE_LEN,
+        };
+
         if source.len() > MAX_FILE_LEN as usize {
             return Err(Error::from_kind(ErrorKind::FileTooLarge {
                 src: DynSourceCode::default(),
@@ -185,7 +202,7 @@ impl File {
         }
 
         let lines = LineResolver::new(source);
-        let descriptor = parse_internal(None, None, source, &lines)?;
+        let descriptor = parse(None, None, source, &lines)?;
 
         Ok(File {
             path: None,
@@ -241,4 +258,25 @@ impl File {
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
         transcode_file(&self.descriptor, &mut Vec::new())
     }
+}
+
+pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
+    let mut name = String::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(component) => {
+                if let Some(component) = component.to_str() {
+                    if !name.is_empty() {
+                        name.push('/');
+                    }
+                    name.push_str(component);
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
+    }
+
+    Some(name)
 }

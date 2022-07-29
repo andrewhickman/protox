@@ -1,11 +1,11 @@
 use logos::Span;
 use prost_types::UninterpretedOption;
 
+use super::LineResolver;
+use crate::check::{CheckError, MAX_MESSAGE_FIELD_NUMBER, RESERVED_MESSAGE_FIELD_NUMBERS};
 use crate::{
-    ast,
-    case::{to_json_name, to_pascal_case},
+    parse::{case::{to_json_name, to_pascal_case}, ast},
     index_to_i32,
-    lines::LineResolver,
     options::{self, OptionSet},
     tag,
     types::{
@@ -14,12 +14,11 @@ use crate::{
         EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto, MethodDescriptorProto,
         OneofDescriptorProto, ServiceDescriptorProto, SourceCodeInfo,
     },
+    Syntax,
 };
 
-use super::{CheckError, MAX_MESSAGE_FIELD_NUMBER, RESERVED_MESSAGE_FIELD_NUMBERS};
-
 /// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
-pub(crate) fn generate(
+pub(in crate::parse) fn generate(
     ast: ast::File,
     lines: &LineResolver,
 ) -> Result<FileDescriptorProto, Vec<CheckError>> {
@@ -48,7 +47,7 @@ pub(crate) fn generate(
 }
 
 struct Context<'a> {
-    syntax: ast::Syntax,
+    syntax: Syntax,
     errors: Vec<CheckError>,
     path: Vec<i32>,
     locations: Vec<Location>,
@@ -154,7 +153,7 @@ impl<'a> Context<'a> {
         if let Some((syntax_span, syntax_comments)) = ast.syntax_span {
             self.add_comments_for(&[tag::file::SYNTAX], syntax_span, syntax_comments);
         }
-        let syntax = if ast.syntax == ast::Syntax::default() {
+        let syntax = if ast.syntax == Syntax::default() {
             None
         } else {
             Some(ast.syntax.to_string())
@@ -349,7 +348,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        let (proto3_optional, oneof_index) = if self.syntax != ast::Syntax::Proto2
+        let (proto3_optional, oneof_index) = if self.syntax != Syntax::Proto2
             && matches!(ast.label, Some((ast::FieldLabel::Optional, _)))
         {
             if let Some(oneof_tag) = oneof_tag {
@@ -420,7 +419,7 @@ impl<'a> Context<'a> {
                 r#type = Some(field_descriptor_proto::Type::Group);
                 type_name = Some(ast.name.value);
 
-                if self.syntax != ast::Syntax::Proto2 {
+                if self.syntax != Syntax::Proto2 {
                     self.errors.push(CheckError::Proto3GroupField {
                         span: Some(ast.span.clone().into()),
                     });
@@ -552,7 +551,7 @@ impl<'a> Context<'a> {
                     kind: "repeated",
                     span: default_value_option_span,
                 });
-            } else if self.syntax != ast::Syntax::Proto2 {
+            } else if self.syntax != Syntax::Proto2 {
                 self.errors.push(CheckError::Proto3DefaultValue {
                     span: default_value_option_span,
                 });
@@ -605,15 +604,13 @@ impl<'a> Context<'a> {
                 });
                 None
             }
-            (FieldScope::Message | FieldScope::Extend, None)
-                if self.syntax == ast::Syntax::Proto2 =>
-            {
+            (FieldScope::Message | FieldScope::Extend, None) if self.syntax == Syntax::Proto2 => {
                 self.errors.push(CheckError::Proto2FieldMissingLabel {
                     span: Some(field_span.into()),
                 });
                 None
             }
-            (_, Some((ast::FieldLabel::Required, span))) if self.syntax == ast::Syntax::Proto3 => {
+            (_, Some((ast::FieldLabel::Required, span))) if self.syntax == Syntax::Proto3 => {
                 self.errors.push(CheckError::Proto3RequiredField {
                     span: Some(span.into()),
                 });

@@ -3,17 +3,22 @@ use std::ops::Range;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-mod generate;
+use self::{names::DuplicateNameError, resolve::DuplicateNumberError};
+
+#[cfg(feature = "parse")]
+use crate::parse::LineResolver;
+#[cfg(not(feature = "parse"))]
+type LineResolver = ();
+
 mod names;
 mod resolve;
 #[cfg(test)]
 mod tests;
 
-const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
-const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
+pub(crate) const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
+pub(crate) const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
-pub(crate) use self::{generate::generate, names::NameMap, resolve::resolve};
-use self::{names::DuplicateNameError, resolve::DuplicateNumberError};
+pub(crate) use self::{names::NameMap, resolve::resolve};
 
 #[derive(Error, Clone, Debug, Diagnostic, PartialEq)]
 pub(crate) enum CheckError {

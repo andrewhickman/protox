@@ -1,18 +1,11 @@
-use std::{
-    convert::TryFrom,
-    fmt::{self, Write},
-    ops::Range,
-    vec,
-};
+use std::{convert::TryFrom, fmt, ops::Range, vec};
 
-use logos::Span;
+use crate::{types::field_descriptor_proto, Span, Syntax, parse::join_span};
 
-use crate::{join_span, types::field_descriptor_proto};
-
-pub(crate) mod text_format;
+pub(in crate::parse) mod text_format;
 
 #[derive(Default, Clone, Debug, PartialEq)]
-pub(crate) struct File {
+pub(in crate::parse) struct File {
     pub span: Span,
     pub syntax: Syntax,
     pub syntax_span: std::option::Option<(Span, Comments)>,
@@ -23,7 +16,7 @@ pub(crate) struct File {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum FileItem {
+pub(in crate::parse) enum FileItem {
     Enum(Enum),
     Message(Message),
     Extend(Extend),
@@ -31,56 +24,50 @@ pub(crate) enum FileItem {
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
-pub(crate) struct Comments {
+pub(in crate::parse) struct Comments {
     pub leading_detached_comments: Vec<std::string::String>,
     pub leading_comment: std::option::Option<std::string::String>,
     pub trailing_comment: std::option::Option<std::string::String>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum Syntax {
-    Proto2,
-    Proto3,
-}
-
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Ident {
+pub(in crate::parse) struct Ident {
     pub value: std::string::String,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct FullIdent {
+pub(in crate::parse) struct FullIdent {
     pub parts: Vec<Ident>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct TypeName {
+pub(in crate::parse) struct TypeName {
     pub leading_dot: std::option::Option<Span>,
     pub name: FullIdent,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Int {
+pub(in crate::parse) struct Int {
     pub negative: bool,
     pub value: u64,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Float {
+pub(in crate::parse) struct Float {
     pub value: f64,
     pub span: Span,
 }
 
 #[derive(Clone, PartialEq)]
-pub(crate) struct String {
+pub(in crate::parse) struct String {
     pub value: Vec<u8>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum OptionValue {
+pub(in crate::parse) enum OptionValue {
     Ident {
         negative: bool,
         ident: Ident,
@@ -93,7 +80,7 @@ pub(crate) enum OptionValue {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Import {
+pub(in crate::parse) struct Import {
     pub kind: std::option::Option<(ImportKind, Span)>,
     pub value: std::string::String,
     pub value_span: Span,
@@ -102,45 +89,45 @@ pub(crate) struct Import {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum ImportKind {
+pub(in crate::parse) enum ImportKind {
     Weak,
     Public,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Package {
+pub(in crate::parse) struct Package {
     pub name: FullIdent,
     pub comments: Comments,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Option {
+pub(in crate::parse) struct Option {
     pub body: OptionBody,
     pub comments: Comments,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum OptionNamePart {
+pub(in crate::parse) enum OptionNamePart {
     Ident(Ident),
     Extension(TypeName, Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct OptionBody {
+pub(in crate::parse) struct OptionBody {
     pub name: Vec<OptionNamePart>,
     pub value: OptionValue,
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
-pub(crate) struct OptionList {
+pub(in crate::parse) struct OptionList {
     pub options: Vec<OptionBody>,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Message {
+pub(in crate::parse) struct Message {
     pub name: Ident,
     pub body: MessageBody,
     pub comments: Comments,
@@ -148,7 +135,7 @@ pub(crate) struct Message {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Field {
+pub(in crate::parse) struct Field {
     pub label: std::option::Option<(FieldLabel, Span)>,
     pub name: Ident,
     pub kind: FieldKind,
@@ -159,14 +146,14 @@ pub(crate) struct Field {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) enum FieldLabel {
+pub(in crate::parse) enum FieldLabel {
     Optional = 1,
     Required = 2,
     Repeated = 3,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub(crate) struct MessageBody {
+pub(in crate::parse) struct MessageBody {
     pub items: Vec<MessageItem>,
     pub extensions: Vec<Extensions>,
     pub options: Vec<Option>,
@@ -174,7 +161,7 @@ pub(crate) struct MessageBody {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum MessageItem {
+pub(in crate::parse) enum MessageItem {
     Field(Field),
     Enum(Enum),
     Message(Message),
@@ -183,7 +170,7 @@ pub(crate) enum MessageItem {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum FieldKind {
+pub(in crate::parse) enum FieldKind {
     Normal {
         ty: Ty,
         ty_span: Span,
@@ -202,7 +189,7 @@ pub(crate) enum FieldKind {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Ty {
+pub(in crate::parse) enum Ty {
     Double,
     Float,
     Int32,
@@ -222,7 +209,7 @@ pub(crate) enum Ty {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Oneof {
+pub(in crate::parse) struct Oneof {
     pub name: Ident,
     pub options: Vec<Option>,
     pub fields: Vec<Field>,
@@ -231,7 +218,7 @@ pub(crate) struct Oneof {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Extend {
+pub(in crate::parse) struct Extend {
     pub extendee: TypeName,
     pub fields: Vec<Field>,
     pub comments: Comments,
@@ -239,14 +226,14 @@ pub(crate) struct Extend {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Reserved {
+pub(in crate::parse) struct Reserved {
     pub kind: ReservedKind,
     pub comments: Comments,
     pub span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Extensions {
+pub(in crate::parse) struct Extensions {
     pub ranges: Vec<ReservedRange>,
     pub options: std::option::Option<OptionList>,
     pub comments: Comments,
@@ -254,26 +241,26 @@ pub(crate) struct Extensions {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum ReservedKind {
+pub(in crate::parse) enum ReservedKind {
     Ranges(Vec<ReservedRange>),
     Names(Vec<Ident>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct ReservedRange {
+pub(in crate::parse) struct ReservedRange {
     pub start: Int,
     pub end: ReservedRangeEnd,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum ReservedRangeEnd {
+pub(in crate::parse) enum ReservedRangeEnd {
     None,
     Int(Int),
     Max(Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Enum {
+pub(in crate::parse) struct Enum {
     pub name: Ident,
     pub options: Vec<Option>,
     pub values: Vec<EnumValue>,
@@ -283,7 +270,7 @@ pub(crate) struct Enum {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct EnumValue {
+pub(in crate::parse) struct EnumValue {
     pub name: Ident,
     pub number: Int,
     pub options: std::option::Option<OptionList>,
@@ -292,7 +279,7 @@ pub(crate) struct EnumValue {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Service {
+pub(in crate::parse) struct Service {
     pub name: Ident,
     pub options: Vec<Option>,
     pub methods: Vec<Method>,
@@ -301,7 +288,7 @@ pub(crate) struct Service {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Method {
+pub(in crate::parse) struct Method {
     pub name: Ident,
     pub input_ty: TypeName,
     pub output_ty: TypeName,
@@ -637,29 +624,6 @@ impl fmt::Debug for String {
 
 impl fmt::Display for String {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        HexEscaped(self.value.as_slice()).fmt(f)
-    }
-}
-
-pub(crate) struct HexEscaped<'a>(pub &'a [u8]);
-
-impl<'a> fmt::Display for HexEscaped<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for &ch in self.0 {
-            match ch {
-                b'\t' => f.write_str("\\t")?,
-                b'\r' => f.write_str("\\r")?,
-                b'\n' => f.write_str("\\n")?,
-                b'\\' => f.write_str("\\\\")?,
-                b'\'' => f.write_str("\\'")?,
-                b'"' => f.write_str("\\\"")?,
-                b'\x20'..=b'\x7e' => f.write_char(ch as char)?,
-                _ => {
-                    write!(f, "\\{:03o}", ch)?;
-                }
-            }
-        }
-
-        Ok(())
+        crate::fmt::HexEscaped(self.value.as_slice()).fmt(f)
     }
 }
