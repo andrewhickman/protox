@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, fmt, ops::Range, vec};
 
-use crate::{types::field_descriptor_proto, Span, Syntax, parse::join_span};
+use crate::{parse::join_span, types::field_descriptor_proto, Span, Syntax};
 
 pub(in crate::parse) mod text_format;
 

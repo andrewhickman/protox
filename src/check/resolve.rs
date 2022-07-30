@@ -344,7 +344,7 @@ impl<'a> Context<'a> {
         self.resolve_options(&mut enum_.options, "google.protobuf.EnumOptions");
         self.path.pop();
 
-        let allow_alias = matches!(&enum_.options, Some(o) if o.get(options::ENUM_ALLOW_ALIAS) == Some(&options::Value::Bool(true)));
+        let allow_alias = matches!(&enum_.options, Some(o) if o.get(tag::enum_::options::ALLOW_ALIAS) == Some(&options::Value::Bool(true)));
 
         self.check_enum_value_numbers(enum_, allow_alias);
     }

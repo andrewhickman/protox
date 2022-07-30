@@ -21,14 +21,10 @@ mod text_format;
 
 pub(crate) use lines::LineResolver;
 
+use self::case::{is_valid_group_name, is_valid_ident};
 use self::lex::Token;
 use self::{comments::Comments, lex::EqFloat};
-use self::case::{is_valid_group_name, is_valid_ident};
-use crate::{
-    error::DynSourceCode,
-    types::FileDescriptorProto,
-    Error, Syntax,
-};
+use crate::{error::DynSourceCode, types::FileDescriptorProto, Error, Syntax};
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
 pub(crate) enum ParseError {

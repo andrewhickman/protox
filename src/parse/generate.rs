@@ -4,9 +4,12 @@ use prost_types::UninterpretedOption;
 use super::LineResolver;
 use crate::check::{CheckError, MAX_MESSAGE_FIELD_NUMBER, RESERVED_MESSAGE_FIELD_NUMBERS};
 use crate::{
-    parse::{case::{to_json_name, to_pascal_case}, ast},
     index_to_i32,
     options::{self, OptionSet},
+    parse::{
+        ast,
+        case::{to_json_name, to_pascal_case},
+    },
     tag,
     types::{
         descriptor_proto, enum_descriptor_proto, field_descriptor_proto,
@@ -536,7 +539,7 @@ impl<'a> Context<'a> {
                     options: Some({
                         let mut options = OptionSet::new();
                         options
-                            .set(options::MESSAGE_MAP_ENTRY, options::Value::Bool(true))
+                            .set(tag::message::options::MAP_ENTRY, options::Value::Bool(true))
                             .unwrap();
                         options
                     }),
