@@ -1,0 +1,63 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Field {
+        label: Some(
+            (
+                Optional,
+                0..8,
+            ),
+        ),
+        name: Ident {
+            value: "A",
+            span: 15..16,
+        },
+        kind: Group {
+            ty_span: 9..14,
+            body: MessageBody {
+                items: [],
+                extensions: [],
+                options: [],
+                reserved: [],
+            },
+        },
+        number: Int {
+            negative: false,
+            value: 1,
+            span: 19..20,
+        },
+        options: Some(
+            OptionList {
+                options: [
+                    OptionBody {
+                        name: [
+                            Ident(
+                                Ident {
+                                    value: "deprecated",
+                                    span: 22..32,
+                                },
+                            ),
+                        ],
+                        value: Ident {
+                            negative: false,
+                            ident: Ident {
+                                value: "true",
+                                span: 35..39,
+                            },
+                            span: 35..39,
+                        },
+                    },
+                ],
+                span: 21..40,
+            },
+        ),
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..44,
+    },
+)

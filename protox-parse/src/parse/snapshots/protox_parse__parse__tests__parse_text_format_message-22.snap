@@ -1,0 +1,11 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Err(
+    [
+        MissingColonForScalarTextFormatField {
+            field_name: 0..5,
+        },
+    ],
+)

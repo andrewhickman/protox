@@ -1,0 +1,22 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Import {
+        kind: Some(
+            (
+                Public,
+                7..13,
+            ),
+        ),
+        value: "foo",
+        value_span: 14..22,
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..23,
+    },
+)

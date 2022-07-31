@@ -1,0 +1,26 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_package() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Package {
+        name: FullIdent {
+            parts: [
+                Ident {
+                    value: "foo",
+                    span: 8..11,
+                },
+                Ident {
+                    value: "bar",
+                    span: 12..15,
+                },
+            ],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..16,
+    },
+)

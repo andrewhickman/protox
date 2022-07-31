@@ -1,0 +1,58 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_message() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [
+                Field(
+                    Field {
+                        label: Some(
+                            (
+                                Repeated,
+                                14..22,
+                            ),
+                        ),
+                        name: Ident {
+                            value: "m",
+                            span: 44..45,
+                        },
+                        kind: Map {
+                            ty_span: 23..43,
+                            key_ty: Sint32,
+                            key_ty_span: 27..33,
+                            value_ty: Fixed64,
+                            value_ty_span: 35..42,
+                        },
+                        number: Int {
+                            negative: false,
+                            value: 1,
+                            span: 48..49,
+                        },
+                        options: None,
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 14..50,
+                    },
+                ),
+            ],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..52,
+    },
+)

@@ -1,0 +1,28 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 30..33,
+        },
+        body: MessageBody {
+            items: [],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [
+                "detached\n",
+            ],
+            leading_comment: Some(
+                "leading",
+            ),
+            trailing_comment: None,
+        },
+        span: 22..48,
+    },
+)

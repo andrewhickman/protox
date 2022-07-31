@@ -1,0 +1,50 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_reserved() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Reserved {
+        kind: Ranges(
+            [
+                ReservedRange {
+                    start: Int {
+                        negative: false,
+                        value: 0,
+                        span: 9..10,
+                    },
+                    end: None,
+                },
+                ReservedRange {
+                    start: Int {
+                        negative: false,
+                        value: 2,
+                        span: 12..13,
+                    },
+                    end: Int(
+                        Int {
+                            negative: false,
+                            value: 3,
+                            span: 17..18,
+                        },
+                    ),
+                },
+                ReservedRange {
+                    start: Int {
+                        negative: false,
+                        value: 5,
+                        span: 20..21,
+                    },
+                    end: Max(
+                        25..28,
+                    ),
+                },
+            ],
+        ),
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..29,
+    },
+)

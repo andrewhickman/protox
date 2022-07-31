@@ -1,0 +1,20 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_oneof() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Oneof {
+        name: Ident {
+            value: "Foo",
+            span: 6..9,
+        },
+        options: [],
+        fields: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..17,
+    },
+)

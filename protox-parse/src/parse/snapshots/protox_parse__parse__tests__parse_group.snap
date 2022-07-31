@@ -1,0 +1,43 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_field() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Field {
+        label: Some(
+            (
+                Optional,
+                10..18,
+            ),
+        ),
+        name: Ident {
+            value: "A",
+            span: 25..26,
+        },
+        kind: Group {
+            ty_span: 19..24,
+            body: MessageBody {
+                items: [],
+                extensions: [],
+                options: [],
+                reserved: [],
+            },
+        },
+        number: Int {
+            negative: false,
+            value: 1,
+            span: 29..30,
+        },
+        options: None,
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: Some(
+                "leading\n",
+            ),
+            trailing_comment: Some(
+                "trailing",
+            ),
+        },
+        span: 10..47,
+    },
+)

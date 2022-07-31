@@ -1,0 +1,67 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [
+                Field(
+                    Field {
+                        label: Some(
+                            (
+                                Optional,
+                                14..22,
+                            ),
+                        ),
+                        name: Ident {
+                            value: "foo",
+                            span: 27..30,
+                        },
+                        kind: Normal {
+                            ty: Named(
+                                TypeName {
+                                    leading_dot: None,
+                                    name: FullIdent {
+                                        parts: [
+                                            Ident {
+                                                value: "rpc",
+                                                span: 23..26,
+                                            },
+                                        ],
+                                    },
+                                },
+                            ),
+                            ty_span: 23..26,
+                        },
+                        number: Int {
+                            negative: false,
+                            value: 1,
+                            span: 33..34,
+                        },
+                        options: None,
+                        comments: Comments {
+                            leading_detached_comments: [],
+                            leading_comment: None,
+                            trailing_comment: None,
+                        },
+                        span: 14..35,
+                    },
+                ),
+            ],
+            extensions: [],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..37,
+    },
+)

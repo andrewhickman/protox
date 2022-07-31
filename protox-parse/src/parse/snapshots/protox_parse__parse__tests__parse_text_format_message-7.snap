@@ -1,0 +1,37 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Message {
+        fields: [
+            Field {
+                name: Extension(
+                    FullIdent {
+                        parts: [
+                            Ident {
+                                value: "ext",
+                                span: 1..4,
+                            },
+                            Ident {
+                                value: "scalar",
+                                span: 5..11,
+                            },
+                        ],
+                    },
+                    0..12,
+                ),
+                value: Scalar(
+                    Int(
+                        Int {
+                            negative: false,
+                            value: 10,
+                            span: 14..16,
+                        },
+                    ),
+                ),
+                span: 0..16,
+            },
+        ],
+    },
+)

@@ -1,0 +1,36 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_file() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    File {
+        span: 0..19,
+        syntax: Proto2,
+        syntax_span: None,
+        package: Some(
+            Package {
+                name: FullIdent {
+                    parts: [
+                        Ident {
+                            value: "protox",
+                            span: 8..14,
+                        },
+                        Ident {
+                            value: "lib",
+                            span: 15..18,
+                        },
+                    ],
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 0..19,
+            },
+        ),
+        imports: [],
+        options: [],
+        items: [],
+    },
+)

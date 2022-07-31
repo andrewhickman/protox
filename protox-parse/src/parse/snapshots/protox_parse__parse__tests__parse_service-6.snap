@@ -1,0 +1,70 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_service() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Service {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        options: [],
+        methods: [
+            Method {
+                name: Ident {
+                    value: "bar",
+                    span: 18..21,
+                },
+                input_ty: TypeName {
+                    leading_dot: Some(
+                        29..30,
+                    ),
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "A",
+                                span: 30..31,
+                            },
+                            Ident {
+                                value: "B",
+                                span: 32..33,
+                            },
+                        ],
+                    },
+                },
+                output_ty: TypeName {
+                    leading_dot: Some(
+                        51..52,
+                    ),
+                    name: FullIdent {
+                        parts: [
+                            Ident {
+                                value: "C",
+                                span: 52..53,
+                            },
+                        ],
+                    },
+                },
+                options: [],
+                client_streaming: Some(
+                    22..28,
+                ),
+                server_streaming: Some(
+                    44..50,
+                ),
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 14..55,
+            },
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..57,
+    },
+)

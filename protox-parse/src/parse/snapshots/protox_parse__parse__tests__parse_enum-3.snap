@@ -1,0 +1,27 @@
+---
+source: src/parse/tests.rs
+expression: "match parser.parse_enum() {\n    Ok(value) => Ok(value),\n    Err(()) => Err(parser.lexer.extras.errors),\n}"
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 29..32,
+        },
+        options: [],
+        values: [],
+        reserved: [],
+        comments: Comments {
+            leading_detached_comments: [
+                "detached",
+            ],
+            leading_comment: Some(
+                "leading",
+            ),
+            trailing_comment: Some(
+                "trailing\n",
+            ),
+        },
+        span: 24..52,
+    },
+)

@@ -1,0 +1,13 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "'stream' or a type name",
+            found: ")",
+            span: 34..35,
+        },
+    ],
+)

@@ -1,0 +1,61 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Oneof {
+        name: Ident {
+            value: "Foo",
+            span: 6..9,
+        },
+        options: [],
+        fields: [
+            Field {
+                label: Some(
+                    (
+                        Required,
+                        12..20,
+                    ),
+                ),
+                name: Ident {
+                    value: "bar",
+                    span: 27..30,
+                },
+                kind: Normal {
+                    ty: Named(
+                        TypeName {
+                            leading_dot: None,
+                            name: FullIdent {
+                                parts: [
+                                    Ident {
+                                        value: "oneof",
+                                        span: 21..26,
+                                    },
+                                ],
+                            },
+                        },
+                    ),
+                    ty_span: 21..26,
+                },
+                number: Int {
+                    negative: false,
+                    value: 1,
+                    span: 33..34,
+                },
+                options: None,
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 12..35,
+            },
+        ],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..37,
+    },
+)

@@ -1,0 +1,40 @@
+[package]
+name = "protox-parse"
+description = "Parsing of protobuf source files"
+keywords = ["protobuf", "serialization"]
+categories = ["compilers", "encoding", "parser-implementations"]
+version = "0.1.0"
+authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
+repository = "https://github.com/andrewhickman/protox"
+documentation = "https://docs.rs/protox"
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+edition = "2021"
+rust-version = "1.61.0"
+
+[dependencies]
+logos = "0.12.0"
+miette = "5.1.1"
+prost-types = "0.10.1"
+thiserror = "1.0.31"
+
+[dev-dependencies]
+insta = "1.15.0"
+proptest = "1.0.0"
+scopeguard = "1.1.0"
+serde_yaml = "0.8.25"
+
+[package.metadata.release]
+tag-name = "{{version}}"
+sign-tag = true
+sign-commit = true
+
+[[package.metadata.release.pre-release-replacements]]
+file = "src/lib.rs"
+search = "html_root_url = \"https://docs.rs/protox-parse/[^/]*/\""
+replace = "html_root_url = \"https://docs.rs/protox-parse/{{version}}/\""
+exactly = 1
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

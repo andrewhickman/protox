@@ -1,0 +1,63 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Option {
+        body: OptionBody {
+            name: [
+                Extension(
+                    TypeName {
+                        leading_dot: None,
+                        name: FullIdent {
+                            parts: [
+                                Ident {
+                                    value: "ext",
+                                    span: 8..11,
+                                },
+                            ],
+                        },
+                    },
+                    7..12,
+                ),
+                Ident(
+                    Ident {
+                        value: "foo",
+                        span: 13..16,
+                    },
+                ),
+            ],
+            value: Aggregate(
+                Message {
+                    fields: [
+                        Field {
+                            name: Ident(
+                                Ident {
+                                    value: "foo",
+                                    span: 21..24,
+                                },
+                            ),
+                            value: Scalar(
+                                Int(
+                                    Int {
+                                        negative: false,
+                                        value: 5,
+                                        span: 26..27,
+                                    },
+                                ),
+                            ),
+                            span: 21..27,
+                        },
+                    ],
+                },
+                19..29,
+            ),
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..30,
+    },
+)

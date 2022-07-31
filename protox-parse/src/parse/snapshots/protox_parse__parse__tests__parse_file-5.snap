@@ -1,0 +1,36 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    File {
+        span: 0..47,
+        syntax: Proto3,
+        syntax_span: Some(
+            (
+                0..18,
+                Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+            ),
+        ),
+        package: None,
+        imports: [
+            Import {
+                kind: None,
+                value: "foo.proto",
+                value_span: 35..46,
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 28..47,
+            },
+        ],
+        options: [],
+        items: [],
+    },
+)

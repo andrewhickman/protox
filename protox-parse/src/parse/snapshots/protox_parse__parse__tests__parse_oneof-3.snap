@@ -1,0 +1,25 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Oneof {
+        name: Ident {
+            value: "Foo",
+            span: 42..45,
+        },
+        options: [],
+        fields: [],
+        comments: Comments {
+            leading_detached_comments: [
+                "detached1",
+                "detached2\n",
+            ],
+            leading_comment: Some(
+                "leading\n",
+            ),
+            trailing_comment: None,
+        },
+        span: 36..65,
+    },
+)

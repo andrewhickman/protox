@@ -1,0 +1,32 @@
+---
+source: src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Option {
+        body: OptionBody {
+            name: [
+                Ident(
+                    Ident {
+                        value: "optimize_for",
+                        span: 7..19,
+                    },
+                ),
+            ],
+            value: Ident {
+                negative: false,
+                ident: Ident {
+                    value: "message",
+                    span: 22..29,
+                },
+                span: 22..29,
+            },
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..30,
+    },
+)
