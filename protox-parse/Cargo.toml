@@ -21,8 +21,6 @@ thiserror = "1.0.31"
 [dev-dependencies]
 insta = "1.15.0"
 proptest = "1.0.0"
-scopeguard = "1.1.0"
-serde_yaml = "0.8.25"
 
 [package.metadata.release]
 tag-name = "{{version}}"

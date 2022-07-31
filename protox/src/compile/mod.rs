@@ -5,17 +5,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use miette::SourceSpan;
 use prost::Message;
 
 use crate::{
     check::{self, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
-    file::{path_to_file_name, File, FileResolver},
-    index_to_i32,
-    parse::resolve_span,
-    tag, transcode_file,
+    file::{check_shadow, path_to_file_name, File, FileResolver},
+    index_to_i32, resolve_span, tag, transcode_file,
     types::{FileDescriptorProto, FileDescriptorSet},
-    Span,
 };
 
 #[cfg(test)]
@@ -48,7 +46,6 @@ impl Compiler {
     ///
     /// In addition to the given include paths, the [`Compiler`] instance will be able to import
     /// standard files like `google/protobuf/descriptor.proto`.
-    #[cfg(feature = "parse")]
     pub fn new<I, P>(includes: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = P>,
@@ -118,8 +115,7 @@ impl Compiler {
 
         if let Some(parsed_file) = self.file_map.get_mut(&name) {
             if is_resolved {
-                #[cfg(feature = "parse")]
-                crate::file::check_shadow(parsed_file.path.as_deref(), path)?;
+                check_shadow(parsed_file.path.as_deref(), path)?;
             }
             parsed_file.is_root = true;
             return Ok(self);
@@ -135,8 +131,7 @@ impl Compiler {
             }
         })?;
         if is_resolved {
-            #[cfg(feature = "parse")]
-            crate::file::check_shadow(file.path(), path)?;
+            check_shadow(file.path(), path)?;
         }
 
         let mut import_stack = vec![name.clone()];
@@ -144,13 +139,13 @@ impl Compiler {
             self.add_import(
                 import,
                 resolve_span(
-                    file.lines.as_ref(),
                     file.descriptor
                         .source_code_info
                         .as_ref()
                         .map(|s| s.location.as_slice())
                         .unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
+                    file.source(),
                 ),
                 &mut import_stack,
                 DynSourceCode::new(Some(&name), file.path(), file.source()),
@@ -228,7 +223,7 @@ impl Compiler {
     fn add_import(
         &mut self,
         file_name: &str,
-        span: Option<Span>,
+        span: Option<SourceSpan>,
         import_stack: &mut Vec<String>,
         import_src: DynSourceCode,
     ) -> Result<(), Error> {
@@ -256,13 +251,13 @@ impl Compiler {
             self.add_import(
                 import,
                 resolve_span(
-                    file.lines.as_ref(),
                     file.descriptor
                         .source_code_info
                         .as_ref()
                         .map(|s| s.location.as_slice())
                         .unwrap_or(&[]),
                     &[tag::file::DEPENDENCY, index_to_i32(index)],
+                    file.source(),
                 ),
                 import_stack,
                 DynSourceCode::new(Some(file_name), file.path(), file.source()),
@@ -289,17 +284,17 @@ impl Compiler {
     ) -> Result<(FileDescriptorProto, NameMap), Error> {
         let path = file.path.as_deref();
         let source = file.source.as_deref();
-        let name_map = NameMap::from_proto(&file.descriptor, &self.file_map, file.lines.as_ref())
-            .map_err(|errors| {
-            Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
-        })?;
+        let name_map =
+            NameMap::from_proto(&file.descriptor, &self.file_map, source).map_err(|errors| {
+                Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
+            })?;
 
         let mut descriptor = file.descriptor;
         if descriptor.name().is_empty() {
             descriptor.name = Some(file_name.to_owned());
         }
 
-        check::resolve(&mut descriptor, file.lines.as_ref(), &name_map).map_err(|errors| {
+        check::resolve(&mut descriptor, source, &name_map).map_err(|errors| {
             Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
         })?;
 

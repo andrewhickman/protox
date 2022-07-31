@@ -5,21 +5,18 @@ use std::{
     iter::once,
 };
 
-use miette::{Diagnostic, LabeledSpan};
+use miette::{Diagnostic, LabeledSpan, SourceSpan};
 
-use super::{CheckError, LineResolver};
+use super::CheckError;
 use crate::{
     compile::{ParsedFile, ParsedFileMap},
     index_to_i32,
     inversion_list::InversionList,
-    make_absolute_name, make_name,
-    parse::resolve_span,
-    parse_namespace, tag,
+    make_absolute_name, make_name, make_span, normalize_span, parse_namespace, tag,
     types::{
         field_descriptor_proto, source_code_info::Location, DescriptorProto, EnumDescriptorProto,
         FieldDescriptorProto, FileDescriptorProto, OneofDescriptorProto, ServiceDescriptorProto,
     },
-    Span,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,7 +29,7 @@ pub(crate) struct DuplicateNameError {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum NameLocation {
     Import(String),
-    Root(Span),
+    Root(SourceSpan),
     Unknown,
 }
 
@@ -45,7 +42,7 @@ pub(crate) struct NameMap {
 #[derive(Debug, Clone)]
 struct Entry {
     kind: DefinitionKind,
-    span: Option<Span>,
+    span: Option<[i32; 4]>,
     public: bool,
     file: Option<String>,
 }
@@ -79,7 +76,7 @@ struct NamePass<'a> {
     scope: String,
     path: Vec<i32>,
     locations: &'a [Location],
-    lines: Option<&'a crate::parse::LineResolver>,
+    source: Option<&'a str>,
     errors: Vec<CheckError>,
 }
 
@@ -87,7 +84,7 @@ impl NameMap {
     pub fn from_proto(
         file: &FileDescriptorProto,
         file_map: &ParsedFileMap,
-        lines: Option<&LineResolver>,
+        source: Option<&str>,
     ) -> Result<NameMap, Vec<CheckError>> {
         let mut ctx = NamePass {
             name_map: NameMap::new(),
@@ -98,7 +95,7 @@ impl NameMap {
                 .as_ref()
                 .map(|s| s.location.as_slice())
                 .unwrap_or(&[]),
-            lines,
+            source,
             errors: Vec::new(),
         };
 
@@ -112,8 +109,6 @@ impl NameMap {
         }
     }
 
-    #[cfg(feature = "parse")]
-    // TODO include descriptor
     pub fn google_descriptor() -> &'static Self {
         use once_cell::sync::Lazy;
 
@@ -130,12 +125,6 @@ impl NameMap {
         &INSTANCE
     }
 
-    #[cfg(not(feature = "parse"))]
-    // TODO include descriptor
-    pub fn google_descriptor() -> &'static Self {
-        todo!()
-    }
-
     fn new() -> Self {
         NameMap::default()
     }
@@ -144,8 +133,9 @@ impl NameMap {
         &mut self,
         name: String,
         kind: DefinitionKind,
-        span: Option<Span>,
+        span: Option<[i32; 4]>,
         file: Option<&str>,
+        source: Option<&str>,
         public: bool,
     ) -> Result<(), DuplicateNameError> {
         match self.map.entry(name) {
@@ -161,9 +151,14 @@ impl NameMap {
             hash_map::Entry::Occupied(entry) => match (kind, &entry.get().kind) {
                 (DefinitionKind::Package, DefinitionKind::Package) => Ok(()),
                 _ => {
-                    let first =
-                        NameLocation::new(entry.get().file.clone(), entry.get().span.clone());
-                    let second = NameLocation::new(file.map(ToOwned::to_owned), span);
+                    let first = NameLocation::new(
+                        entry.get().file.clone(),
+                        entry.get().span.and_then(|span| make_span(span, source)),
+                    );
+                    let second = NameLocation::new(
+                        file.map(ToOwned::to_owned),
+                        span.and_then(|span| make_span(span, source)),
+                    );
 
                     Err(DuplicateNameError {
                         name: entry.key().to_owned(),
@@ -175,14 +170,21 @@ impl NameMap {
         }
     }
 
-    fn merge(&mut self, other: &Self, file: String, public: bool) -> Result<(), CheckError> {
+    fn merge(
+        &mut self,
+        other: &Self,
+        file: String,
+        source: Option<&str>,
+        public: bool,
+    ) -> Result<(), CheckError> {
         for (name, entry) in &other.map {
             if entry.public {
                 self.add(
                     name.clone(),
                     entry.kind.clone(),
-                    entry.span.clone(),
+                    entry.span,
                     Some(&file),
+                    source,
                     public,
                 )?;
             }
@@ -385,18 +387,18 @@ impl<'a> NamePass<'a> {
         path_items: &[i32],
     ) {
         let span = self.resolve_span(path_items);
-        if let Err(err) = self
-            .name_map
-            .add(self.full_name(name), kind, span, None, true)
+        if let Err(err) =
+            self.name_map
+                .add(self.full_name(name), kind, span, None, self.source, true)
         {
             self.errors.push(CheckError::DuplicateName(err));
         }
     }
 
     fn merge_names(&mut self, file: &ParsedFile, public: bool) {
-        if let Err(err) = self
-            .name_map
-            .merge(&file.name_map, file.name().to_owned(), public)
+        if let Err(err) =
+            self.name_map
+                .merge(&file.name_map, file.name().to_owned(), self.source, public)
         {
             self.errors.push(err);
         }
@@ -418,9 +420,13 @@ impl<'a> NamePass<'a> {
         self.scope.truncate(len);
     }
 
-    fn resolve_span(&mut self, path_items: &[i32]) -> Option<Span> {
+    fn resolve_span(&mut self, path_items: &[i32]) -> Option<[i32; 4]> {
         self.path.extend(path_items);
-        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
+        let span = self
+            .locations
+            .binary_search_by(|l| l.path.cmp(&self.path))
+            .ok()
+            .and_then(|index| normalize_span(&self.locations[index].span));
         self.pop_path(path_items.len());
         span
     }
@@ -442,7 +448,7 @@ impl<'a> NamePass<'a> {
 }
 
 impl NameLocation {
-    fn new(file: Option<String>, span: Option<Span>) -> NameLocation {
+    fn new(file: Option<String>, span: Option<SourceSpan>) -> NameLocation {
         match (file, span) {
             (Some(file), _) => NameLocation::Import(file),
             (None, Some(span)) => NameLocation::Root(span),
@@ -474,22 +480,19 @@ impl std::error::Error for DuplicateNameError {}
 impl Diagnostic for DuplicateNameError {
     fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
         match (&self.first, &self.second) {
-            (NameLocation::Root(first), NameLocation::Root(second)) => Some(Box::new(
+            (&NameLocation::Root(first), &NameLocation::Root(second)) => Some(Box::new(
                 [
-                    LabeledSpan::new_with_span(
-                        Some("first defined here…".to_owned()),
-                        first.clone(),
-                    ),
-                    LabeledSpan::new_with_span(
-                        Some("…and defined again here".to_owned()),
-                        second.clone(),
-                    ),
+                    LabeledSpan::new_with_span(Some("first defined here…".to_owned()), first),
+                    LabeledSpan::new_with_span(Some("…and defined again here".to_owned()), second),
                 ]
                 .into_iter(),
             )),
-            (_, NameLocation::Root(span)) | (NameLocation::Root(span), _) => Some(Box::new(once(
-                LabeledSpan::new_with_span(Some("defined here".to_owned()), span.clone()),
-            ))),
+            (_, &NameLocation::Root(span)) | (&NameLocation::Root(span), _) => {
+                Some(Box::new(once(LabeledSpan::new_with_span(
+                    Some("defined here".to_owned()),
+                    span,
+                ))))
+            }
             _ => None,
         }
     }

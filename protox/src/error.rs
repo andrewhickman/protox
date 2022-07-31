@@ -4,11 +4,10 @@ use std::{
 };
 
 use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
+use protox_parse::ParseError;
 use thiserror::Error;
 
 use crate::check::CheckError;
-#[cfg(feature = "parse")]
-use crate::parse::ParseError;
 
 /// An error that can occur when compiling protobuf files.
 #[derive(Debug, Diagnostic, Error)]
@@ -19,17 +18,13 @@ pub struct Error {
 }
 
 #[derive(Debug, Diagnostic, Error)]
-#[cfg_attr(not(feature = "parse"), allow(dead_code))]
 pub(crate) enum ErrorKind {
-    #[cfg(feature = "parse")]
     #[error("{}", err)]
     #[diagnostic(forward(err))]
-    ParseErrors {
+    Parse {
         err: ParseError,
         #[source_code]
         src: DynSourceCode,
-        #[related]
-        errors: Vec<ParseError>,
     },
     #[error("{}", err)]
     #[diagnostic(forward(err))]
@@ -162,16 +157,6 @@ impl Error {
         }
     }
 
-    #[cfg(feature = "parse")]
-    pub(crate) fn parse_errors(mut errors: Vec<ParseError>, src: impl Into<DynSourceCode>) -> Self {
-        let err = errors.remove(0);
-        Error::from_kind(ErrorKind::ParseErrors {
-            err,
-            src: src.into(),
-            errors,
-        })
-    }
-
     pub(crate) fn check_errors(mut errors: Vec<CheckError>, src: impl Into<DynSourceCode>) -> Self {
         let err = errors.remove(0);
         Error::from_kind(ErrorKind::CheckErrors {
@@ -197,5 +182,14 @@ impl Error {
         };
 
         self
+    }
+}
+
+impl From<ParseError> for Error {
+    fn from(err: ParseError) -> Self {
+        Error::from_kind(ErrorKind::Parse {
+            err,
+            src: DynSourceCode::default(),
+        })
     }
 }

@@ -10,14 +10,13 @@ use std::{
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use prost_types::field_descriptor_proto;
 
-use super::{names::DefinitionKind, CheckError, LineResolver, NameMap};
+use super::{names::DefinitionKind, CheckError, NameMap, RESERVED_MESSAGE_FIELD_NUMBERS};
 use crate::{
     index_to_i32,
     inversion_list::InversionList,
-    make_name,
+    make_name, make_span, normalize_span,
     options::{self, OptionSet},
-    parse::resolve_span,
-    parse_name, parse_namespace, strip_leading_dot, tag,
+    parse_name, parse_namespace, resolve_span, strip_leading_dot, tag,
     types::{
         descriptor_proto, source_code_info::Location, uninterpreted_option, DescriptorProto,
         EnumDescriptorProto, EnumValueDescriptorProto, FieldDescriptorProto, FileDescriptorProto,
@@ -29,7 +28,7 @@ use crate::{
 /// Resolve and check relative type names and options.
 pub(crate) fn resolve(
     file: &mut FileDescriptorProto,
-    lines: Option<&LineResolver>,
+    source: Option<&str>,
     name_map: &NameMap,
 ) -> Result<(), Vec<CheckError>> {
     let mut source_code_info = file.source_code_info.take();
@@ -49,7 +48,7 @@ pub(crate) fn resolve(
         syntax => {
             return Err(vec![CheckError::UnknownSyntax {
                 syntax: syntax.to_owned(),
-                span: resolve_span(lines, locations, &[tag::file::SYNTAX]).map(SourceSpan::from),
+                span: resolve_span(locations, &[tag::file::SYNTAX], source).map(SourceSpan::from),
             }])
         }
     };
@@ -61,7 +60,7 @@ pub(crate) fn resolve(
         errors: Vec::new(),
         path: Vec::new(),
         locations,
-        lines,
+        source,
         is_google_descriptor: file.name() == "google/protobuf/descriptor.proto",
     };
 
@@ -100,7 +99,7 @@ struct Context<'a> {
     scope: String,
     path: Vec<i32>,
     locations: &'a mut Vec<Location>,
-    lines: Option<&'a LineResolver>,
+    source: Option<&'a str>,
     errors: Vec<CheckError>,
     is_google_descriptor: bool,
 }
@@ -204,6 +203,11 @@ impl<'a> Context<'a> {
     }
 
     fn resolve_field_descriptor_proto(&mut self, field: &mut FieldDescriptorProto) {
+        if RESERVED_MESSAGE_FIELD_NUMBERS.contains(&field.number()) {
+            let span = self.resolve_span(&[tag::field::NUMBER]);
+            self.errors.push(CheckError::ReservedMessageNumber { span });
+        }
+
         if let Some(def) = self.resolve_type_name(&mut field.extendee, &[tag::field::EXTENDEE]) {
             match def {
                 DefinitionKind::Message { extension_numbers } => {
@@ -592,11 +596,10 @@ impl<'a> Context<'a> {
     ) {
         use field_descriptor_proto::{Label, Type};
 
-        let option_span = match (self.lines, &location) {
-            #[cfg(feature = "parse")]
-            (Some(lines), Some(location)) => lines
-                .resolve_proto_span(&location.span)
-                .map(SourceSpan::from),
+        let option_span = match (self.source, &location) {
+            (Some(source), Some(location)) => {
+                normalize_span(&location.span).and_then(|span| make_span(span, Some(source)))
+            }
             _ => None,
         };
 
@@ -1103,7 +1106,7 @@ impl<'a> Context<'a> {
 
     fn resolve_span(&mut self, path_items: &[i32]) -> Option<SourceSpan> {
         self.path.extend(path_items);
-        let span = resolve_span(self.lines, self.locations, self.path.as_slice());
+        let span = resolve_span(self.locations, self.path.as_slice(), self.source);
         self.pop_path(path_items.len());
         span.map(SourceSpan::from)
     }

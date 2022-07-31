@@ -1,0 +1,156 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(r#\"message Message {\n            reserved 1 to 536870911;\n        }\"#)"
+---
+Ok(
+    FileDescriptorProto {
+        name: None,
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [
+            DescriptorProto {
+                name: Some(
+                    "Message",
+                ),
+                field: [],
+                extension: [],
+                nested_type: [],
+                enum_type: [],
+                extension_range: [],
+                oneof_decl: [],
+                options: None,
+                reserved_range: [
+                    ReservedRange {
+                        start: Some(
+                            1,
+                        ),
+                        end: Some(
+                            536870912,
+                        ),
+                    },
+                ],
+                reserved_name: [],
+            },
+        ],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            2,
+                            9,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            2,
+                            9,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            0,
+                            8,
+                            15,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                        ],
+                        span: [
+                            1,
+                            12,
+                            36,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                        ],
+                        span: [
+                            1,
+                            21,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            1,
+                            21,
+                            22,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                            2,
+                        ],
+                        span: [
+                            1,
+                            26,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

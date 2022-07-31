@@ -93,7 +93,7 @@ fn name_conflict_with_import() {
         vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(28..31),
+            second: NameLocation::Root(SourceSpan::from(28..31)),
         })]
     );
 }
@@ -109,7 +109,7 @@ fn name_conflict_package() {
         vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(28..31),
+            second: NameLocation::Root(SourceSpan::from(28..31)),
         })]
     );
     assert_eq!(
@@ -121,7 +121,7 @@ fn name_conflict_package() {
         vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(20..32),
+            second: NameLocation::Root(SourceSpan::from(20..32)),
         })]
     );
     assert_yaml_snapshot!(check_with_imports(vec![
@@ -182,56 +182,38 @@ fn name_conflict() {
         check_err("message Foo {} message Foo {}"),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: NameLocation::Root(8..11),
-            second: NameLocation::Root(23..26),
+            first: NameLocation::Root(SourceSpan::from(8..11)),
+            second: NameLocation::Root(SourceSpan::from(23..26)),
         })]
     );
     assert_eq!(
         check_err("message Foo {} enum Foo {}"),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: NameLocation::Root(8..11),
-            second: NameLocation::Root(20..23),
+            first: NameLocation::Root(SourceSpan::from(8..11)),
+            second: NameLocation::Root(SourceSpan::from(20..23)),
         })]
     );
     assert_eq!(
         check_err("message Foo {} service Foo {}"),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: NameLocation::Root(8..11),
-            second: NameLocation::Root(23..26),
+            first: NameLocation::Root(SourceSpan::from(8..11)),
+            second: NameLocation::Root(SourceSpan::from(23..26)),
         })]
     );
     assert_eq!(
         check_err("message Foo {} enum Bar { Foo = 1; }"),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo".to_owned(),
-            first: NameLocation::Root(8..11),
-            second: NameLocation::Root(26..29),
+            first: NameLocation::Root(SourceSpan::from(8..11)),
+            second: NameLocation::Root(SourceSpan::from(26..29)),
         })]
     );
 }
 
 #[test]
 fn invalid_message_number() {
-    assert_eq!(
-        check_err("message Foo { optional int32 i = -5; }"),
-        vec![InvalidMessageNumber {
-            span: Some(SourceSpan::from(33..35))
-        }]
-    );
-    assert_eq!(
-        check_err("message Foo { optional int32 i = 0; }"),
-        vec![InvalidMessageNumber {
-            span: Some(SourceSpan::from(33..34))
-        }]
-    );
-    assert_eq!(
-        check_err("message Foo { optional int32 i = 536870912; }"),
-        vec![InvalidMessageNumber {
-            span: Some(SourceSpan::from(33..42))
-        }]
-    );
     assert_eq!(
         check_err("message Foo { optional int32 i = 19000; }"),
         vec![ReservedMessageNumber {
@@ -244,10 +226,6 @@ fn invalid_message_number() {
             span: Some(SourceSpan::from(33..38))
         }]
     );
-    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 1; }"));
-    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 536870911; }"));
-    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 18999; }"));
-    assert_yaml_snapshot!(check_ok("message Foo { optional int32 i = 20000; }"));
 }
 
 #[test]
@@ -265,7 +243,7 @@ fn generate_map_entry_message_name_conflict() {
         vec![DuplicateName(DuplicateNameError {
             name: "Foo.BazEntry".to_owned(),
             first: NameLocation::Unknown,
-            second: NameLocation::Root(63..71),
+            second: NameLocation::Root(SourceSpan::from(63..71)),
         })]
     );
 }
@@ -285,8 +263,8 @@ fn generate_group_message_name_conflict() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Foo.Baz".to_owned(),
-            first: NameLocation::Root(28..31),
-            second: NameLocation::Root(61..64),
+            first: NameLocation::Root(SourceSpan::from(28..31)),
+            second: NameLocation::Root(SourceSpan::from(61..64)),
         })],
     );
 }
@@ -307,7 +285,7 @@ fn generate_synthetic_oneof_name_conflict() {
         vec![DuplicateName(DuplicateNameError {
             name: "Foo._val".to_owned(),
             first: NameLocation::Unknown,
-            second: NameLocation::Root(113..117),
+            second: NameLocation::Root(SourceSpan::from(113..117)),
         })],
     );
 }
@@ -431,8 +409,8 @@ fn name_collision() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Message".to_owned(),
-            first: NameLocation::Root(8..15),
-            second: NameLocation::Root(39..46),
+            first: NameLocation::Root(SourceSpan::from(8..15)),
+            second: NameLocation::Root(SourceSpan::from(39..46)),
         })],
     );
     assert_eq!(
@@ -445,8 +423,8 @@ fn name_collision() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Message".to_owned(),
-            first: NameLocation::Root(8..15),
-            second: NameLocation::Root(36..43),
+            first: NameLocation::Root(SourceSpan::from(8..15)),
+            second: NameLocation::Root(SourceSpan::from(36..43)),
         })],
     );
     assert_eq!(
@@ -462,8 +440,8 @@ fn name_collision() {
         ),
         vec![DuplicateName(DuplicateNameError {
             name: "Message.foo".to_owned(),
-            first: NameLocation::Root(49..52),
-            second: NameLocation::Root(80..83),
+            first: NameLocation::Root(SourceSpan::from(49..52)),
+            second: NameLocation::Root(SourceSpan::from(80..83)),
         })],
     );
     assert_eq!(
@@ -475,7 +453,7 @@ fn name_collision() {
         vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(28..31),
+            second: NameLocation::Root(SourceSpan::from(28..31)),
         })],
     );
     assert_eq!(
@@ -487,25 +465,8 @@ fn name_collision() {
         vec![DuplicateName(DuplicateNameError {
             name: "foo".to_owned(),
             first: NameLocation::Import("dep.proto".to_owned()),
-            second: NameLocation::Root(28..31),
+            second: NameLocation::Root(SourceSpan::from(28..31)),
         })],
-    );
-}
-
-#[test]
-fn proto3_default_value() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                optional int32 foo = 1 [default = -0];
-            }"#
-        ),
-        vec![Proto3DefaultValue {
-            span: Some(SourceSpan::from(103..115))
-        }],
     );
 }
 
@@ -868,16 +829,6 @@ fn field_default_invalid_type() {
 }
 
 #[test]
-fn negative_ident_outside_default() {
-    assert_eq!(
-        check_err("option opt = -foo;"),
-        vec![NegativeIdentOutsideDefault {
-            span: Some(SourceSpan::from(13..17))
-        }],
-    );
-}
-
-#[test]
 fn message_field_json_name() {
     assert_eq!(
         check_err(
@@ -894,116 +845,6 @@ fn message_field_json_name() {
         optional int32 field = 1 [json_name = '$FIELD'];
     }"#
     ));
-}
-
-#[test]
-fn map_field_with_label() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            optional map<int32, string> field = 1;
-        }"#
-        ),
-        vec![MapFieldWithLabel {
-            span: Some(SourceSpan::from(30..38))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                required map<int32, string> field = 1;
-            }"#
-        ),
-        vec![MapFieldWithLabel {
-            span: Some(SourceSpan::from(79..87))
-        }],
-    );
-}
-
-#[test]
-fn map_field_invalid_type() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<Message, sfixed32> field = 1;
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..41))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<.Message, fixed32> field = 1;
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..42))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<.Message, bool> field = 1;
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..42))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<float, string> field = 1;
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..39))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<double, int64> field = 1;
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..40))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            map<Enum, int64> field = 1;
-
-            enum Enum {
-                ZERO = 0;
-            }
-        }"#
-        ),
-        vec![InvalidMapFieldKeyType {
-            span: Some(SourceSpan::from(34..38))
-        }],
-    );
-    assert_json_snapshot!(check_ok(
-        r#"message Message {
-        map<int64, float> int64 = 1;
-        map<uint32, double> uint32 = 2;
-        map<uint64, .Message> uint64 = 3;
-        map<sint32, Message> sint32 = 4;
-        map<sint64, bytes> sint64 = 5;
-        map<fixed32, int64> fixed32 = 6;
-        map<fixed64, uint32> fixed64 = 7;
-        map<sfixed32, sint32> sfixed32 = 8;
-        map<sfixed64, sint64> sfixed64 = 9;
-        map<bool, fixed32> bool = 10;
-        map<string, fixed64> string = 11;
-    }"#
-    ))
 }
 
 #[test]
@@ -1050,35 +891,6 @@ fn message_field_duplicate_number() {
             second_span: Some(SourceSpan::from(136..137)),
         })],
     );
-}
-
-#[test]
-fn message_reserved_range_extrema() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                reserved 0 to 1;
-            }"#
-        ),
-        vec![InvalidMessageNumber {
-            span: Some(SourceSpan::from(43..44))
-        }],
-    );
-    assert_eq!(
-        check_err(
-            r#"message Message {
-                reserved 1 to 536870912;
-            }"#
-        ),
-        vec![InvalidMessageNumber {
-            span: Some(SourceSpan::from(48..57))
-        }],
-    );
-    assert_yaml_snapshot!(check_ok(
-        r#"message Message {
-            reserved 1 to 536870911;
-        }"#
-    ));
 }
 
 #[test]
@@ -1227,47 +1039,6 @@ fn message_reserved_range_message_set() {
 }
 
 #[test]
-fn extend_required_field() {
-    assert_eq!(
-        check_err(
-            r#"
-            message Message {
-                extensions 1;
-            }
-
-            extend Message {
-                required int32 foo = 1;
-            }
-            "#
-        ),
-        vec![RequiredExtendField {
-            span: Some(SourceSpan::from(121..129)),
-        }],
-    );
-}
-
-#[test]
-fn extend_map_field() {
-    assert_eq!(
-        check_err(
-            r#"
-            message Message {
-                extensions 1;
-            }
-
-            extend Message {
-                map<int32, string> foo = 1;
-            }
-            "#
-        ),
-        vec![InvalidExtendFieldKind {
-            kind: "map",
-            span: Some(SourceSpan::from(121..148)),
-        }],
-    );
-}
-
-#[test]
 fn extend_group_field() {
     assert_yaml_snapshot!(check_ok(
         r#"
@@ -1362,101 +1133,6 @@ fn extend_non_options_type_proto3() {
 }
 
 #[test]
-fn proto3_group_field() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                optional group Foo = 1 {};
-            }
-            "#
-        ),
-        vec![Proto3GroupField {
-            span: Some(SourceSpan::from(79..104)),
-        }],
-    );
-}
-
-#[test]
-fn proto3_required_field() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                required int32 foo = 1;
-            }
-            "#
-        ),
-        vec![Proto3RequiredField {
-            span: Some(SourceSpan::from(79..87)),
-        }],
-    );
-}
-
-#[test]
-fn proto2_field_missing_label() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto2';
-
-            message Message {
-                int32 foo = 1;
-            }
-            "#
-        ),
-        vec![Proto2FieldMissingLabel {
-            span: Some(SourceSpan::from(79..93)),
-        }],
-    );
-}
-
-#[test]
-fn oneof_field_with_label() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                oneof foo {
-                    optional int32 bar = 1;
-                }
-            }
-            "#
-        ),
-        vec![OneofFieldWithLabel {
-            span: Some(SourceSpan::from(111..119)),
-        }],
-    );
-}
-
-#[test]
-fn oneof_map_field() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                oneof foo {
-                    map<int32, bytes> bar = 1;
-                }
-            }
-            "#
-        ),
-        vec![InvalidOneofFieldKind {
-            kind: "map",
-            span: Some(SourceSpan::from(111..137)),
-        }],
-    );
-}
-
-#[test]
 fn oneof_group_field() {
     assert_yaml_snapshot!(check_ok(
         r#"
@@ -1469,95 +1145,6 @@ fn oneof_group_field() {
         }
         "#
     ))
-}
-
-#[test]
-fn empty_oneof() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = 'proto3';
-
-            message Message {
-                oneof foo {}
-            }
-            "#
-        ),
-        vec![EmptyOneof {
-            span: Some(SourceSpan::from(79..91)),
-        }],
-    );
-}
-
-#[test]
-fn enum_value_extrema() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = "proto3";
-
-            enum Extreme {
-                ZERO = 0;
-                MIN = -2147483649;
-                MAX = 2147483648;
-            }
-            "#
-        ),
-        vec![
-            InvalidEnumNumber {
-                span: Some(SourceSpan::from(108..119)),
-            },
-            InvalidEnumNumber {
-                span: Some(SourceSpan::from(143..153)),
-            }
-        ],
-    );
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        syntax = "proto3";
-
-        enum Extreme {
-            ZERO = 0;
-            MIN = -2147483648;
-            MAX = 2147483647;
-        }
-        "#
-    ));
-}
-
-#[test]
-fn enum_reserved_range_extrema() {
-    assert_eq!(
-        check_err(
-            r#"
-            syntax = "proto3";
-
-            enum Extreme {
-                ZERO = 0;
-
-                reserved -2147483649 to -1, 1 to 2147483648;
-            }
-            "#
-        ),
-        vec![
-            InvalidEnumNumber {
-                span: Some(SourceSpan::from(112..123)),
-            },
-            InvalidEnumNumber {
-                span: Some(SourceSpan::from(136..146)),
-            }
-        ],
-    );
-    assert_yaml_snapshot!(check_ok(
-        r#"
-        syntax = "proto3";
-
-        enum Extreme {
-            ZERO = 0;
-            reserved -2147483648 to -1, 1 to 2147483647;
-        }
-        "#
-    ));
 }
 
 #[test]

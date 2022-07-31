@@ -57,13 +57,6 @@ impl OptionSet {
         Default::default()
     }
 
-    pub fn uninterpreted(uninterpreted_options: Vec<UninterpretedOption>) -> Self {
-        OptionSet {
-            fields: BTreeMap::new(),
-            uninterpreted_options,
-        }
-    }
-
     pub fn take_uninterpreted(&mut self) -> Vec<UninterpretedOption> {
         mem::take(&mut self.uninterpreted_options)
     }

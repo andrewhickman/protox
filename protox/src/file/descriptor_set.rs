@@ -42,7 +42,6 @@ impl FileResolver for DescriptorSetFileResolver {
             if file.name() == name {
                 return Ok(File {
                     path: None,
-                    lines: None,
                     source: None,
                     descriptor: file.clone(),
                 });

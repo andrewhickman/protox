@@ -3,11 +3,9 @@ source: protox-parse/src/tests.rs
 expression: "parse(\"\n        option opt = -foo;\n    \")"
 ---
 Err(
-    ParseError {
-        kind: NegativeIdentOutsideDefault {
+    [
+        NegativeIdentOutsideDefault {
             span: 22..26,
         },
-        related: [],
-        source_code: "\n        option opt = -foo;\n    ",
-    },
+    ],
 )

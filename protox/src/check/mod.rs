@@ -5,17 +5,11 @@ use thiserror::Error;
 
 use self::{names::DuplicateNameError, resolve::DuplicateNumberError};
 
-#[cfg(feature = "parse")]
-use crate::parse::LineResolver;
-#[cfg(not(feature = "parse"))]
-type LineResolver = ();
-
 mod names;
 mod resolve;
 #[cfg(test)]
 mod tests;
 
-pub(crate) const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 pub(crate) const RESERVED_MESSAGE_FIELD_NUMBERS: Range<i32> = 19_000..20_000;
 
 pub(crate) use self::{names::NameMap, resolve::resolve};
@@ -56,11 +50,6 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Option<SourceSpan>,
     },
-    #[error("a map field key type must be an integer type, boolean or string")]
-    InvalidMapFieldKeyType {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
     #[error("extendee type '{name}' is not a message")]
     InvalidExtendeeTypeName {
         name: String,
@@ -83,11 +72,6 @@ pub(crate) enum CheckError {
         #[label("used here")]
         span: Option<SourceSpan>,
     },
-    #[error("message numbers must be between 1 and {}", MAX_MESSAGE_FIELD_NUMBER)]
-    InvalidMessageNumber {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
     #[error("message numbers between {} and {} are reserved", RESERVED_MESSAGE_FIELD_NUMBERS.start, RESERVED_MESSAGE_FIELD_NUMBERS.end)]
     ReservedMessageNumber {
         #[label("defined here")]
@@ -98,66 +82,9 @@ pub(crate) enum CheckError {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
-    #[error("enum numbers must be between {} and {}", i32::MIN, i32::MAX)]
-    InvalidEnumNumber {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
     #[error("{kind} fields may not have default values")]
     InvalidDefault {
         kind: &'static str,
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("default values are not allowed in proto3")]
-    Proto3DefaultValue {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("{kind} fields are not allowed in extensions")]
-    InvalidExtendFieldKind {
-        kind: &'static str,
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("extension fields may not be required")]
-    RequiredExtendField {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("map fields cannot have labels")]
-    MapFieldWithLabel {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("fields must have a label with proto2 syntax (expected one of 'optional', 'repeated' or 'required')")]
-    Proto2FieldMissingLabel {
-        #[label("field defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("groups are not allowed in proto3 syntax")]
-    Proto3GroupField {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("required fields are not allowed in proto3 syntax")]
-    Proto3RequiredField {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("{kind} fields are not allowed in a oneof")]
-    InvalidOneofFieldKind {
-        kind: &'static str,
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("oneof fields cannot have labels")]
-    OneofFieldWithLabel {
-        #[label("defined here")]
-        span: Option<SourceSpan>,
-    },
-    #[error("a oneof must have at least one field")]
-    EmptyOneof {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },
@@ -226,10 +153,5 @@ pub(crate) enum CheckError {
         span: Option<SourceSpan>,
         #[help]
         help: Option<String>,
-    },
-    #[error("identifiers may not be negative")]
-    NegativeIdentOutsideDefault {
-        #[label("found here")]
-        span: Option<SourceSpan>,
     },
 }

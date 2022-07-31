@@ -1,0 +1,1877 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(r#\"message Message {\n        map<int64, float> int64 = 1;\n        map<uint32, double> uint32 = 2;\n        map<uint64, .Message> uint64 = 3;\n        map<sint32, Message> sint32 = 4;\n        map<sint64, bytes> sint64 = 5;\n        map<fixed32, int64> fixed32 = 6;\n        map<fixed64, uint32> fixed64 = 7;\n        map<sfixed32, sint32> sfixed32 = 8;\n        map<sfixed64, sint64> sfixed64 = 9;\n        map<bool, fixed32> bool = 10;\n        map<string, fixed64> string = 11;\n    }\"#)"
+---
+Ok(
+    FileDescriptorProto {
+        name: None,
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [
+            DescriptorProto {
+                name: Some(
+                    "Message",
+                ),
+                field: [
+                    FieldDescriptorProto {
+                        name: Some(
+                            "int64",
+                        ),
+                        number: Some(
+                            1,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Int64Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "int64",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "uint32",
+                        ),
+                        number: Some(
+                            2,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Uint32Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "uint32",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "uint64",
+                        ),
+                        number: Some(
+                            3,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Uint64Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "uint64",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "sint32",
+                        ),
+                        number: Some(
+                            4,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Sint32Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "sint32",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "sint64",
+                        ),
+                        number: Some(
+                            5,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Sint64Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "sint64",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "fixed32",
+                        ),
+                        number: Some(
+                            6,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Fixed32Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "fixed32",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "fixed64",
+                        ),
+                        number: Some(
+                            7,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Fixed64Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "fixed64",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "sfixed32",
+                        ),
+                        number: Some(
+                            8,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Sfixed32Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "sfixed32",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "sfixed64",
+                        ),
+                        number: Some(
+                            9,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "Sfixed64Entry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "sfixed64",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "bool",
+                        ),
+                        number: Some(
+                            10,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "BoolEntry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "bool",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "string",
+                        ),
+                        number: Some(
+                            11,
+                        ),
+                        label: Some(
+                            Repeated,
+                        ),
+                        r#type: Some(
+                            Message,
+                        ),
+                        type_name: Some(
+                            "StringEntry",
+                        ),
+                        extendee: None,
+                        default_value: None,
+                        oneof_index: None,
+                        json_name: Some(
+                            "string",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                ],
+                extension: [],
+                nested_type: [
+                    DescriptorProto {
+                        name: Some(
+                            "Int64Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Int64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Float,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Uint32Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Uint32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Double,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Uint64Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Uint64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: None,
+                                type_name: Some(
+                                    ".Message",
+                                ),
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Sint32Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sint32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: None,
+                                type_name: Some(
+                                    "Message",
+                                ),
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Sint64Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sint64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Bytes,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Fixed32Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Fixed32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Int64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Fixed64Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Fixed64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Uint32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Sfixed32Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sfixed32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sint32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "Sfixed64Entry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sfixed64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Sint64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "BoolEntry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Bool,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Fixed32,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                    DescriptorProto {
+                        name: Some(
+                            "StringEntry",
+                        ),
+                        field: [
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "key",
+                                ),
+                                number: Some(
+                                    1,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    String,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "key",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                            FieldDescriptorProto {
+                                name: Some(
+                                    "value",
+                                ),
+                                number: Some(
+                                    2,
+                                ),
+                                label: Some(
+                                    Optional,
+                                ),
+                                r#type: Some(
+                                    Fixed64,
+                                ),
+                                type_name: None,
+                                extendee: None,
+                                default_value: None,
+                                oneof_index: None,
+                                json_name: Some(
+                                    "value",
+                                ),
+                                options: None,
+                                proto3_optional: None,
+                            },
+                        ],
+                        extension: [],
+                        nested_type: [],
+                        enum_type: [],
+                        extension_range: [],
+                        oneof_decl: [],
+                        options: Some(
+                            MessageOptions {
+                                message_set_wire_format: None,
+                                no_standard_descriptor_accessor: None,
+                                deprecated: None,
+                                map_entry: Some(
+                                    true,
+                                ),
+                                uninterpreted_option: [],
+                            },
+                        ),
+                        reserved_range: [],
+                        reserved_name: [],
+                    },
+                ],
+                enum_type: [],
+                extension_range: [],
+                oneof_decl: [],
+                options: None,
+                reserved_range: [],
+                reserved_name: [],
+            },
+        ],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            12,
+                            5,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            12,
+                            5,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            0,
+                            8,
+                            15,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                        ],
+                        span: [
+                            1,
+                            8,
+                            36,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            1,
+                            26,
+                            31,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            3,
+                        ],
+                        span: [
+                            1,
+                            34,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            6,
+                        ],
+                        span: [
+                            1,
+                            8,
+                            25,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                        ],
+                        span: [
+                            2,
+                            8,
+                            39,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            1,
+                        ],
+                        span: [
+                            2,
+                            28,
+                            34,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            3,
+                        ],
+                        span: [
+                            2,
+                            37,
+                            38,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            6,
+                        ],
+                        span: [
+                            2,
+                            8,
+                            27,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            2,
+                        ],
+                        span: [
+                            3,
+                            8,
+                            41,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            2,
+                            1,
+                        ],
+                        span: [
+                            3,
+                            30,
+                            36,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            2,
+                            3,
+                        ],
+                        span: [
+                            3,
+                            39,
+                            40,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            2,
+                            6,
+                        ],
+                        span: [
+                            3,
+                            8,
+                            29,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            3,
+                        ],
+                        span: [
+                            4,
+                            8,
+                            40,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            3,
+                            1,
+                        ],
+                        span: [
+                            4,
+                            29,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            3,
+                            3,
+                        ],
+                        span: [
+                            4,
+                            38,
+                            39,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            3,
+                            6,
+                        ],
+                        span: [
+                            4,
+                            8,
+                            28,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            4,
+                        ],
+                        span: [
+                            5,
+                            8,
+                            38,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            4,
+                            1,
+                        ],
+                        span: [
+                            5,
+                            27,
+                            33,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            4,
+                            3,
+                        ],
+                        span: [
+                            5,
+                            36,
+                            37,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            4,
+                            6,
+                        ],
+                        span: [
+                            5,
+                            8,
+                            26,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            5,
+                        ],
+                        span: [
+                            6,
+                            8,
+                            40,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            5,
+                            1,
+                        ],
+                        span: [
+                            6,
+                            28,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            5,
+                            3,
+                        ],
+                        span: [
+                            6,
+                            38,
+                            39,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            5,
+                            6,
+                        ],
+                        span: [
+                            6,
+                            8,
+                            27,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            6,
+                        ],
+                        span: [
+                            7,
+                            8,
+                            41,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            6,
+                            1,
+                        ],
+                        span: [
+                            7,
+                            29,
+                            36,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            6,
+                            3,
+                        ],
+                        span: [
+                            7,
+                            39,
+                            40,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            6,
+                            6,
+                        ],
+                        span: [
+                            7,
+                            8,
+                            28,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            7,
+                        ],
+                        span: [
+                            8,
+                            8,
+                            43,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            7,
+                            1,
+                        ],
+                        span: [
+                            8,
+                            30,
+                            38,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            7,
+                            3,
+                        ],
+                        span: [
+                            8,
+                            41,
+                            42,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            7,
+                            6,
+                        ],
+                        span: [
+                            8,
+                            8,
+                            29,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            8,
+                        ],
+                        span: [
+                            9,
+                            8,
+                            43,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            8,
+                            1,
+                        ],
+                        span: [
+                            9,
+                            30,
+                            38,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            8,
+                            3,
+                        ],
+                        span: [
+                            9,
+                            41,
+                            42,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            8,
+                            6,
+                        ],
+                        span: [
+                            9,
+                            8,
+                            29,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            9,
+                        ],
+                        span: [
+                            10,
+                            8,
+                            37,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            9,
+                            1,
+                        ],
+                        span: [
+                            10,
+                            27,
+                            31,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            9,
+                            3,
+                        ],
+                        span: [
+                            10,
+                            34,
+                            36,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            9,
+                            6,
+                        ],
+                        span: [
+                            10,
+                            8,
+                            26,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            10,
+                        ],
+                        span: [
+                            11,
+                            8,
+                            41,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            10,
+                            1,
+                        ],
+                        span: [
+                            11,
+                            29,
+                            35,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            10,
+                            3,
+                        ],
+                        span: [
+                            11,
+                            38,
+                            40,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            10,
+                            6,
+                        ],
+                        span: [
+                            11,
+                            8,
+                            28,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

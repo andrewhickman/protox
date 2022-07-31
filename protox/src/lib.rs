@@ -38,30 +38,15 @@ mod error;
 mod fmt;
 mod inversion_list;
 mod options;
-#[cfg(feature = "parse")]
-mod parse;
 mod tag;
-#[cfg(test)]
-mod tests;
 mod types;
 
-#[cfg(not(feature = "parse"))]
-mod parse {
-    pub(crate) type LineResolver = ();
-    pub(crate) fn resolve_span(
-        _: Option<&LineResolver>,
-        _: &[crate::types::source_code_info::Location],
-        _: &[i32],
-    ) -> Option<crate::Span> {
-        None
-    }
-}
-
-#[cfg(feature = "parse")]
+use std::convert::TryInto;
 use std::path::Path;
-use std::{convert::TryInto, ops::Range};
 
+use miette::{SourceOffset, SourceSpan};
 use prost::Message;
+use prost_types::source_code_info;
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -162,7 +147,6 @@ pub use self::error::Error;
 ///     ..Default::default()
 /// });
 /// ```
-#[cfg(feature = "parse")]
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
@@ -179,63 +163,7 @@ pub fn compile(
     Ok(compiler.file_descriptor_set())
 }
 
-/// Parses a single protobuf source file into a [`FileDescriptorProto`](prost_types::FileDescriptorProto).
-///
-/// This function only looks at the syntax of the file, without resolving type names or reading
-/// imported files.
-///
-/// # Examples
-///
-/// ```
-/// # use protox::parse;
-/// # use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location, field_descriptor_proto::Label};
-/// #
-/// let source = r#"
-///     syntax = "proto3";
-///     import "dep.proto";
-///
-///     message Foo {
-///         Bar bar = 1;
-///     }
-/// "#;
-/// let file_descriptor = parse(source).unwrap();
-/// assert_eq!(file_descriptor, FileDescriptorProto {
-///     syntax: Some("proto3".to_owned()),
-///     dependency: vec!["dep.proto".to_owned()],
-///     message_type: vec![DescriptorProto {
-///         name: Some("Foo".to_owned()),
-///         field: vec![FieldDescriptorProto {
-///             label: Some(Label::Optional as _),
-///             name: Some("bar".to_owned()),
-///             number: Some(1),
-///             type_name: Some("Bar".to_owned()),
-///             json_name: Some("bar".to_owned()),
-///             ..Default::default()
-///         }],
-///         ..Default::default()
-///     }],
-///     source_code_info: Some(SourceCodeInfo {
-///         /* ... */
-/// #       location: vec![
-/// #            Location { path: vec![], span: vec![1, 4, 6, 5], ..Default::default() },
-/// #            Location { path: vec![3, 0], span: vec![2, 4, 23], ..Default::default() },
-/// #            Location { path: vec![4, 0], span: vec![4, 4, 6, 5], ..Default::default() },
-/// #            Location { path: vec![4, 0, 1], span: vec![4, 12, 15], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0], span: vec![5, 8, 20], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 1], span: vec![5, 12, 15], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 3], span: vec![5, 18, 19], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], ..Default::default() },
-/// #            Location { path: vec![12], span: vec![1, 4, 22], ..Default::default() },
-/// #       ],
-///     }),
-///     ..Default::default()
-/// })
-/// ```
-#[cfg(feature = "parse")]
-pub fn parse(source: &str) -> Result<prost_types::FileDescriptorProto, Error> {
-    parse::parse(None, None, source, &parse::LineResolver::new(source))
-        .map(|file| transcode_file(&file, &mut Vec::new()))
-}
+pub use protox_parse::parse;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Syntax {
@@ -243,15 +171,62 @@ enum Syntax {
     Proto3,
 }
 
-type Span = Range<usize>;
-
-#[cfg(feature = "parse")]
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 fn index_to_i32(index: usize) -> i32 {
     // We enforce that all files parsed are at most i32::MAX bytes long. Therefore the indices of any
     // definitions in a single file must fit into an i32.
     index.try_into().unwrap()
+}
+
+fn normalize_span(span: &[i32]) -> Option<[i32; 4]> {
+    match *span {
+        [start_line, start_col, end_col] => Some([start_line, start_col, start_line, end_col]),
+        [start_line, start_col, end_line, end_col] => {
+            Some([start_line, start_col, end_line, end_col])
+        }
+        _ => None,
+    }
+}
+
+fn resolve_span(
+    locations: &[source_code_info::Location],
+    path: &[i32],
+    source: Option<&str>,
+) -> Option<SourceSpan> {
+    let source = source?;
+
+    let span = match locations.binary_search_by(|l| l.path.as_slice().cmp(path)) {
+        Ok(index) => normalize_span(&locations[index].span)?,
+        Err(_) => return None,
+    };
+
+    make_span(span, Some(source))
+}
+
+fn make_span(
+    [start_line, start_col, end_line, end_col]: [i32; 4],
+    source: Option<&str>,
+) -> Option<SourceSpan> {
+    let source = source?;
+    let start = SourceOffset::from_location(
+        source,
+        start_line.checked_add(0)? as _,
+        start_col.checked_add(0)? as _,
+    )
+    .offset();
+    let end = SourceOffset::from_location(
+        source,
+        end_line.checked_add(0)? as _,
+        end_col.checked_add(0)? as _,
+    )
+    .offset();
+    let span = SourceSpan::from(start..end);
+    if span.is_empty() {
+        None
+    } else {
+        Some(span)
+    }
 }
 
 fn make_name(namespace: &str, name: impl std::fmt::Display) -> String {

@@ -1,3 +1,10 @@
+//! Parsing of protobuf source files.
+//!
+//! See the documentation for [`parse()`] for details.
+#![warn(missing_debug_implementations, missing_docs)]
+#![deny(unsafe_code)]
+#![doc(html_root_url = "https://docs.rs/protox-parse/0.1.0/")]
+
 use logos::Span;
 use miette::Diagnostic;
 use prost_types::FileDescriptorProto;
@@ -14,6 +21,7 @@ mod tests;
 
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 
+/// An error that may occur while parsing a protobuf source file.
 #[derive(Error, Debug, Diagnostic, PartialEq)]
 #[error("{}", kind)]
 #[diagnostic(forward(kind))]
@@ -232,6 +240,58 @@ pub(crate) enum ParseErrorKind {
     FileTooLarge,
 }
 
+/// Parses a single protobuf source file into a [`FileDescriptorProto`](prost_types::FileDescriptorProto).
+///
+/// This function only looks at the syntax of the file, without resolving type names or reading
+/// imported files.
+///
+/// # Examples
+///
+/// ```
+/// # use protox_parse::parse;
+/// # use prost_types::{DescriptorProto, FieldDescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location, field_descriptor_proto::Label};
+/// #
+/// let source = r#"
+///     syntax = "proto3";
+///     import "dep.proto";
+///
+///     message Foo {
+///         Bar bar = 1;
+///     }
+/// "#;
+/// let file_descriptor = parse(source).unwrap();
+/// assert_eq!(file_descriptor, FileDescriptorProto {
+///     syntax: Some("proto3".to_owned()),
+///     dependency: vec!["dep.proto".to_owned()],
+///     message_type: vec![DescriptorProto {
+///         name: Some("Foo".to_owned()),
+///         field: vec![FieldDescriptorProto {
+///             label: Some(Label::Optional as _),
+///             name: Some("bar".to_owned()),
+///             number: Some(1),
+///             type_name: Some("Bar".to_owned()),
+///             json_name: Some("bar".to_owned()),
+///             ..Default::default()
+///         }],
+///         ..Default::default()
+///     }],
+///     source_code_info: Some(SourceCodeInfo {
+///         /* ... */
+/// #       location: vec![
+/// #            Location { path: vec![], span: vec![1, 4, 6, 5], ..Default::default() },
+/// #            Location { path: vec![3, 0], span: vec![2, 4, 23], ..Default::default() },
+/// #            Location { path: vec![4, 0], span: vec![4, 4, 6, 5], ..Default::default() },
+/// #            Location { path: vec![4, 0, 1], span: vec![4, 12, 15], ..Default::default() },
+/// #            Location { path: vec![4, 0, 2, 0], span: vec![5, 8, 20], ..Default::default() },
+/// #            Location { path: vec![4, 0, 2, 0, 1], span: vec![5, 12, 15], ..Default::default() },
+/// #            Location { path: vec![4, 0, 2, 0, 3], span: vec![5, 18, 19], ..Default::default() },
+/// #            Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], ..Default::default() },
+/// #            Location { path: vec![12], span: vec![1, 4, 22], ..Default::default() },
+/// #       ],
+///     }),
+///     ..Default::default()
+/// })
+/// ```
 pub fn parse(source: &str) -> Result<FileDescriptorProto, ParseError> {
     if source.len() > MAX_FILE_LEN {
         return Err(ParseError::new(vec![ParseErrorKind::FileTooLarge], source));

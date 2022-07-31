@@ -3,13 +3,11 @@ source: protox-parse/src/tests.rs
 expression: "parse(\"\n        message Foo {\n            optional int32 enum = 1 [default = 2.4];\n        }\n    \")"
 ---
 Err(
-    ParseError {
-        kind: ValueInvalidType {
+    [
+        ValueInvalidType {
             expected: "an integer",
             actual: "2.4",
             span: 70..73,
         },
-        related: [],
-        source_code: "\n        message Foo {\n            optional int32 enum = 1 [default = 2.4];\n        }\n    ",
-    },
+    ],
 )
