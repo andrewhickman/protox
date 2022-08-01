@@ -5,8 +5,10 @@
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/protox-parse/0.1.0/")]
 
+use std::{fmt, sync::Arc};
+
 use logos::Span;
-use miette::Diagnostic;
+use miette::{Diagnostic, SourceCode};
 use prost_types::FileDescriptorProto;
 use thiserror::Error;
 
@@ -22,7 +24,7 @@ mod tests;
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 
 /// An error that may occur while parsing a protobuf source file.
-#[derive(Error, Debug, Diagnostic, PartialEq)]
+#[derive(Error, Diagnostic)]
 #[error("{}", kind)]
 #[diagnostic(forward(kind))]
 pub struct ParseError {
@@ -30,7 +32,7 @@ pub struct ParseError {
     #[related]
     related: Vec<ParseErrorKind>,
     #[source_code]
-    source_code: String,
+    source_code: Arc<dyn SourceCode>,
 }
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -314,6 +316,15 @@ fn join_span(start: Span, end: Span) -> Span {
     start.start..end.end
 }
 
+impl fmt::Debug for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list()
+            .entry(&self.kind)
+            .entries(&self.related)
+            .finish()
+    }
+}
+
 impl ParseError {
     fn new(mut related: Vec<ParseErrorKind>, source: impl Into<String>) -> Self {
         debug_assert!(!related.is_empty());
@@ -321,7 +332,41 @@ impl ParseError {
         ParseError {
             kind,
             related,
-            source_code: source.into(),
+            source_code: Arc::new(source.into()),
+        }
+    }
+
+    /// Override the source code for this error.
+    ///
+    /// This may be used to include the file name in the error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use miette::NamedSource;
+    /// # use protox_parse::{parse, ParseError};
+    /// # use prost_types::FileDescriptorProto;
+    /// #
+    /// fn parse_with_name(file_name: String, source: String) -> Result<FileDescriptorProto, ParseError> {
+    ///     match parse(&source) {
+    ///         Ok(mut file) => {
+    ///             file.name = Some(file_name);
+    ///             Ok(file)
+    ///         },
+    ///         Err(err) => {
+    ///             Err(err.with_source_code(NamedSource::new(file_name, source)))
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    pub fn with_source_code<S>(self, source: S) -> Self
+    where
+        S: SourceCode + 'static,
+    {
+        ParseError {
+            kind: self.kind,
+            related: self.related,
+            source_code: Arc::new(source),
         }
     }
 }
