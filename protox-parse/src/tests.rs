@@ -468,3 +468,119 @@ fn field_default_value() {
         "#
     ));
 }
+
+#[test]
+fn field_default_invalid_type() {
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional int32 foo = 1 [default = "foo"];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "an integer".to_owned(),
+            actual: "foo".to_owned(),
+            span: 81..86,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional uint32 foo = 1 [default = -100];
+            }"#
+        ),
+        Err(vec![IntegerValueOutOfRange {
+            expected: "an unsigned 32-bit integer".to_owned(),
+            actual: "-100".to_owned(),
+            min: "0".to_owned(),
+            max: "4294967295".to_owned(),
+            span: 82..86,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional int32 foo = 1 [default = 2147483648];
+            }"#
+        ),
+        Err(vec![IntegerValueOutOfRange {
+            expected: "a signed 32-bit integer".to_owned(),
+            actual: "2147483648".to_owned(),
+            min: "-2147483648".to_owned(),
+            max: "2147483647".to_owned(),
+            span: 81..91,
+        }]),
+    );
+    assert_debug_snapshot!(parse(
+        r#"
+        message Message {
+            optional Foo foo = 1 [default = 1];
+        }
+
+        enum Foo {
+            ZERO = 0;
+        }"#
+    ));
+    assert_debug_snapshot!(parse(
+        r#"
+        message Message {
+            optional Foo foo = 1 [default = "ZERO"];
+        }
+
+        enum Foo {
+            ZERO = 0;
+        }"#
+    ));
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional bool foo = 1 [default = FALSE];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "either 'true' or 'false'".to_owned(),
+            actual: "FALSE".to_owned(),
+            span: 80..85,
+        }]),
+    );
+    assert_debug_snapshot!(parse(
+        r#"
+        message Message {
+            optional Foo foo = 1 [default = FALSE];
+        }
+
+        enum Foo {
+            ZERO = 0;
+        }"#
+    ));
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional bool foo = 1 [default = -false];
+            }
+
+            enum Foo {
+                ZERO = 0;
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "either 'true' or 'false'".to_owned(),
+            actual: "-false".to_owned(),
+            span: 80..86,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional string foo = 1 [default = '\xFF'];
+            }"#
+        ),
+        Err(vec![StringValueInvalidUtf8 { span: 82..88 }]),
+    );
+}
