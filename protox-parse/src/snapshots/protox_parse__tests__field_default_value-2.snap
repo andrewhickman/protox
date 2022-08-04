@@ -1,0 +1,369 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(r#\"\n            message Message {\n                optional float default_float_exp = 23 [ default = 9e6];\n                optional double default_double_exp = 24 [ default = 9e22];\n            }\n        \"#)"
+---
+Ok(
+    FileDescriptorProto {
+        name: None,
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [
+            DescriptorProto {
+                name: Some(
+                    "Message",
+                ),
+                field: [
+                    FieldDescriptorProto {
+                        name: Some(
+                            "default_float_exp",
+                        ),
+                        number: Some(
+                            23,
+                        ),
+                        label: Some(
+                            Optional,
+                        ),
+                        r#type: Some(
+                            Float,
+                        ),
+                        type_name: None,
+                        extendee: None,
+                        default_value: Some(
+                            "9000000",
+                        ),
+                        oneof_index: None,
+                        json_name: Some(
+                            "defaultFloatExp",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                    FieldDescriptorProto {
+                        name: Some(
+                            "default_double_exp",
+                        ),
+                        number: Some(
+                            24,
+                        ),
+                        label: Some(
+                            Optional,
+                        ),
+                        r#type: Some(
+                            Double,
+                        ),
+                        type_name: None,
+                        extendee: None,
+                        default_value: Some(
+                            "90000000000000000000000",
+                        ),
+                        oneof_index: None,
+                        json_name: Some(
+                            "defaultDoubleExp",
+                        ),
+                        options: None,
+                        proto3_optional: None,
+                    },
+                ],
+                extension: [],
+                nested_type: [],
+                enum_type: [],
+                extension_range: [],
+                oneof_decl: [],
+                options: None,
+                reserved_range: [],
+                reserved_name: [],
+            },
+        ],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            1,
+                            12,
+                            4,
+                            13,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                        ],
+                        span: [
+                            1,
+                            12,
+                            4,
+                            13,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            1,
+                            20,
+                            27,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                        ],
+                        span: [
+                            2,
+                            16,
+                            71,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            2,
+                            31,
+                            48,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            3,
+                        ],
+                        span: [
+                            2,
+                            51,
+                            53,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            4,
+                        ],
+                        span: [
+                            2,
+                            16,
+                            24,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            5,
+                        ],
+                        span: [
+                            2,
+                            25,
+                            30,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            7,
+                        ],
+                        span: [
+                            2,
+                            66,
+                            69,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            0,
+                            8,
+                        ],
+                        span: [
+                            2,
+                            54,
+                            70,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                        ],
+                        span: [
+                            3,
+                            16,
+                            74,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            1,
+                        ],
+                        span: [
+                            3,
+                            32,
+                            50,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            3,
+                        ],
+                        span: [
+                            3,
+                            53,
+                            55,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            4,
+                        ],
+                        span: [
+                            3,
+                            16,
+                            24,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            5,
+                        ],
+                        span: [
+                            3,
+                            25,
+                            31,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            7,
+                        ],
+                        span: [
+                            3,
+                            68,
+                            72,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            2,
+                            1,
+                            8,
+                        ],
+                        span: [
+                            3,
+                            56,
+                            73,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

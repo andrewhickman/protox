@@ -52,4 +52,18 @@ fn resolve_line_number() {
     assert_eq!(resolver.resolve(13), (2, 1));
     assert_eq!(resolver.resolve(14), (2, 2));
     assert_eq!(resolver.resolve(15), (2, 3));
+
+    let resolver = LineResolver::new("f\n\noo\r\nbar");
+
+    assert_eq!(resolver.resolve(0), (0, 0));
+    assert_eq!(resolver.resolve(1), (0, 1));
+    assert_eq!(resolver.resolve(2), (1, 0));
+    assert_eq!(resolver.resolve(3), (2, 0));
+    assert_eq!(resolver.resolve(4), (2, 1));
+    assert_eq!(resolver.resolve(5), (2, 2));
+    assert_eq!(resolver.resolve(6), (2, 3));
+    assert_eq!(resolver.resolve(7), (3, 0));
+    assert_eq!(resolver.resolve(8), (3, 1));
+    assert_eq!(resolver.resolve(9), (3, 2));
+    assert_eq!(resolver.resolve(10), (3, 3));
 }

@@ -42,7 +42,7 @@ bin = ["dep:clap", "miette/fancy"]
 [dependencies]
 bytes = "1.1.0"
 clap = { version = "3.2.6", features = ["derive"], optional = true }
-miette = "5.1.0"
+miette = { git = "https://github.com/zkat/miette" }
 once_cell = { version = "1.12.0", default_features = false }
 prost = "0.10.4"
 prost-types = "0.10.1"

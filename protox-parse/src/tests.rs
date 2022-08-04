@@ -397,3 +397,74 @@ fn enum_reserved_range_extrema() {
         "#
     ));
 }
+
+#[test]
+fn message_field_json_name() {
+    assert_eq!(
+        parse(
+            r#"message Message {
+            optional int32 field = 1 [json_name = "\xFF"];
+        }"#
+        ),
+        Err(vec![StringValueInvalidUtf8 { span: 68..74 }]),
+    );
+    assert_debug_snapshot!(parse(
+        r#"message Message {
+        optional int32 field = 1 [json_name = '$FIELD'];
+    }"#
+    ));
+}
+
+#[test]
+fn field_default_value() {
+    assert_debug_snapshot!(parse(
+        r#"
+        message Message {
+            optional Message foo = 1 [default = ""];
+        }"#
+    ));
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                map<uint32, sfixed64> foo = 1 [default = ""];
+            }"#
+        ),
+        Err(vec![InvalidDefault {
+            kind: "map",
+            span: 78..90,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional group Foo = 1 [default = ""] {};
+            }"#
+        ),
+        Err(vec![InvalidDefault {
+            kind: "group",
+            span: 71..83,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                repeated int32 foo = 1 [default = 1];
+            }"#
+        ),
+        Err(vec![InvalidDefault {
+            kind: "repeated",
+            span: 71..82,
+        }]),
+    );
+    assert_debug_snapshot!(parse(
+        r#"
+            message Message {
+                optional float default_float_exp = 23 [ default = 9e6];
+                optional double default_double_exp = 24 [ default = 9e22];
+            }
+        "#
+    ));
+}

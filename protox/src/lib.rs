@@ -211,14 +211,14 @@ fn make_span(
     let source = source?;
     let start = SourceOffset::from_location(
         source,
-        start_line.checked_add(0)? as _,
-        start_col.checked_add(0)? as _,
+        start_line.checked_add(1)? as _,
+        start_col.checked_add(1)? as _,
     )
     .offset();
     let end = SourceOffset::from_location(
         source,
-        end_line.checked_add(0)? as _,
-        end_col.checked_add(0)? as _,
+        end_line.checked_add(1)? as _,
+        end_col.checked_add(1)? as _,
     )
     .offset();
     let span = SourceSpan::from(start..end);

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env};
 
-use insta::{assert_json_snapshot, assert_yaml_snapshot};
+use insta::assert_yaml_snapshot;
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
@@ -826,25 +826,6 @@ fn field_default_invalid_type() {
             span: Some(SourceSpan::from(82..88))
         }],
     );
-}
-
-#[test]
-fn message_field_json_name() {
-    assert_eq!(
-        check_err(
-            r#"message Message {
-            optional int32 field = 1 [json_name = "\xFF"];
-        }"#
-        ),
-        vec![StringValueInvalidUtf8 {
-            span: Some(SourceSpan::from(68..74))
-        }],
-    );
-    assert_json_snapshot!(check_ok(
-        r#"message Message {
-        optional int32 field = 1 [json_name = '$FIELD'];
-    }"#
-    ));
 }
 
 #[test]

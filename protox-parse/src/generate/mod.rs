@@ -376,6 +376,21 @@ impl Context {
         let default_value_option = take_option(&mut ast.options, "default");
         let default_value_option_span = default_value_option.as_ref().map(|o| o.span());
 
+        if let Some(span) = default_value_option_span {
+            if matches!(&ast.kind, ast::FieldKind::Map { .. }) {
+                self.errors
+                    .push(ParseErrorKind::InvalidDefault { kind: "map", span });
+            } else if matches!(ast.label, Some((ast::FieldLabel::Repeated, _))) {
+                self.errors.push(ParseErrorKind::InvalidDefault {
+                    kind: "repeated",
+                    span,
+                });
+            } else if self.syntax != ast::Syntax::Proto2 {
+                self.errors
+                    .push(ParseErrorKind::Proto3DefaultValue { span });
+            }
+        }
+
         let name;
         let r#type;
         let type_name;
@@ -479,13 +494,6 @@ impl Context {
                     }
                 }
 
-                if let Some(o) = default_value_option {
-                    self.errors.push(ParseErrorKind::InvalidDefault {
-                        kind: "map",
-                        span: o.span(),
-                    });
-                }
-
                 self.add_comments(ast.span, ast.comments);
                 self.add_span_for(&[tag::field::TYPE_NAME], ty_span);
 
@@ -535,18 +543,6 @@ impl Context {
                     }),
                     ..Default::default()
                 });
-            }
-        }
-
-        if let Some(span) = default_value_option_span {
-            if label == Some(field_descriptor_proto::Label::Repeated) {
-                self.errors.push(ParseErrorKind::InvalidDefault {
-                    kind: "repeated",
-                    span,
-                });
-            } else if self.syntax != ast::Syntax::Proto2 {
-                self.errors
-                    .push(ParseErrorKind::Proto3DefaultValue { span });
             }
         }
 
