@@ -1,27 +1,7 @@
 ---
-source: src/parse/tests.rs
+source: protox-parse/src/parse/tests.rs
 expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
-    Message {
-        fields: [
-            Field {
-                name: Ident(
-                    Ident {
-                        value: "foo",
-                        span: 0..3,
-                    },
-                ),
-                value: Scalar(
-                    Float(
-                        Float {
-                            value: 1.0,
-                            span: 5..9,
-                        },
-                    ),
-                ),
-                span: 0..9,
-            },
-        ],
-    },
+    "foo : 1.0",
 )

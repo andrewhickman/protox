@@ -1,11 +1,7 @@
 ---
-source: src/parse/tests.rs
+source: protox-parse/src/parse/tests.rs
 expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
-Err(
-    [
-        UnexpectedEof {
-            expected: "an identifier, string or number",
-        },
-    ],
+Ok(
+    "value : -",
 )

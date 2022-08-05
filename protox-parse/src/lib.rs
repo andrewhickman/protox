@@ -123,11 +123,6 @@ pub(crate) enum ParseErrorKind {
         #[label("found here")]
         span: Span,
     },
-    #[error("a colon is required between a field name and scalar value")]
-    MissingColonForScalarTextFormatField {
-        #[label("expected ':' after field name here")]
-        field_name: Span,
-    },
     #[error("expected {expected}, but found '{found}'")]
     UnexpectedToken {
         expected: String,

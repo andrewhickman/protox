@@ -1214,7 +1214,7 @@ impl Context {
             },
             ast::OptionValue::Aggregate(message, _) => UninterpretedOption {
                 name,
-                aggregate_value: Some(message.to_string()),
+                aggregate_value: Some(message),
                 ..Default::default()
             },
         }

@@ -1,27 +1,7 @@
 ---
-source: src/parse/tests.rs
+source: protox-parse/src/parse/tests.rs
 expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
-    Message {
-        fields: [
-            Field {
-                name: Ident(
-                    Ident {
-                        value: "escapes",
-                        span: 0..7,
-                    },
-                ),
-                value: Scalar(
-                    String(
-                        String {
-                            value: "\\007\\010\\014\\n\\r\\t\\013?\\\\\\'\\\"\\001\\tI\\n\\252\\341\\204\\221\\364\\201\\204\\221",
-                            span: 9..65,
-                        },
-                    ),
-                ),
-                span: 0..65,
-            },
-        ],
-    },
+    "escapes : \"\\x07\\x08\\x0c\\n\\r\\t\\x0b?\\\\\\'\\\"\\x01\\tI\\n\\xaa\\xe1\\x84\\x91\\xf4\\x81\\x84\\x91\"",
 )

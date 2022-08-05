@@ -18,7 +18,6 @@ use crate::{
 mod comments;
 #[cfg(test)]
 mod tests;
-mod text_format;
 
 pub(crate) fn parse_file(source: &str) -> Result<ast::File, Vec<ParseErrorKind>> {
     let mut parser = Parser::new(source);
@@ -955,7 +954,7 @@ impl<'a> Parser<'a> {
             Some((Token::StringLiteral(_), _)) => ast::OptionValue::String(self.parse_string()?),
             Some((Token::LeftBrace, start)) => {
                 self.bump();
-                let value = self.parse_text_format_message(&[ExpectedToken::RIGHT_BRACE])?;
+                let value = self.parse_text_format_message()?;
                 let end = self.expect_eq(Token::RightBrace)?;
                 ast::OptionValue::Aggregate(value, join_span(start, end))
             }
@@ -976,6 +975,34 @@ impl<'a> Parser<'a> {
             }
             _ => self.unexpected_token("an identifier or '('"),
         }
+    }
+
+    fn parse_text_format_message(&mut self) -> Result<String, ()> {
+        let mut result = String::new();
+
+        let mut brace_level = 0u32;
+
+        debug_assert!(self.peek.is_none());
+        self.lexer.extras.text_format_mode = true;
+        while let Some((tok, _)) = self.peek() {
+            if tok == Token::LeftBrace {
+                brace_level += 1;
+            } else if tok == Token::RightBrace {
+                match brace_level.checked_sub(1) {
+                    None => break,
+                    Some(new_brace_level) => brace_level = new_brace_level,
+                }
+            }
+
+            if !result.is_empty() {
+                result.push(' ');
+            }
+            write!(result, "{}", tok).unwrap();
+            self.bump();
+        }
+        self.lexer.extras.text_format_mode = false;
+
+        Ok(result)
     }
 
     fn parse_type_name(&mut self, terminators: &[ExpectedToken]) -> Result<ast::TypeName, ()> {
@@ -1273,12 +1300,9 @@ impl<'a> Parser<'a> {
 impl ExpectedToken {
     const COMMA: Self = ExpectedToken::Token(Token::Comma);
     const SEMICOLON: Self = ExpectedToken::Token(Token::Semicolon);
-    const FORWARD_SLASH: Self = ExpectedToken::Token(Token::ForwardSlash);
     const LEFT_BRACE: Self = ExpectedToken::Token(Token::LeftBrace);
     const LEFT_BRACKET: Self = ExpectedToken::Token(Token::LeftBracket);
     const RIGHT_PAREN: Self = ExpectedToken::Token(Token::RightParen);
-    const RIGHT_BRACKET: Self = ExpectedToken::Token(Token::RightBracket);
-    const RIGHT_BRACE: Self = ExpectedToken::Token(Token::RightBrace);
     const RIGHT_ANGLE_BRACKET: Self = ExpectedToken::Token(Token::RightAngleBracket);
 
     fn matches(&self, t: &Token) -> bool {

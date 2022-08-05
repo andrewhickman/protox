@@ -9,8 +9,6 @@ use prost_types::field_descriptor_proto;
 
 use crate::{join_span, Span};
 
-pub(crate) mod text_format;
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Syntax {
     Proto2,
@@ -89,7 +87,7 @@ pub(crate) enum OptionValue {
     Int(Int),
     Float(Float),
     String(String),
-    Aggregate(text_format::Message, Span),
+    Aggregate(std::string::String, Span),
 }
 
 #[derive(Clone, Debug, PartialEq)]

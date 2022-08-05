@@ -1,5 +1,5 @@
 ---
-source: src/parse/tests.rs
+source: protox-parse/src/parse/tests.rs
 expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
@@ -28,28 +28,7 @@ Ok(
                 ),
             ],
             value: Aggregate(
-                Message {
-                    fields: [
-                        Field {
-                            name: Ident(
-                                Ident {
-                                    value: "foo",
-                                    span: 21..24,
-                                },
-                            ),
-                            value: Scalar(
-                                Int(
-                                    Int {
-                                        negative: false,
-                                        value: 5,
-                                        span: 26..27,
-                                    },
-                                ),
-                            ),
-                            span: 21..27,
-                        },
-                    ],
-                },
+                "foo : 5",
                 19..29,
             ),
         },

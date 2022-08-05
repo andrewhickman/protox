@@ -1,5 +1,5 @@
 ---
-source: src/parse/tests.rs
+source: protox-parse/src/parse/tests.rs
 expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
 ---
 Ok(
@@ -14,106 +14,7 @@ Ok(
                 ),
             ],
             value: Aggregate(
-                Message {
-                    fields: [
-                        Field {
-                            name: Ident(
-                                Ident {
-                                    value: "foo",
-                                    span: 15..18,
-                                },
-                            ),
-                            value: MessageList(
-                                [
-                                    (
-                                        Message {
-                                            fields: [
-                                                Field {
-                                                    name: Ident(
-                                                        Ident {
-                                                            value: "x",
-                                                            span: 22..23,
-                                                        },
-                                                    ),
-                                                    value: Scalar(
-                                                        Int(
-                                                            Int {
-                                                                negative: false,
-                                                                value: 3,
-                                                                span: 24..25,
-                                                            },
-                                                        ),
-                                                    ),
-                                                    span: 22..25,
-                                                },
-                                            ],
-                                        },
-                                        21..26,
-                                    ),
-                                    (
-                                        Message {
-                                            fields: [
-                                                Field {
-                                                    name: Ident(
-                                                        Ident {
-                                                            value: "y",
-                                                            span: 29..30,
-                                                        },
-                                                    ),
-                                                    value: Message(
-                                                        Message {
-                                                            fields: [],
-                                                        },
-                                                        30..32,
-                                                    ),
-                                                    span: 29..33,
-                                                },
-                                                Field {
-                                                    name: Ident(
-                                                        Ident {
-                                                            value: "z",
-                                                            span: 33..34,
-                                                        },
-                                                    ),
-                                                    value: Message(
-                                                        Message {
-                                                            fields: [
-                                                                Field {
-                                                                    name: Ident(
-                                                                        Ident {
-                                                                            value: "a",
-                                                                            span: 35..36,
-                                                                        },
-                                                                    ),
-                                                                    value: Scalar(
-                                                                        Ident {
-                                                                            negative: true,
-                                                                            ident: Ident {
-                                                                                value: "foo",
-                                                                                span: 38..41,
-                                                                            },
-                                                                            span: 37..41,
-                                                                        },
-                                                                    ),
-                                                                    span: 35..41,
-                                                                },
-                                                            ],
-                                                        },
-                                                        34..42,
-                                                    ),
-                                                    span: 33..43,
-                                                },
-                                            ],
-                                        },
-                                        28..44,
-                                    ),
-                                ],
-                                20..45,
-                            ),
-                            span: 15..45,
-                        },
-                    ],
-                },
+                "foo : [ < x : 3 > , < y { } ; z < a : - foo > , > ]",
                 13..47,
             ),
         },

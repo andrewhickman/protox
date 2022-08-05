@@ -46,42 +46,41 @@ pub fn parse_option() {
 
 #[test]
 fn parse_text_format_message() {
-    case!(parse_text_format_message_test("foo: 10"));
-    case!(parse_text_format_message_test("foo: 10f"));
-    case!(parse_text_format_message_test("foo: 1.0f"));
-    case!(parse_text_format_message_test(
-        "foo: 'bar' \"baz\" \n\t 'quz'"
-    ));
-    case!(parse_text_format_message_test(
+    case!(parse_text_format_message("foo: 10"));
+    case!(parse_text_format_message("foo: 10f"));
+    case!(parse_text_format_message("foo: 1.0f"));
+    case!(parse_text_format_message("foo: 'bar' \"baz\" \n\t 'quz'"));
+    case!(parse_text_format_message(
         r#"s: "first" 'second'
             "third"
         joined: "first""second"'third''fourth'"#
     ));
-    case!(parse_text_format_message_test("message: { foo: \"bar\" }"));
-    case!(parse_text_format_message_test("[ext.scalar]: 10"));
-    case!(parse_text_format_message_test(
-        "[ext.message]: { foo: \"bar\" }"
-    ));
-    case!(parse_text_format_message_test(
+    case!(parse_text_format_message("message: { foo: \"bar\" }"));
+    case!(parse_text_format_message("[ext.scalar]: 10"));
+    case!(parse_text_format_message("[ext.message]: { foo: \"bar\" }"));
+    case!(parse_text_format_message(
         "any: { [type.googleapis.com/foo.bar]: { foo: \"bar\" } }"
     ));
-    case!(parse_text_format_message_test("foo: enum"));
-    case!(parse_text_format_message_test("foo: [enum]"));
-    case!(parse_text_format_message_test("foo: -enum"));
-    case!(parse_text_format_message_test("foo: [-enum]"));
-    case!(parse_text_format_message_test(
+    case!(parse_text_format_message("foo: enum"));
+    case!(parse_text_format_message("foo: [enum]"));
+    case!(parse_text_format_message("foo: -enum"));
+    case!(parse_text_format_message("foo: [-enum]"));
+    case!(parse_text_format_message(
         "pot < kind: TULIP name: \"Bob\" legs: 0 >"
     ));
-    case!(parse_text_format_message_test(
+    case!(parse_text_format_message(
         r#"escapes: '\a\b\f\n\r\t\v\?\\\'\"\1\11\111\xa\xAA\u1111\U00101111'"#
     ));
-    case!(parse_text_format_message_test(r#"value: -'string'"#));
-    case!(parse_text_format_message_test(r#"value: -"#));
-    case!(parse_text_format_message_test(r#"value"#));
-    case!(parse_text_format_message_test(r#"value: {"#));
-    case!(parse_text_format_message_test(r#"value: {} foo: 10f"#));
-    case!(parse_text_format_message_test(r#"value: <"#));
-    case!(parse_text_format_message_test(r#"value 'foo'"#));
+    case!(parse_text_format_message(r#"value: -'string'"#));
+    case!(parse_text_format_message(r#"value: -"#));
+    case!(parse_text_format_message(r#"value"#));
+    case!(parse_text_format_message(r#"value: {"#));
+    case!(parse_text_format_message(r#"value: {} foo: 10f"#));
+    case!(parse_text_format_message(r#"value: <"#));
+    case!(parse_text_format_message(r#"value 'foo'"#));
+    case!(parse_text_format_message(
+        "value: 1 /* block */ value: 2 // line\n value: 3"
+    ));
 }
 
 #[test]
