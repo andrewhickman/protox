@@ -754,7 +754,7 @@ impl Context {
                     Some(string)
                 } else {
                     self.errors
-                        .push(ParseErrorKind::StringValueInvalidUtf8 { span: string.span });
+                        .push(ParseErrorKind::InvalidUtf8String { span: string.span });
                     None
                 }
             }

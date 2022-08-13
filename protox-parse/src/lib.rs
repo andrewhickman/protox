@@ -222,11 +222,6 @@ pub(crate) enum ParseErrorKind {
         #[label("defined here")]
         span: Span,
     },
-    #[error("expected a string, but the value is not valid utf-8")]
-    StringValueInvalidUtf8 {
-        #[label("defined here")]
-        span: Span,
-    },
     #[error("a oneof must have at least one field")]
     EmptyOneof {
         #[label("defined here")]

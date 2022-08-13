@@ -141,7 +141,7 @@ pub(crate) enum CheckError {
         span: Option<SourceSpan>,
     },
     #[error("expected a string, but the value is not valid utf-8")]
-    StringValueInvalidUtf8 {
+    InvalidUtf8String {
         #[label("defined here")]
         span: Option<SourceSpan>,
     },

@@ -962,8 +962,7 @@ impl<'a> Context<'a> {
         match String::from_utf8(bytes) {
             Ok(string) => Ok(string),
             Err(_) => {
-                self.errors
-                    .push(CheckError::StringValueInvalidUtf8 { span });
+                self.errors.push(CheckError::InvalidUtf8String { span });
                 Err(())
             }
         }

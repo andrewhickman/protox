@@ -406,7 +406,7 @@ fn message_field_json_name() {
             optional int32 field = 1 [json_name = "\xFF"];
         }"#
         ),
-        Err(vec![StringValueInvalidUtf8 { span: 68..74 }]),
+        Err(vec![InvalidUtf8String { span: 68..74 }]),
     );
     assert_debug_snapshot!(parse(
         r#"message Message {
@@ -581,6 +581,6 @@ fn field_default_invalid_type() {
                 optional string foo = 1 [default = '\xFF'];
             }"#
         ),
-        Err(vec![StringValueInvalidUtf8 { span: 82..88 }]),
+        Err(vec![InvalidUtf8String { span: 82..88 }]),
     );
 }
