@@ -488,7 +488,7 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::Ident("_foo"));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -500,7 +500,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::IntLiteral(4)));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::IntegerOutOfRange {
                 span: 0..(source.len() - 2),
@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![
                 ParseErrorKind::FloatSuffixOutsideTextFormat { span: 0..3 },
@@ -555,7 +555,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -567,7 +567,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::InvalidStringCharacters { span: 1..2 }]
         );
@@ -585,7 +585,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::UnterminatedString { span: 7..8 }]
         );
@@ -603,7 +603,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::InvalidStringEscape { span: 1..2 }]
         );
@@ -633,7 +633,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("foo")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::InvalidStringEscape { span: 1..3 }]
         );
@@ -652,14 +652,14 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
     fn string_invalid_unicode_escape() {
         let mut lexer = Token::lexer(r#"'\Uffffffff'"#);
         lexer.by_ref().for_each(drop);
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::InvalidStringEscape { span: 1..11 }]
         );
@@ -675,7 +675,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("quz")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -688,7 +688,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Ident("quz")));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -702,7 +702,7 @@ mod tests {
         );
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -712,7 +712,7 @@ mod tests {
 
         for _ in &mut lexer {}
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::NestedBlockComment { span: 7..9 }]
         );
@@ -725,7 +725,7 @@ mod tests {
 
         for _ in &mut lexer {}
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::NestedBlockComment { span: 7..9 }]
         );
@@ -738,7 +738,7 @@ mod tests {
 
         for _ in &mut lexer {}
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::UnexpectedEof {
                 expected: "comment terminator".to_owned()
@@ -755,7 +755,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Newline));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
@@ -766,7 +766,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(
+        assert_eq!(
             lexer.extras.errors,
             vec![ParseErrorKind::HashCommentOutsideTextFormat { span: 0..5 }]
         );
@@ -777,7 +777,7 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
         assert_eq!(lexer.next(), None);
 
-        debug_assert_eq!(lexer.extras.errors, vec![]);
+        assert_eq!(lexer.extras.errors, vec![]);
     }
 
     #[test]
