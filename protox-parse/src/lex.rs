@@ -319,9 +319,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
                         }
                         _ => (),
                     }
-                }
-
-                if char_lexer.slice().starts_with('\\') {
+                } else if char_lexer.slice().starts_with('\\') {
                     lex.extras
                         .errors
                         .push(ParseErrorKind::InvalidStringEscape { span: start..end });

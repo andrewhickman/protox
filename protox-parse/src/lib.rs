@@ -212,7 +212,7 @@ pub(crate) enum ParseErrorKind {
         #[label("defined here")]
         span: Span,
     },
-    #[error("expected value to be {expected}, but the value is out of range")]
+    #[error("expected value to be {expected}, but the value {actual} is out of range")]
     #[diagnostic(help("the value must be between {min} and {max} inclusive"))]
     IntegerValueOutOfRange {
         expected: String,
