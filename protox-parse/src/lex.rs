@@ -53,6 +53,8 @@ pub(crate) enum Token<'a> {
     Colon,
     #[token(";")]
     Semicolon,
+    #[token("/")]
+    ForwardSlash,
     #[regex(r#"(//|#)[^\n]*\n?"#, line_comment)]
     LineComment(Cow<'a, str>),
     #[token(r#"/*"#, block_comment)]
@@ -152,6 +154,7 @@ impl<'a> fmt::Display for Token<'a> {
             Token::Equals => write!(f, "="),
             Token::Colon => write!(f, ":"),
             Token::Semicolon => write!(f, ";"),
+            Token::ForwardSlash => write!(f, "/"),
             Token::LineComment(value) => writeln!(f, "//{}", value),
             Token::BlockComment(value) => write!(f, "/*{}*/", value),
             Token::Newline => writeln!(f),
