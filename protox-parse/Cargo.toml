@@ -22,16 +22,14 @@ thiserror = "1.0.31"
 insta = "1.15.0"
 proptest = "1.0.0"
 
-[package.metadata.release]
-tag-name = "{{version}}"
-sign-tag = true
-sign-commit = true
-
 [[package.metadata.release.pre-release-replacements]]
 file = "src/lib.rs"
 search = "html_root_url = \"https://docs.rs/protox-parse/[^/]*/\""
 replace = "html_root_url = \"https://docs.rs/protox-parse/{{version}}/\""
 exactly = 1
+
+[package.metadata.release]
+tag = false
 
 [package.metadata.docs.rs]
 all-features = true
