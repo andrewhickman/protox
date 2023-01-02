@@ -1,10 +1,12 @@
 ---
-source: src/tests.rs
+source: protox-parse/src/tests.rs
 expression: "parse(\"\n        message Foo {\n            optional Enum enum = 1 [default = ONE];\n        }\n\n        enum Enum {}\n    \")"
 ---
 Ok(
     FileDescriptorProto {
-        name: None,
+        name: Some(
+            "test.proto",
+        ),
         package: None,
         dependency: [],
         public_dependency: [],

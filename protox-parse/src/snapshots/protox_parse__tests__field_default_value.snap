@@ -4,7 +4,9 @@ expression: "parse(r#\"\n        message Message {\n            optional Message
 ---
 Ok(
     FileDescriptorProto {
-        name: None,
+        name: Some(
+            "test.proto",
+        ),
         package: None,
         dependency: [],
         public_dependency: [],

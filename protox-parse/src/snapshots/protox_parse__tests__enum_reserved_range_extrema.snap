@@ -4,7 +4,9 @@ expression: "parse(r#\"\n        syntax = \"proto3\";\n\n        enum Extreme {\
 ---
 Ok(
     FileDescriptorProto {
-        name: None,
+        name: Some(
+            "test.proto",
+        ),
         package: None,
         dependency: [],
         public_dependency: [],

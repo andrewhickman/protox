@@ -4,7 +4,9 @@ expression: "parse(\"message Foo { optional int32 i = 536870911; }\")"
 ---
 Ok(
     FileDescriptorProto {
-        name: None,
+        name: Some(
+            "test.proto",
+        ),
         package: None,
         dependency: [],
         public_dependency: [],

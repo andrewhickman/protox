@@ -5,10 +5,10 @@
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/protox-parse/0.1.0/")]
 
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 use logos::Span;
-use miette::{Diagnostic, SourceCode};
+use miette::{Diagnostic, SourceCode, NamedSource};
 use prost_types::FileDescriptorProto;
 use thiserror::Error;
 
@@ -32,7 +32,7 @@ pub struct ParseError {
     #[related]
     related: Vec<ParseErrorKind>,
     #[source_code]
-    source_code: Arc<dyn SourceCode>,
+    source_code: NamedSource,
 }
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -251,8 +251,9 @@ pub(crate) enum ParseErrorKind {
 ///         Bar bar = 1;
 ///     }
 /// "#;
-/// let file_descriptor = parse(source).unwrap();
+/// let file_descriptor = parse("foo.proto", source).unwrap();
 /// assert_eq!(file_descriptor, FileDescriptorProto {
+///     name: Some("foo.proto".to_owned()),
 ///     syntax: Some("proto3".to_owned()),
 ///     dependency: vec!["dep.proto".to_owned()],
 ///     message_type: vec![DescriptorProto {
@@ -284,14 +285,14 @@ pub(crate) enum ParseErrorKind {
 ///     ..Default::default()
 /// })
 /// ```
-pub fn parse(source: &str) -> Result<FileDescriptorProto, ParseError> {
+pub fn parse(name: &str, source: &str) -> Result<FileDescriptorProto, ParseError> {
     if source.len() > MAX_FILE_LEN {
-        return Err(ParseError::new(vec![ParseErrorKind::FileTooLarge], source));
+        return Err(ParseError::new(vec![ParseErrorKind::FileTooLarge], name, source.to_owned()));
     }
 
-    let ast = parse::parse_file(source).map_err(|errors| ParseError::new(errors, source))?;
+    let ast = parse::parse_file(source).map_err(|errors| ParseError::new(errors, name, source.to_owned()))?;
 
-    generate::generate_file(ast, source).map_err(|errors| ParseError::new(errors, source))
+    generate::generate_file(ast, name, source).map_err(|errors| ParseError::new(errors, name, source.to_owned()))
 }
 
 const MAX_FILE_LEN: usize = i32::MAX as usize;
@@ -316,47 +317,13 @@ impl fmt::Debug for ParseError {
 }
 
 impl ParseError {
-    fn new(mut related: Vec<ParseErrorKind>, source: impl Into<String>) -> Self {
+    fn new(mut related: Vec<ParseErrorKind>, name: &str, source: impl SourceCode + Send + Sync + 'static) -> Self {
         debug_assert!(!related.is_empty());
         let kind = related.remove(0);
         ParseError {
             kind: Box::new(kind),
             related,
-            source_code: Arc::new(source.into()),
-        }
-    }
-
-    /// Override the source code for this error.
-    ///
-    /// This may be used to include the file name in the error.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use miette::NamedSource;
-    /// # use protox_parse::{parse, ParseError};
-    /// # use prost_types::FileDescriptorProto;
-    /// #
-    /// fn parse_with_name(file_name: String, source: String) -> Result<FileDescriptorProto, ParseError> {
-    ///     match parse(&source) {
-    ///         Ok(mut file) => {
-    ///             file.name = Some(file_name);
-    ///             Ok(file)
-    ///         },
-    ///         Err(err) => {
-    ///             Err(err.with_source_code(NamedSource::new(file_name, source)))
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    pub fn with_source_code<S>(self, source: S) -> Self
-    where
-        S: SourceCode + 'static,
-    {
-        ParseError {
-            kind: self.kind,
-            related: self.related,
-            source_code: Arc::new(source),
+            source_code: NamedSource::new(name, source),
         }
     }
 }

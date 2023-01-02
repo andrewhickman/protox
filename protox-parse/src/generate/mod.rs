@@ -20,6 +20,7 @@ mod lines;
 /// Convert the AST to a FileDescriptorProto, performing basic checks and generate group and map messages, and synthetic oneofs.
 pub(crate) fn generate_file(
     ast: ast::File,
+    name: &str,
     source: &str,
 ) -> Result<FileDescriptorProto, Vec<ParseErrorKind>> {
     let mut ctx = Context {
@@ -30,7 +31,7 @@ pub(crate) fn generate_file(
         lines: LineResolver::new(source),
     };
 
-    let file = ctx.generate_file_descriptor(ast);
+    let file = ctx.generate_file_descriptor(name, ast);
 
     if ctx.errors.is_empty() {
         ctx.locations.sort_unstable_by(|l, r| l.path.cmp(&r.path));
@@ -61,7 +62,7 @@ enum FieldScope {
 }
 
 impl Context {
-    fn generate_file_descriptor(&mut self, ast: ast::File) -> FileDescriptorProto {
+    fn generate_file_descriptor(&mut self, name: &str, ast: ast::File) -> FileDescriptorProto {
         self.add_span(ast.span);
 
         let package = if let Some(package) = ast.package {
@@ -160,7 +161,7 @@ impl Context {
         };
 
         FileDescriptorProto {
-            name: None,
+            name: Some(name.to_owned()),
             package,
             dependency,
             public_dependency,

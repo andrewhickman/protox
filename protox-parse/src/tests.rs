@@ -4,7 +4,7 @@ use prost_types::FileDescriptorProto;
 use crate::ParseErrorKind::{self, *};
 
 fn parse(source: &str) -> Result<FileDescriptorProto, Vec<ParseErrorKind>> {
-    crate::parse(source).map_err(|mut err| {
+    crate::parse("test.proto", source).map_err(|mut err| {
         err.related.insert(0, *err.kind);
         err.related
     })

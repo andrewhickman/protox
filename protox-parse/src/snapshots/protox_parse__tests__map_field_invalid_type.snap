@@ -4,7 +4,9 @@ expression: "parse(r#\"message Message {\n        map<int64, float> int64 = 1;\n
 ---
 Ok(
     FileDescriptorProto {
-        name: None,
+        name: Some(
+            "test.proto",
+        ),
         package: None,
         dependency: [],
         public_dependency: [],
