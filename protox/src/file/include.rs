@@ -41,7 +41,7 @@ impl FileResolver for IncludeFileResolver {
 
     /// Opens a file by its unique name.
     ///
-    /// If the include path contains file with the given name, it is parsed and returned.
+    /// If the include path contains a file with the given name, it is parsed and returned.
     ///
     /// # Errors
     ///
