@@ -618,7 +618,7 @@ fn shadow_file_rel() {
         fs::create_dir_all("include").unwrap();
         std::fs::write(Path::new("include").join("foo.proto"), EMPTY).unwrap();
 
-        let mut compiler = Compiler::new(&["include", "."]).unwrap();
+        let mut compiler = Compiler::new(["include", "."]).unwrap();
         let err = compiler.add_file("foo.proto").unwrap_err();
 
         match err.kind() {
@@ -641,7 +641,7 @@ fn shadow_file_rel_subdir() {
         fs::create_dir_all("include2").unwrap();
         std::fs::write(Path::new("include2").join("foo.proto"), EMPTY).unwrap();
 
-        let mut compiler = Compiler::new(&["include1", "include2"]).unwrap();
+        let mut compiler = Compiler::new(["include1", "include2"]).unwrap();
         let err = compiler
             .add_file(Path::new("include2").join("foo.proto"))
             .unwrap_err();
@@ -664,7 +664,7 @@ fn shadow_file_abs() {
     fs::create_dir_all(dir.join("include")).unwrap();
     std::fs::write(dir.join("include").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.join("include").as_ref(), dir.path()]).unwrap();
+    let mut compiler = Compiler::new([dir.join("include").as_ref(), dir.path()]).unwrap();
     let err = compiler.add_file(dir.join("foo.proto")).unwrap_err();
 
     match err.kind() {
@@ -686,7 +686,7 @@ fn shadow_file_abs_subdir() {
     fs::create_dir_all(dir.join("include2")).unwrap();
     std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
     let err = compiler
         .add_file(dir.join("include2").join("foo.proto"))
         .unwrap_err();
@@ -710,7 +710,7 @@ fn shadow_invalid_file() {
     fs::create_dir_all(dir.join("include2")).unwrap();
     std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
     let err = compiler
         .add_file(dir.join("include2").join("foo.proto"))
         .unwrap_err();
@@ -734,7 +734,7 @@ fn shadow_already_imported_file() {
     fs::create_dir_all(dir.join("include2")).unwrap();
     std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
     compiler.add_file("foo.proto").unwrap();
     let err = compiler
         .add_file(dir.join("include2").join("foo.proto"))
@@ -763,7 +763,7 @@ fn import_files() {
     std::fs::write(dir.join("root.proto"), "import 'dep.proto';").unwrap();
     std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
     assert_eq!(compiler.file_map.files.len(), 3);
@@ -799,7 +799,7 @@ fn import_files_include_imports_path_already_imported() {
     std::fs::write(dir.join("root1.proto"), "import 'root2.proto';").unwrap();
     std::fs::write(dir.join("root2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf()]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf()]).unwrap();
     compiler.add_file("root1.proto").unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
@@ -828,7 +828,7 @@ fn import_cycle() {
     std::fs::write(dir.join("root.proto"), "import 'dep.proto';").unwrap();
     std::fs::write(dir.join("dep2.proto"), "import 'root.proto';").unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     let err = compiler.add_file("root.proto").unwrap_err();
 
     match err.kind() {
@@ -845,7 +845,7 @@ fn import_cycle_short() {
 
     std::fs::write(dir.join("root.proto"), "import 'root.proto';").unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     let err = compiler.add_file("root.proto").unwrap_err();
 
     match err.kind() {
@@ -872,7 +872,7 @@ fn duplicated_import() {
     .unwrap();
     std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
     assert_eq!(compiler.file_map.files.len(), 3);
@@ -911,7 +911,7 @@ fn import_file_absolute_path() {
     )
     .unwrap();
 
-    let mut compiler = Compiler::new(&[dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap_err();
 }
 

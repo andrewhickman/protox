@@ -112,7 +112,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        self.path.extend(&[tag::file::MESSAGE_TYPE, 0]);
+        self.path.extend([tag::file::MESSAGE_TYPE, 0]);
         for message in &mut file.message_type {
             self.resolve_descriptor_proto(message);
             self.bump_path();
@@ -151,7 +151,7 @@ impl<'a> Context<'a> {
     fn resolve_descriptor_proto(&mut self, message: &mut DescriptorProto) {
         self.enter_scope(message.name());
 
-        self.path.extend(&[tag::message::FIELD, 0]);
+        self.path.extend([tag::message::FIELD, 0]);
         for field in &mut message.field {
             self.resolve_field_descriptor_proto(field);
             self.bump_path();
@@ -338,7 +338,7 @@ impl<'a> Context<'a> {
     }
 
     fn resolve_enum_descriptor_proto(&mut self, enum_: &mut EnumDescriptorProto) {
-        self.path.extend(&[tag::enum_::VALUE, 0]);
+        self.path.extend([tag::enum_::VALUE, 0]);
         for value in &mut enum_.value {
             self.resolve_enum_value_descriptor_proto(value)
         }
@@ -533,7 +533,7 @@ impl<'a> Context<'a> {
 
     fn resolve_service_descriptor_proto(&mut self, service: &mut ServiceDescriptorProto) {
         self.enter_scope(service.name());
-        self.path.extend(&[tag::service::METHOD, 0]);
+        self.path.extend([tag::service::METHOD, 0]);
 
         for method in &mut service.method {
             self.resolve_method_descriptor_proto(method);

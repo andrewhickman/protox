@@ -170,6 +170,7 @@ impl NameMap {
         }
     }
 
+    #[allow(clippy::result_large_err)]
     fn merge(
         &mut self,
         other: &Self,
@@ -245,7 +246,7 @@ impl<'a> NamePass<'a> {
             }
         }
 
-        self.path.extend(&[tag::file::MESSAGE_TYPE, 0]);
+        self.path.extend([tag::file::MESSAGE_TYPE, 0]);
         for message in &file.message_type {
             self.add_descriptor_proto(message);
             self.bump_path();
@@ -292,7 +293,7 @@ impl<'a> NamePass<'a> {
         );
         self.enter_scope(message.name());
 
-        self.path.extend(&[tag::message::FIELD, 0]);
+        self.path.extend([tag::message::FIELD, 0]);
         for field in &message.field {
             self.add_field_descriptor_proto(field);
             self.bump_path();
@@ -348,7 +349,7 @@ impl<'a> NamePass<'a> {
     fn add_enum_descriptor_proto(&mut self, enum_: &EnumDescriptorProto) {
         self.add_name(enum_.name(), DefinitionKind::Enum, &[tag::enum_::NAME]);
 
-        self.path.extend(&[tag::enum_::VALUE, 0]);
+        self.path.extend([tag::enum_::VALUE, 0]);
         for value in &enum_.value {
             self.add_name(
                 value.name(),
@@ -371,7 +372,7 @@ impl<'a> NamePass<'a> {
         );
 
         self.enter_scope(service.name());
-        self.path.extend(&[tag::service::METHOD, 0]);
+        self.path.extend([tag::service::METHOD, 0]);
         for method in &service.method {
             self.add_name(method.name(), DefinitionKind::Method, &[tag::method::NAME]);
             self.bump_path();

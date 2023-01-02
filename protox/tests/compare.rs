@@ -78,8 +78,8 @@ fn protoc(name: &str) -> DynamicMessage {
 
 fn protox(name: &str) -> DynamicMessage {
     let descriptor = protox::compile(
-        &[format!("{}.proto", name)],
-        &[test_data_dir(), google_proto_dir(), google_src_dir()],
+        [format!("{}.proto", name)],
+        [test_data_dir(), google_proto_dir(), google_src_dir()],
     )
     .unwrap();
     file_descriptor_to_dynamic(descriptor)

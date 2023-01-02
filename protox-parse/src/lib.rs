@@ -28,7 +28,7 @@ const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 #[error("{}", kind)]
 #[diagnostic(forward(kind))]
 pub struct ParseError {
-    kind: ParseErrorKind,
+    kind: Box<ParseErrorKind>,
     #[related]
     related: Vec<ParseErrorKind>,
     #[source_code]
@@ -320,7 +320,7 @@ impl ParseError {
         debug_assert!(!related.is_empty());
         let kind = related.remove(0);
         ParseError {
-            kind,
+            kind: Box::new(kind),
             related,
             source_code: Arc::new(source.into()),
         }

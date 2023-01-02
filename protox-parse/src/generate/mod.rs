@@ -118,19 +118,19 @@ impl Context {
             match item {
                 ast::FileItem::Message(message_ast) => {
                     self.path
-                        .extend(&[tag::file::MESSAGE_TYPE, index_to_i32(message_type.len())]);
+                        .extend([tag::file::MESSAGE_TYPE, index_to_i32(message_type.len())]);
                     message_type.push(self.generate_message_descriptor(message_ast));
                     self.pop_path(2);
                 }
                 ast::FileItem::Enum(service_ast) => {
                     self.path
-                        .extend(&[tag::file::ENUM_TYPE, index_to_i32(enum_type.len())]);
+                        .extend([tag::file::ENUM_TYPE, index_to_i32(enum_type.len())]);
                     enum_type.push(self.generate_enum_descriptor(service_ast));
                     self.pop_path(2);
                 }
                 ast::FileItem::Service(service_ast) => {
                     self.path
-                        .extend(&[tag::file::SERVICE, index_to_i32(service.len())]);
+                        .extend([tag::file::SERVICE, index_to_i32(service.len())]);
                     service.push(self.generate_service_descriptor(service_ast));
                     self.pop_path(2);
                 }
@@ -225,13 +225,13 @@ impl Context {
                 }
                 ast::MessageItem::Enum(enum_ast) => {
                     self.path
-                        .extend(&[tag::message::ENUM_TYPE, index_to_i32(enum_type.len())]);
+                        .extend([tag::message::ENUM_TYPE, index_to_i32(enum_type.len())]);
                     enum_type.push(self.generate_enum_descriptor(enum_ast));
                     self.pop_path(2);
                 }
                 ast::MessageItem::Message(message_ast) => {
                     self.path
-                        .extend(&[tag::message::NESTED_TYPE, index_to_i32(nested_type.len())]);
+                        .extend([tag::message::NESTED_TYPE, index_to_i32(nested_type.len())]);
                     nested_type.push(self.generate_message_descriptor(message_ast));
                     self.pop_path(2);
                 }
@@ -342,7 +342,7 @@ impl Context {
         oneofs: &mut Vec<OneofDescriptorProto>,
         scope: FieldScope,
     ) -> FieldDescriptorProto {
-        self.path.extend(&[field_tag, index_to_i32(field_index)]);
+        self.path.extend([field_tag, index_to_i32(field_index)]);
         self.add_span_for(&[tag::field::NAME], ast.name.span.clone());
         self.add_span_for(&[tag::field::NUMBER], ast.number.span.clone());
         let number = self.generate_message_number(ast.number.clone());
@@ -358,7 +358,7 @@ impl Context {
                 };
 
                 let oneof_index = index_to_i32(oneofs.len());
-                self.path.extend(&[oneof_tag, oneof_index]);
+                self.path.extend([oneof_tag, oneof_index]);
                 oneofs.push(OneofDescriptorProto {
                     name: Some(oneof_name),
                     options: None,
@@ -452,7 +452,7 @@ impl Context {
 
                 self.pop_path(2);
                 self.path
-                    .extend(&[message_tag, index_to_i32(messages.len())]);
+                    .extend([message_tag, index_to_i32(messages.len())]);
                 self.add_comments(ast.span, ast.comments);
                 self.add_span_for(&[tag::message::NAME], ast.name.span);
                 messages.push(DescriptorProto {
@@ -460,7 +460,7 @@ impl Context {
                     ..self.generate_message_body_descriptor(body)
                 });
                 self.pop_path(2);
-                self.path.extend(&[field_tag, index_to_i32(field_index)]);
+                self.path.extend([field_tag, index_to_i32(field_index)]);
             }
             ast::FieldKind::Map {
                 ty_span,
@@ -851,7 +851,7 @@ impl Context {
         field_tag: i32,
         fields: &mut Vec<FieldDescriptorProto>,
     ) -> OneofDescriptorProto {
-        self.path.extend(&[oneof_tag, index_to_i32(oneof_index)]);
+        self.path.extend([oneof_tag, index_to_i32(oneof_index)]);
         self.add_comments(oneof.span.clone(), oneof.comments);
         self.add_span_for(&[tag::oneof::NAME], oneof.name.span);
 
@@ -903,7 +903,7 @@ impl Context {
 
         for field_ast in ast.fields {
             self.path
-                .extend(&[extension_tag, index_to_i32(extensions.len())]);
+                .extend([extension_tag, index_to_i32(extensions.len())]);
             self.add_span_for(&[tag::field::EXTENDEE], ast.extendee.span());
             self.pop_path(2);
 
@@ -934,7 +934,7 @@ impl Context {
 
         for value_ast in ast.values {
             self.path
-                .extend(&[tag::enum_::VALUE, index_to_i32(value.len())]);
+                .extend([tag::enum_::VALUE, index_to_i32(value.len())]);
             value.push(self.generate_enum_value_descriptor(value_ast));
             self.pop_path(2);
         }

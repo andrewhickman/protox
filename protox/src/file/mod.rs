@@ -118,7 +118,7 @@ impl File {
             })
         };
 
-        let file = fs::File::open(&path).map_err(map_io_err)?;
+        let file = fs::File::open(path).map_err(map_io_err)?;
         let metadata = file.metadata().map_err(map_io_err)?;
 
         if metadata.len() > MAX_FILE_LEN {

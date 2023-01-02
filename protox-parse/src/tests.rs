@@ -5,7 +5,7 @@ use crate::ParseErrorKind::{self, *};
 
 fn parse(source: &str) -> Result<FileDescriptorProto, Vec<ParseErrorKind>> {
     crate::parse(source).map_err(|mut err| {
-        err.related.insert(0, err.kind);
+        err.related.insert(0, *err.kind);
         err.related
     })
 }
