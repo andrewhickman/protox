@@ -4,10 +4,9 @@ use std::{
 };
 
 use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
+use prost_reflect::DescriptorError;
 use protox_parse::ParseError;
 use thiserror::Error;
-
-use crate::check::CheckError;
 
 /// An error that can occur when compiling protobuf files.
 #[derive(Debug, Diagnostic, Error)]
@@ -28,13 +27,7 @@ pub(crate) enum ErrorKind {
     },
     #[error("{}", err)]
     #[diagnostic(forward(err))]
-    CheckErrors {
-        err: CheckError,
-        #[source_code]
-        src: DynSourceCode,
-        #[related]
-        errors: Vec<CheckError>,
-    },
+    CheckErrors { err: DescriptorError },
     #[error("error opening file '{path}'")]
     OpenFile {
         path: PathBuf,
@@ -155,15 +148,6 @@ impl Error {
             ErrorKind::OpenFile { err, .. } => err.kind() == io::ErrorKind::NotFound,
             _ => false,
         }
-    }
-
-    pub(crate) fn check_errors(mut errors: Vec<CheckError>, src: impl Into<DynSourceCode>) -> Self {
-        let err = errors.remove(0);
-        Error::from_kind(ErrorKind::CheckErrors {
-            err,
-            src: src.into(),
-            errors,
-        })
     }
 
     pub(crate) fn add_import_context(

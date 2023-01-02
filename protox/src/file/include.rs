@@ -68,7 +68,7 @@ impl FileResolver for IncludeFileResolver {
         let path = self.include.join(name);
         match File::open(&path) {
             Ok(mut file) => {
-                file.descriptor.name = Some(name.to_owned());
+                file.kind.set_name(name.to_owned());
                 Ok(file)
             }
             Err(err) if err.is_file_not_found() => Err(Error::file_not_found(name)),

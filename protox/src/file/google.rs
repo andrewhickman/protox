@@ -56,7 +56,7 @@ impl FileResolver for GoogleFileResolver {
         };
 
         let mut file = File::from_source(source)?;
-        file.descriptor.name = Some(name.to_owned());
+        file.kind.set_name(name.to_owned());
         Ok(file)
     }
 }

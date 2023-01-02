@@ -2,7 +2,12 @@
 
 pub(crate) const UNINTERPRETED_OPTION: i32 = 999;
 
+pub(crate) mod file_descriptor_set {
+    pub(crate) const FILE: i32 = 1;
+}
+
 pub(crate) mod file {
+    pub(crate) const NAME: i32 = 1;
     pub(crate) const PACKAGE: i32 = 2;
     pub(crate) const DEPENDENCY: i32 = 3;
     pub(crate) const PUBLIC_DEPENDENCY: i32 = 10;

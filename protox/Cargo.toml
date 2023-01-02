@@ -45,18 +45,16 @@ clap = { version = "4.0.0", features = ["derive"], optional = true }
 miette = "5.3.0"
 once_cell = { version = "1.12.0", default_features = false }
 prost = "0.11.0"
+prost-reflect = { version = "0.10.0-alpha.1", features = ["text-format"] }
 prost-types = "0.11.0"
 protox-parse = { version = "0.1.0", path = "../protox-parse" }
 thiserror = "1.0.31"
 
 [dev-dependencies]
 assert_fs = "1.0.7"
-insta = "1.15.0"
+insta = { version = "1.15.0", features = ["yaml"] }
 prost-build = { version = "0.11.0" }
-prost-reflect = { version = "0.9.2", features = [
-    "serde",
-    "reflect-well-known-types"
-] }
+prost-reflect = { version = "0.10.0-alpha.1", features = ["miette", "serde"] }
 scopeguard = "1.1.0"
 serde_yaml = "0.9.16"
 similar-asserts = { version = "1.2.0", features = ["serde"] }

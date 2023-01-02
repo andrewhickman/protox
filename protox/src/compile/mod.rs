@@ -7,13 +7,12 @@ use std::{
 
 use miette::SourceSpan;
 use prost::Message;
+use prost_reflect::{DescriptorPool, FileDescriptor};
 
 use crate::{
-    check::{self, NameMap},
     error::{DynSourceCode, Error, ErrorKind},
     file::{check_shadow, path_to_file_name, File, FileResolver},
     index_to_i32, resolve_span, tag, transcode_file,
-    types::{FileDescriptorProto, FileDescriptorSet},
 };
 
 #[cfg(test)]
@@ -21,24 +20,18 @@ mod tests;
 
 /// Options for compiling protobuf files.
 pub struct Compiler {
+    pool: DescriptorPool,
     resolver: Box<dyn FileResolver>,
-    file_map: ParsedFileMap,
+    files: HashMap<String, ParsedFile>,
     include_imports: bool,
     include_source_info: bool,
 }
 
 #[derive(Debug)]
-pub(crate) struct ParsedFile {
-    pub descriptor: FileDescriptorProto,
-    pub name_map: NameMap,
-    pub path: Option<PathBuf>,
-    pub is_root: bool,
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct ParsedFileMap {
-    files: Vec<ParsedFile>,
-    file_names: HashMap<String, usize>,
+struct ParsedFile {
+    descriptor: FileDescriptor,
+    path: Option<PathBuf>,
+    is_root: bool,
 }
 
 impl Compiler {
@@ -70,8 +63,9 @@ impl Compiler {
         R: FileResolver + 'static,
     {
         Compiler {
+            pool: DescriptorPool::new(),
             resolver: Box::new(resolver),
-            file_map: Default::default(),
+            files: HashMap::new(),
             include_imports: false,
             include_source_info: false,
         }
@@ -113,7 +107,7 @@ impl Compiler {
             }));
         };
 
-        if let Some(parsed_file) = self.file_map.get_mut(&name) {
+        if let Some(parsed_file) = self.files.get_mut(&name) {
             if is_resolved {
                 check_shadow(parsed_file.path.as_deref(), path)?;
             }

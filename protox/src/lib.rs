@@ -32,14 +32,9 @@
 
 pub mod file;
 
-mod check;
 mod compile;
 mod error;
-mod fmt;
-mod inversion_list;
-mod options;
 mod tag;
-mod types;
 
 use std::convert::TryInto;
 use std::path::Path;
@@ -261,18 +256,6 @@ fn parse_namespace(name: &str) -> &str {
         Some((namespace, _)) => namespace,
         None => "",
     }
-}
-
-fn transcode_file<T, U>(file: &T, buf: &mut Vec<u8>) -> U
-where
-    T: Message,
-    U: Message + Default,
-{
-    buf.clear();
-    buf.reserve(file.encoded_len());
-    file.encode(buf)
-        .expect("vec should have sufficient capacity");
-    U::decode(buf.as_slice()).expect("incompatible message types")
 }
 
 #[cfg(test)]

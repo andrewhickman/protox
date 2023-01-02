@@ -10,6 +10,7 @@ pub use descriptor_set::DescriptorSetFileResolver;
 // TODO compiler descriptor sets at build time
 pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
+use prost_types::FileDescriptorProto;
 
 use std::{
     fs,
@@ -23,8 +24,6 @@ use prost::{DecodeError, Message};
 
 use crate::{
     error::{DynSourceCode, ErrorKind},
-    transcode_file,
-    types::FileDescriptorProto,
     Error, MAX_FILE_LEN,
 };
 
@@ -64,7 +63,13 @@ where
 pub struct File {
     pub(crate) path: Option<PathBuf>,
     pub(crate) source: Option<String>,
-    pub(crate) descriptor: FileDescriptorProto,
+    pub(crate) kind: FileDescriptorKind,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum FileDescriptorKind {
+    Bytes(Vec<u8>),
+    Proto(FileDescriptorProto),
 }
 
 impl File {
@@ -138,7 +143,7 @@ impl File {
         Ok(File {
             path: Some(path.to_owned()),
             source: Some(buf),
-            descriptor: transcode_file(&descriptor, &mut Vec::new()),
+            kind: FileDescriptorKind::Proto(descriptor),
         })
     }
 
@@ -179,7 +184,7 @@ impl File {
         Ok(File {
             path: None,
             source: Some(source.to_owned()),
-            descriptor: transcode_file(&descriptor, &mut Vec::new()),
+            kind: FileDescriptorKind::Proto(descriptor),
         })
     }
 
@@ -190,7 +195,7 @@ impl File {
         File {
             path: None,
             source: None,
-            descriptor: transcode_file(&file, &mut Vec::new()),
+            kind: FileDescriptorKind::Proto(file),
         }
     }
 
@@ -208,6 +213,7 @@ impl File {
             path: None,
             source: None,
             descriptor: FileDescriptorProto::decode(buf)?,
+            kind: FileDescriptorKind::Proto(file),
         })
     }
 
@@ -226,6 +232,19 @@ impl File {
     /// This is typically equivalent to calling [`parse()`](crate::parse()) on the string returned by [`source()`](File::source).
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
         transcode_file(&self.descriptor, &mut Vec::new())
+    }
+}
+
+impl FileDescriptorKind {
+    fn set_name(&mut self, name: String) {
+        match self {
+            FileDescriptorKind::Bytes(bytes) => {
+                prost::encoding::string::encode(crate::tag::file::NAME as u32, &name, &mut bytes)
+            }
+            FileDescriptorKind::Proto(proto) => {
+                proto.name = Some(name);
+            }
+        }
     }
 }
 

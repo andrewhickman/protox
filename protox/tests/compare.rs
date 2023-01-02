@@ -43,13 +43,13 @@ fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
                 .stringify_64_bit_integers(false),
         )
         .unwrap();
-    serializer.into_inner()
+    serializer.into_inner().unwrap()
 }
 
 fn protoc(name: &str) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();
     let result = tempdir.join("desc.bin");
-    let output = Command::new(prost_build::protoc())
+    let output = Command::new(prost_build::protoc_from_env())
         .arg("--proto_path")
         .arg(test_data_dir())
         .arg("--proto_path")
