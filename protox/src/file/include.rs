@@ -45,7 +45,10 @@ impl FileResolver for IncludeFileResolver {
     ///
     /// # Errors
     ///
-    /// If no matching file is found, an error is returned.
+    /// Returns an error if there is an IO error opening the file, or it is not
+    /// a valid protobuf source file.
+    ///
+    /// If the file does not exist, [`Error::file_not_found()`] is returned
     ///
     /// # Examples
     ///
