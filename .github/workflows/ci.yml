@@ -21,6 +21,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo test
 
   lints:
@@ -38,10 +42,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           component: clippy, rustfmt
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo fmt --all -- --check
       - run: cargo clippy -- -D warnings
       - run: cargo check --no-default-features
