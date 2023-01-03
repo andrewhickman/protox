@@ -24,9 +24,7 @@ fn google_src_dir() -> PathBuf {
 
 fn compare(name: &str) {
     let files = if name == "descriptor" {
-        vec![
-            format!("{}.proto", name),
-        ]
+        vec![format!("{}.proto", name)]
     } else {
         vec![
             // Ensure we use a consistent version of descriptor.proto
