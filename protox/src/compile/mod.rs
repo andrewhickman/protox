@@ -172,6 +172,11 @@ impl Compiler {
     /// This is equivalent to `file_descriptor_set()?.encode_to_vec()`, with the exception that extension
     /// options are included.
     pub fn encode_file_descriptor_set(&self) -> Vec<u8> {
+        if self.include_imports && self.include_source_info {
+            // Avoid reflection if possible.
+            return self.pool.encode_to_vec();
+        }
+
         let file_desc = FileDescriptorProto::default().descriptor();
 
         let files = self
@@ -179,8 +184,7 @@ impl Compiler {
             .files()
             .filter(|f| self.include_imports || self.files[f.name()].is_root)
             .map(|f| {
-                let mut file_buf = Vec::new();
-                f.encode(&mut file_buf).unwrap();
+                let file_buf = f.encode_to_vec();
 
                 let mut file_msg =
                     DynamicMessage::decode(file_desc.clone(), file_buf.as_slice()).unwrap();
