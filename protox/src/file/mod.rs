@@ -7,7 +7,7 @@ mod include;
 
 pub use chain::ChainFileResolver;
 pub use descriptor_set::DescriptorSetFileResolver;
-// TODO compiler descriptor sets at build time
+// TODO compile descriptor sets at build time
 pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
 use prost_types::FileDescriptorProto;
@@ -18,7 +18,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use bytes::Buf;
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 pub(crate) use include::check_shadow;
 use prost::{DecodeError, Message};
 
@@ -63,13 +63,8 @@ where
 pub struct File {
     pub(crate) path: Option<PathBuf>,
     pub(crate) source: Option<String>,
-    pub(crate) kind: FileDescriptorKind,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum FileDescriptorKind {
-    Bytes(Vec<u8>),
-    Proto(FileDescriptorProto),
+    pub(crate) descriptor: FileDescriptorProto,
+    pub(crate) encoded: Option<Bytes>,
 }
 
 impl File {
@@ -92,10 +87,11 @@ impl File {
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("foo.proto", "message Foo { }").unwrap();
     ///
-    /// let file = File::open("foo.proto".as_ref()).unwrap();
+    /// let file = File::open("foo.proto", "foo.proto".as_ref()).unwrap();
     /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
     /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
+    ///     name: Some("foo.proto".to_owned()),
     ///     message_type: vec![DescriptorProto {
     ///         name: Some("Foo".to_owned()),
     ///         ..Default::default()
@@ -111,16 +107,20 @@ impl File {
     ///     ..Default::default()
     /// });
     ///
-    /// assert!(File::open("notfound.proto".as_ref()).unwrap_err().is_file_not_found());
+    /// assert!(File::open("notfound.proto", "notfound.proto".as_ref()).unwrap_err().is_file_not_found());
     /// ```
-    pub fn open(path: &Path) -> Result<Self, Error> {
+    pub fn open(name: &str, path: &Path) -> Result<Self, Error> {
         let map_io_err = |err: io::Error| -> Error {
-            Error::from_kind(ErrorKind::OpenFile {
-                path: path.to_owned(),
-                err,
-                src: DynSourceCode::default(),
-                span: None,
-            })
+            if err.kind() == io::ErrorKind::NotFound {
+                Error::file_not_found(name)
+            } else {
+                Error::from_kind(ErrorKind::OpenFile {
+                    path: path.to_owned(),
+                    err,
+                    src: DynSourceCode::default(),
+                    span: None,
+                })
+            }
         };
 
         let file = fs::File::open(path).map_err(map_io_err)?;
@@ -138,12 +138,13 @@ impl File {
             .read_to_string(&mut buf)
             .map_err(map_io_err)?;
 
-        let descriptor = protox_parse::parse(&buf)?;
+        let descriptor = protox_parse::parse(name, &buf)?;
 
         Ok(File {
             path: Some(path.to_owned()),
             source: Some(buf),
-            kind: FileDescriptorKind::Proto(descriptor),
+            descriptor,
+            encoded: None,
         })
     }
 
@@ -159,10 +160,11 @@ impl File {
     /// # use std::{fs, path::PathBuf};
     /// # use protox::file::File;
     /// # use prost_types::{DescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location};
-    /// let file = File::from_source("message Foo { }").unwrap();
+    /// let file = File::from_source("foo.proto", "message Foo { }").unwrap();
     /// assert_eq!(file.path(), None);
     /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
+    ///     name: Some("foo.proto".to_owned()),
     ///     message_type: vec![DescriptorProto {
     ///         name: Some("Foo".to_owned()),
     ///         ..Default::default()
@@ -178,13 +180,14 @@ impl File {
     ///     ..Default::default()
     /// });
     /// ```
-    pub fn from_source(source: &str) -> Result<Self, Error> {
-        let descriptor = protox_parse::parse(source)?;
+    pub fn from_source(name: &str, source: &str) -> Result<Self, Error> {
+        let descriptor = protox_parse::parse(name, source)?;
 
         Ok(File {
             path: None,
             source: Some(source.to_owned()),
-            kind: FileDescriptorKind::Proto(descriptor),
+            descriptor,
+            encoded: None,
         })
     }
 
@@ -195,7 +198,8 @@ impl File {
         File {
             path: None,
             source: None,
-            kind: FileDescriptorKind::Proto(file),
+            descriptor: file,
+            encoded: None,
         }
     }
 
@@ -209,11 +213,15 @@ impl File {
     where
         B: Buf,
     {
+        let mut encoded = BytesMut::new();
+        encoded.put(buf);
+        let encoded = encoded.freeze();
+
         Ok(File {
             path: None,
             source: None,
-            descriptor: FileDescriptorProto::decode(buf)?,
-            kind: FileDescriptorKind::Proto(file),
+            descriptor: FileDescriptorProto::decode(encoded.as_ref())?,
+            encoded: Some(encoded),
         })
     }
 
@@ -231,20 +239,7 @@ impl File {
     ///
     /// This is typically equivalent to calling [`parse()`](crate::parse()) on the string returned by [`source()`](File::source).
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
-        transcode_file(&self.descriptor, &mut Vec::new())
-    }
-}
-
-impl FileDescriptorKind {
-    fn set_name(&mut self, name: String) {
-        match self {
-            FileDescriptorKind::Bytes(bytes) => {
-                prost::encoding::string::encode(crate::tag::file::NAME as u32, &name, &mut bytes)
-            }
-            FileDescriptorKind::Proto(proto) => {
-                proto.name = Some(name);
-            }
-        }
+        self.descriptor.clone()
     }
 }
 

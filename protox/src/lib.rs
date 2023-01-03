@@ -36,12 +36,7 @@ mod compile;
 mod error;
 mod tag;
 
-use std::convert::TryInto;
 use std::path::Path;
-
-use miette::{SourceOffset, SourceSpan};
-use prost::Message;
-use prost_types::source_code_info;
 
 pub use self::compile::Compiler;
 pub use self::error::Error;
@@ -160,103 +155,7 @@ pub fn compile(
 
 pub use protox_parse::parse;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum Syntax {
-    Proto2,
-    Proto3,
-}
-
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
-
-fn index_to_i32(index: usize) -> i32 {
-    // We enforce that all files parsed are at most i32::MAX bytes long. Therefore the indices of any
-    // definitions in a single file must fit into an i32.
-    index.try_into().unwrap()
-}
-
-fn normalize_span(span: &[i32]) -> Option<[i32; 4]> {
-    match *span {
-        [start_line, start_col, end_col] => Some([start_line, start_col, start_line, end_col]),
-        [start_line, start_col, end_line, end_col] => {
-            Some([start_line, start_col, end_line, end_col])
-        }
-        _ => None,
-    }
-}
-
-fn resolve_span(
-    locations: &[source_code_info::Location],
-    path: &[i32],
-    source: Option<&str>,
-) -> Option<SourceSpan> {
-    let source = source?;
-
-    let span = match locations.binary_search_by(|l| l.path.as_slice().cmp(path)) {
-        Ok(index) => normalize_span(&locations[index].span)?,
-        Err(_) => return None,
-    };
-
-    make_span(span, Some(source))
-}
-
-fn make_span(
-    [start_line, start_col, end_line, end_col]: [i32; 4],
-    source: Option<&str>,
-) -> Option<SourceSpan> {
-    let source = source?;
-    let start = SourceOffset::from_location(
-        source,
-        start_line.checked_add(1)? as _,
-        start_col.checked_add(1)? as _,
-    )
-    .offset();
-    let end = SourceOffset::from_location(
-        source,
-        end_line.checked_add(1)? as _,
-        end_col.checked_add(1)? as _,
-    )
-    .offset();
-    let span = SourceSpan::from(start..end);
-    if span.is_empty() {
-        None
-    } else {
-        Some(span)
-    }
-}
-
-fn make_name(namespace: &str, name: impl std::fmt::Display) -> String {
-    if namespace.is_empty() {
-        name.to_string()
-    } else {
-        format!("{}.{}", namespace, name)
-    }
-}
-
-fn make_absolute_name(namespace: &str, name: impl std::fmt::Display) -> String {
-    if namespace.is_empty() {
-        format!(".{}", name)
-    } else {
-        format!(".{}.{}", namespace, name)
-    }
-}
-
-fn strip_leading_dot(name: &str) -> &str {
-    name.strip_prefix('.').unwrap_or(name)
-}
-
-fn parse_name(name: &str) -> &str {
-    match name.rsplit_once('.') {
-        Some((_, name)) => name,
-        None => name,
-    }
-}
-
-fn parse_namespace(name: &str) -> &str {
-    match name.rsplit_once('.') {
-        Some((namespace, _)) => namespace,
-        None => "",
-    }
-}
 
 #[cfg(test)]
 fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {

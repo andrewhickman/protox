@@ -65,15 +65,7 @@ impl FileResolver for IncludeFileResolver {
     /// assert_eq!(file.source(), Some("/* hello! */"));
     /// ```
     fn open_file(&self, name: &str) -> Result<File, Error> {
-        let path = self.include.join(name);
-        match File::open(&path) {
-            Ok(mut file) => {
-                file.kind.set_name(name.to_owned());
-                Ok(file)
-            }
-            Err(err) if err.is_file_not_found() => Err(Error::file_not_found(name)),
-            Err(err) => Err(err),
-        }
+        File::open(name, &self.include.join(name))
     }
 }
 

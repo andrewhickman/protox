@@ -1,4 +1,4 @@
-use bytes::{Buf, BufMut, Bytes};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use prost::{
     decode_length_delimiter,
     encoding::{
@@ -9,7 +9,7 @@ use prost::{
 use prost_types::FileDescriptorProto;
 
 use crate::{
-    file::{File, FileDescriptorKind, FileResolver},
+    file::{File, FileResolver},
     Error,
 };
 
@@ -21,8 +21,8 @@ pub struct DescriptorSetFileResolver {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 struct FileDescriptor {
-    encoded: Vec<u8>,
     file: FileDescriptorProto,
+    encoded: Option<Bytes>,
 }
 
 impl DescriptorSetFileResolver {
@@ -33,7 +33,7 @@ impl DescriptorSetFileResolver {
                 .file
                 .into_iter()
                 .map(|file| FileDescriptor {
-                    encoded: file.encode_to_vec(),
+                    encoded: None,
                     file,
                 })
                 .collect(),
@@ -68,7 +68,8 @@ impl FileResolver for DescriptorSetFileResolver {
                 return Ok(File {
                     path: None,
                     source: None,
-                    kind: FileDescriptorKind::Bytes(file.encoded.clone()),
+                    descriptor: file.file.clone(),
+                    encoded: file.encoded.clone(),
                 });
             }
         }
@@ -78,19 +79,19 @@ impl FileResolver for DescriptorSetFileResolver {
 }
 
 impl Message for FileDescriptor {
-    fn encode_raw<B>(&self, buf: &mut B)
+    fn encode_raw<B>(&self, _: &mut B)
     where
         B: BufMut,
         Self: Sized,
     {
-        buf.put(self.encoded.as_slice());
+        unimplemented!()
     }
 
     fn merge_field<B>(
         &mut self,
         tag: u32,
         wire_type: WireType,
-        buf: &mut B,
+        mut buf: &mut B,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>
     where
@@ -98,16 +99,22 @@ impl Message for FileDescriptor {
         Self: Sized,
     {
         if tag == crate::tag::file_descriptor_set::FILE as u32 {
+            let mut encoded = BytesMut::new();
+            if let Some(bytes) = &self.encoded {
+                encoded.extend_from_slice(bytes);
+            }
+
             check_wire_type(WireType::LengthDelimited, wire_type)?;
-            let len = decode_length_delimiter(buf)?;
+            let len = decode_length_delimiter(&mut buf)?;
 
-            encode_key(tag, wire_type, &mut self.encoded);
-            let start = self.encoded.len();
-            encode_varint(len as u64, &mut self.encoded);
-            self.encoded.put(buf.take(len));
+            encode_key(tag, wire_type, &mut encoded);
+            let start = encoded.len();
+            encode_varint(len as u64, &mut encoded);
+            encoded.put(buf.take(len));
 
+            let encoded = self.encoded.insert(encoded.freeze());
             self.file
-                .merge_field(tag, wire_type, &mut &self.encoded[start..], ctx)?;
+                .merge_field(tag, wire_type, &mut &encoded[start..], ctx)?;
         } else {
             skip_field(wire_type, tag, buf, ctx)?;
         }
@@ -116,11 +123,10 @@ impl Message for FileDescriptor {
     }
 
     fn encoded_len(&self) -> usize {
-        self.encoded.len()
+        unimplemented!()
     }
 
     fn clear(&mut self) {
-        self.encoded.clear();
-        self.file.clear();
+        unimplemented!()
     }
 }

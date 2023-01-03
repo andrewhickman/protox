@@ -8,7 +8,7 @@
 use std::fmt;
 
 use logos::Span;
-use miette::{Diagnostic, SourceCode, NamedSource};
+use miette::{Diagnostic, NamedSource, SourceCode};
 use prost_types::FileDescriptorProto;
 use thiserror::Error;
 
@@ -287,12 +287,18 @@ pub(crate) enum ParseErrorKind {
 /// ```
 pub fn parse(name: &str, source: &str) -> Result<FileDescriptorProto, ParseError> {
     if source.len() > MAX_FILE_LEN {
-        return Err(ParseError::new(vec![ParseErrorKind::FileTooLarge], name, source.to_owned()));
+        return Err(ParseError::new(
+            vec![ParseErrorKind::FileTooLarge],
+            name,
+            source.to_owned(),
+        ));
     }
 
-    let ast = parse::parse_file(source).map_err(|errors| ParseError::new(errors, name, source.to_owned()))?;
+    let ast = parse::parse_file(source)
+        .map_err(|errors| ParseError::new(errors, name, source.to_owned()))?;
 
-    generate::generate_file(ast, name, source).map_err(|errors| ParseError::new(errors, name, source.to_owned()))
+    generate::generate_file(ast, name, source)
+        .map_err(|errors| ParseError::new(errors, name, source.to_owned()))
 }
 
 const MAX_FILE_LEN: usize = i32::MAX as usize;
@@ -317,7 +323,11 @@ impl fmt::Debug for ParseError {
 }
 
 impl ParseError {
-    fn new(mut related: Vec<ParseErrorKind>, name: &str, source: impl SourceCode + Send + Sync + 'static) -> Self {
+    fn new(
+        mut related: Vec<ParseErrorKind>,
+        name: &str,
+        source: impl SourceCode + Send + Sync + 'static,
+    ) -> Self {
         debug_assert!(!related.is_empty());
         let kind = related.remove(0);
         ParseError {

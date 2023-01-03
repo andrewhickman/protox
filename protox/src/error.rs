@@ -1,7 +1,4 @@
-use std::{
-    fmt, io,
-    path::{Path, PathBuf},
-};
+use std::{fmt, io, path::PathBuf};
 
 use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
 use prost_reflect::DescriptorError;
@@ -20,14 +17,10 @@ pub struct Error {
 pub(crate) enum ErrorKind {
     #[error("{}", err)]
     #[diagnostic(forward(err))]
-    Parse {
-        err: ParseError,
-        #[source_code]
-        src: DynSourceCode,
-    },
+    Parse { err: ParseError },
     #[error("{}", err)]
     #[diagnostic(forward(err))]
-    CheckErrors { err: DescriptorError },
+    Check { err: DescriptorError },
     #[error("error opening file '{path}'")]
     OpenFile {
         path: PathBuf,
@@ -67,21 +60,6 @@ pub(crate) enum ErrorKind {
 
 #[derive(Default)]
 pub(crate) struct DynSourceCode(Option<Box<dyn SourceCode>>);
-
-impl DynSourceCode {
-    pub fn new(name: Option<&str>, path: Option<&Path>, source: Option<&str>) -> DynSourceCode {
-        if let Some(source) = source {
-            let source = source.to_owned();
-            match (path, name) {
-                (Some(path), _) => NamedSource::new(path.display().to_string(), source).into(),
-                (None, Some(name)) => NamedSource::new(name, source).into(),
-                (None, None) => DynSourceCode(Some(Box::new(source))),
-            }
-        } else {
-            DynSourceCode::default()
-        }
-    }
-}
 
 impl fmt::Debug for DynSourceCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -149,31 +127,10 @@ impl Error {
             _ => false,
         }
     }
-
-    pub(crate) fn add_import_context(
-        mut self,
-        import_src: impl Into<DynSourceCode>,
-        import_span: Option<impl Into<SourceSpan>>,
-    ) -> Self {
-        match &mut *self.kind {
-            ErrorKind::OpenFile { src, span, .. }
-            | ErrorKind::ImportNotFound { src, span, .. }
-            | ErrorKind::FileTooLarge { src, span, .. } => {
-                *src = import_src.into();
-                *span = import_span.map(Into::into);
-            }
-            _ => (),
-        };
-
-        self
-    }
 }
 
 impl From<ParseError> for Error {
     fn from(err: ParseError) -> Self {
-        Error::from_kind(ErrorKind::Parse {
-            err,
-            src: DynSourceCode::default(),
-        })
+        Error::from_kind(ErrorKind::Parse { err })
     }
 }

@@ -21,8 +21,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     let mut compiler = Compiler::new(once(include)).unwrap();
     compiler.add_file(file).unwrap();
 
-    assert_eq!(compiler.file_map.files.len(), 1);
-    assert_eq!(compiler.file_map[name].name(), name);
+    assert_eq!(compiler.pool.files().len(), 1);
     assert_eq!(
         compiler.file_descriptor_set().file[0],
         prost_types::FileDescriptorProto {
@@ -30,7 +29,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
             ..Default::default()
         }
     );
-    assert_eq!(compiler.file_map[name].path, Some(include.join(name)));
+    assert_eq!(compiler.files[name].path, Some(include.join(name)));
 }
 
 fn test_compile_error(
@@ -58,7 +57,7 @@ fn test_compile_error(
         ) => assert_eq!(lpath, rpath),
         (err, _) => panic!("unexpected error: {}", err),
     }
-    assert_eq!(compiler.file_map.files.len(), 0);
+    assert_eq!(compiler.pool.files().len(), 0);
 }
 
 #[test]
@@ -766,19 +765,19 @@ fn import_files() {
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
-    assert_eq!(compiler.file_map.files.len(), 3);
+    assert_eq!(compiler.pool.files().len(), 3);
 
-    assert_eq!(compiler.file_map[0].name(), "dep2.proto");
-    assert_eq!(compiler.file_map[0].path, Some(dir.join("dep2.proto")));
+    assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
+    assert_eq!(compiler.files["dep2.proto"].path, Some(dir.join("dep2.proto")));
 
-    assert_eq!(compiler.file_map[1].name(), "dep.proto");
+    assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
-        compiler.file_map[1].path,
+        compiler.files["dep.proto"].path,
         Some(dir.join("include").join("dep.proto"))
     );
 
-    assert_eq!(compiler.file_map[2].name(), "root.proto");
-    assert_eq!(compiler.file_map[2].path, Some(dir.join("root.proto")));
+    assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
+    assert_eq!(compiler.files["root.proto"].path, Some(dir.join("root.proto")));
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 1);
@@ -875,19 +874,16 @@ fn duplicated_import() {
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
     compiler.add_file("root.proto").unwrap();
 
-    assert_eq!(compiler.file_map.files.len(), 3);
+    assert_eq!(compiler.pool.files().len(), 3);
 
-    assert_eq!(compiler.file_map[0].name(), "dep2.proto");
-    assert_eq!(compiler.file_map[0].path, Some(dir.join("dep2.proto")));
+    assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
+    assert_eq!(compiler.files["dep2.proto"].path, Some(dir.join("dep2.proto")));
 
-    assert_eq!(compiler.file_map[1].name(), "dep.proto");
-    assert_eq!(
-        compiler.file_map[1].path,
-        Some(dir.join("include").join("dep.proto"))
-    );
+    assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
+    assert_eq!(compiler.files["dep.proto"].path, Some(dir.join("include").join("dep.proto")));
 
-    assert_eq!(compiler.file_map[2].name(), "root.proto");
-    assert_eq!(compiler.file_map[2].path, Some(dir.join("root.proto")));
+    assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
+    assert_eq!(compiler.files["root.proto"].path, Some(dir.join("root.proto")));
 }
 
 #[test]

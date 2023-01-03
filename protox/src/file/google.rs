@@ -55,8 +55,6 @@ impl FileResolver for GoogleFileResolver {
             _ => return Err(Error::file_not_found(name)),
         };
 
-        let mut file = File::from_source(source)?;
-        file.kind.set_name(name.to_owned());
-        Ok(file)
+        File::from_source(name, source)
     }
 }

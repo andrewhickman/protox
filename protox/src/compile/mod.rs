@@ -1,18 +1,16 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
-    ops::{Index, IndexMut},
     path::{Path, PathBuf},
 };
 
-use miette::SourceSpan;
 use prost::Message;
-use prost_reflect::{DescriptorPool, FileDescriptor};
+use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, Value};
+use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
-    error::{DynSourceCode, Error, ErrorKind},
+    error::{Error, ErrorKind},
     file::{check_shadow, path_to_file_name, File, FileResolver},
-    index_to_i32, resolve_span, tag, transcode_file,
 };
 
 #[cfg(test)]
@@ -29,7 +27,6 @@ pub struct Compiler {
 
 #[derive(Debug)]
 struct ParsedFile {
-    descriptor: FileDescriptor,
     path: Option<PathBuf>,
     is_root: bool,
 }
@@ -129,33 +126,21 @@ impl Compiler {
         }
 
         let mut import_stack = vec![name.clone()];
-        for (index, import) in file.descriptor.dependency.iter().enumerate() {
-            self.add_import(
-                import,
-                resolve_span(
-                    file.descriptor
-                        .source_code_info
-                        .as_ref()
-                        .map(|s| s.location.as_slice())
-                        .unwrap_or(&[]),
-                    &[tag::file::DEPENDENCY, index_to_i32(index)],
-                    file.source(),
-                ),
-                &mut import_stack,
-                DynSourceCode::new(Some(&name), file.path(), file.source()),
-            )?;
+        for import in &file.descriptor.dependency {
+            self.add_import(import, &mut import_stack)?;
         }
         drop(import_stack);
 
         let path = file.path.clone();
-        let (descriptor, name_map) = self.check_file(&name, file)?;
 
-        self.file_map.add(ParsedFile {
-            descriptor,
-            name_map,
-            path,
-            is_root: true,
-        });
+        self.check_file(file)?;
+        self.files.insert(
+            name,
+            ParsedFile {
+                path,
+                is_root: true,
+            },
+        );
         Ok(self)
     }
 
@@ -163,20 +148,17 @@ impl Compiler {
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
     pub fn file_descriptor_set(&self) -> prost_types::FileDescriptorSet {
-        let mut buf = Vec::new();
-
         let file = self
-            .file_map
-            .files
-            .iter()
-            .filter(|f| self.include_imports || f.is_root)
+            .pool
+            .files()
+            .filter(|f| self.include_imports || self.files[f.name()].is_root)
             .map(|f| {
                 if self.include_source_info {
-                    transcode_file(&f.descriptor, &mut buf)
+                    f.file_descriptor_proto().clone()
                 } else {
                     prost_types::FileDescriptorProto {
                         source_code_info: None,
-                        ..transcode_file(&f.descriptor, &mut buf)
+                        ..f.file_descriptor_proto().clone()
                     }
                 }
             })
@@ -190,37 +172,33 @@ impl Compiler {
     /// This is equivalent to `file_descriptor_set()?.encode_to_vec()`, with the exception that extension
     /// options are included.
     pub fn encode_file_descriptor_set(&self) -> Vec<u8> {
-        let file = self
-            .file_map
-            .files
-            .iter()
-            .filter(|f| self.include_imports || f.is_root)
+        let file_desc = FileDescriptorProto::default().descriptor();
+
+        let files = self
+            .pool
+            .files()
+            .filter(|f| self.include_imports || self.files[f.name()].is_root)
             .map(|f| {
-                if self.include_source_info {
-                    f.descriptor.clone()
-                } else {
-                    FileDescriptorProto {
-                        source_code_info: None,
-                        ..f.descriptor.clone()
-                    }
+
+                let mut file_buf = Vec::new();
+                f.encode(&mut file_buf).unwrap();
+
+                let mut file_msg =
+                    DynamicMessage::decode(file_desc.clone(), file_buf.as_slice()).unwrap();
+                if !self.include_source_info {
+                    file_msg.clear_field_by_name("source_code_info");
                 }
+
+                Value::Message(file_msg)
             })
             .collect();
 
-        FileDescriptorSet { file }.encode_to_vec()
+        let mut file_descriptor_set = FileDescriptorSet::default().transcode_to_dynamic();
+        file_descriptor_set.set_field_by_name("file", Value::List(files));
+        file_descriptor_set.encode_to_vec()
     }
 
-    pub(crate) fn into_parsed_file_map(self) -> ParsedFileMap {
-        self.file_map
-    }
-
-    fn add_import(
-        &mut self,
-        file_name: &str,
-        span: Option<SourceSpan>,
-        import_stack: &mut Vec<String>,
-        import_src: DynSourceCode,
-    ) -> Result<(), Error> {
+    fn add_import(&mut self, file_name: &str, import_stack: &mut Vec<String>) -> Result<(), Error> {
         if import_stack.iter().any(|name| name == file_name) {
             let mut cycle = String::new();
             for import in import_stack {
@@ -231,120 +209,54 @@ impl Compiler {
             return Err(Error::from_kind(ErrorKind::CircularImport { cycle }));
         }
 
-        if self.file_map.file_names.contains_key(file_name) {
+        if self.files.contains_key(file_name) {
             return Ok(());
         }
 
-        let file = match self.resolver.open_file(file_name) {
-            Ok(file) => file,
-            Err(err) => return Err(err.add_import_context(import_src, span)),
-        };
+        let file = self.resolver.open_file(file_name)?;
 
         import_stack.push(file_name.to_owned());
-        for (index, import) in file.descriptor.dependency.iter().enumerate() {
-            self.add_import(
-                import,
-                resolve_span(
-                    file.descriptor
-                        .source_code_info
-                        .as_ref()
-                        .map(|s| s.location.as_slice())
-                        .unwrap_or(&[]),
-                    &[tag::file::DEPENDENCY, index_to_i32(index)],
-                    file.source(),
-                ),
-                import_stack,
-                DynSourceCode::new(Some(file_name), file.path(), file.source()),
-            )?;
+        for import in &file.descriptor.dependency {
+            self.add_import(import, import_stack)?;
         }
         import_stack.pop();
 
         let path = file.path.clone();
-        let (descriptor, name_map) = self.check_file(file_name, file)?;
 
-        self.file_map.add(ParsedFile {
-            descriptor,
-            name_map,
-            path,
-            is_root: false,
-        });
+        self.check_file(file)?;
+        self.files.insert(
+            file_name.to_owned(),
+            ParsedFile {
+                path,
+                is_root: false,
+            },
+        );
         Ok(())
     }
 
-    fn check_file(
-        &self,
-        file_name: &str,
-        file: File,
-    ) -> Result<(FileDescriptorProto, NameMap), Error> {
-        let path = file.path.as_deref();
-        let source = file.source.as_deref();
-        let name_map =
-            NameMap::from_proto(&file.descriptor, &self.file_map, source).map_err(|errors| {
-                Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
-            })?;
-
-        let mut descriptor = file.descriptor;
-        if descriptor.name().is_empty() {
-            descriptor.name = Some(file_name.to_owned());
+    fn check_file(&mut self, file: File) -> Result<(), Error> {
+        if let Some(encoded) = file.encoded {
+            self.pool.decode_file_descriptor_proto(encoded)
+        } else {
+            self.pool.add_file_descriptor_proto(file.descriptor)
         }
-
-        check::resolve(&mut descriptor, source, &name_map).map_err(|errors| {
-            Error::check_errors(errors, DynSourceCode::new(Some(file_name), path, source))
+        .map_err(|mut err| {
+            if let Some(source) = file.source.as_deref() {
+                err = err.with_source_code(source);
+            }
+            Error::from_kind(ErrorKind::Check { err })
         })?;
 
-        Ok((descriptor, name_map))
+        Ok(())
     }
 }
 
 impl fmt::Debug for Compiler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Compiler")
-            .field("file_map", &self.file_map)
+            .field("files", &self.files)
             .field("include_imports", &self.include_imports)
             .field("include_source_info", &self.include_source_info)
             .finish_non_exhaustive()
-    }
-}
-
-impl ParsedFile {
-    pub fn name(&self) -> &str {
-        self.descriptor.name()
-    }
-}
-
-impl ParsedFileMap {
-    fn add(&mut self, file: ParsedFile) {
-        self.file_names
-            .insert(file.name().to_owned(), self.files.len());
-        self.files.push(file);
-    }
-
-    fn get_mut(&mut self, name: &str) -> Option<&mut ParsedFile> {
-        match self.file_names.get(name).copied() {
-            Some(i) => Some(&mut self.files[i]),
-            None => None,
-        }
-    }
-}
-
-impl Index<usize> for ParsedFileMap {
-    type Output = ParsedFile;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.files[index]
-    }
-}
-
-impl<'a> Index<&'a str> for ParsedFileMap {
-    type Output = ParsedFile;
-
-    fn index(&self, index: &'a str) -> &Self::Output {
-        &self.files[self.file_names[index]]
-    }
-}
-
-impl<'a> IndexMut<&'a str> for ParsedFileMap {
-    fn index_mut(&mut self, index: &'a str) -> &mut Self::Output {
-        &mut self.files[self.file_names[index]]
     }
 }
