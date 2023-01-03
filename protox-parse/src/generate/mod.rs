@@ -1070,11 +1070,19 @@ impl Context {
         self.add_span_for(&[tag::method::OUTPUT_TYPE], ast.output_ty.span());
         let output_type = ast.output_ty.to_string();
 
-        let client_streaming = ast.client_streaming.is_some().then_some(true);
+        let client_streaming = if ast.client_streaming.is_some() {
+            Some(true)
+        } else {
+            None
+        };
         if let Some(span) = ast.client_streaming {
             self.add_span_for(&[tag::method::CLIENT_STREAMING], span);
         }
-        let server_streaming = ast.server_streaming.is_some().then_some(true);
+        let server_streaming = if ast.server_streaming.is_some() {
+            Some(true)
+        } else {
+            None
+        };
         if let Some(span) = ast.server_streaming {
             self.add_span_for(&[tag::method::SERVER_STREAMING], span);
         }
