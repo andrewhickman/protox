@@ -1,4 +1,4 @@
-//! Handling of protobuf source files
+//! Interfaces for customizing resolution of protobuf source files.
 
 mod chain;
 mod descriptor_set;
@@ -193,7 +193,7 @@ impl File {
 
     /// Create a new instance of [`File`] from a parsed [`FileDescriptorProto`](prost_types::FileDescriptorProto).
     ///
-    /// The file does not need to have type names or imports resolved. Typically, it would be returned by the [`parse()`](crate::parse()) method.
+    /// The file does not need to have type names or imports resolved. Typically, it would be returned by the [`parse()`](protox_parse::parse()) method.
     pub fn from_file_descriptor_proto(file: prost_types::FileDescriptorProto) -> Self {
         File {
             path: None,
@@ -237,7 +237,7 @@ impl File {
 
     /// Returns the parsed value of the source file.
     ///
-    /// This is typically equivalent to calling [`parse()`](crate::parse()) on the string returned by [`source()`](File::source).
+    /// This is typically equivalent to calling [`parse()`](protox_parse::parse()) on the string returned by [`source()`](File::source).
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
         self.descriptor.clone()
     }

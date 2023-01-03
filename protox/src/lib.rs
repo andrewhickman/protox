@@ -153,8 +153,6 @@ pub fn compile(
     Ok(compiler.file_descriptor_set())
 }
 
-pub use protox_parse::parse;
-
 const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 #[cfg(test)]
