@@ -179,7 +179,6 @@ impl Compiler {
             .files()
             .filter(|f| self.include_imports || self.files[f.name()].is_root)
             .map(|f| {
-
                 let mut file_buf = Vec::new();
                 f.encode(&mut file_buf).unwrap();
 

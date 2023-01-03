@@ -23,11 +23,23 @@ fn google_src_dir() -> PathBuf {
 }
 
 fn compare(name: &str) {
-    let expected = protoc(name);
-    let actual = protox(name);
+    let files = if name == "descriptor" {
+        vec![
+            format!("{}.proto", name),
+        ]
+    } else {
+        vec![
+            // Ensure we use a consistent version of descriptor.proto
+            "google/protobuf/descriptor.proto".to_owned(),
+            format!("{}.proto", name),
+        ]
+    };
 
-    std::fs::write("expected.yml", to_yaml(&expected));
-    std::fs::write("actual.yml", to_yaml(&actual));
+    let expected = protoc(&files);
+    let actual = protox(&files);
+
+    // std::fs::write("expected.yml", to_yaml(&expected));
+    // std::fs::write("actual.yml", to_yaml(&actual));
 
     assert_serde_eq!(expected, actual);
 }
@@ -46,7 +58,7 @@ fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
     serializer.into_inner().unwrap()
 }
 
-fn protoc(name: &str) -> DynamicMessage {
+fn protoc(files: &[String]) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();
     let result = tempdir.join("desc.bin");
     let output = Command::new(prost_build::protoc_from_env())
@@ -59,7 +71,7 @@ fn protoc(name: &str) -> DynamicMessage {
         .arg("--include_imports")
         .arg("--include_source_info")
         .arg(format!("--descriptor_set_out={}", result.display()))
-        .arg(format!("{}.proto", name))
+        .args(files)
         .stderr(Stdio::piped())
         .output()
         .unwrap();
@@ -76,9 +88,9 @@ fn protoc(name: &str) -> DynamicMessage {
     file_descriptor_to_dynamic(descriptor)
 }
 
-fn protox(name: &str) -> DynamicMessage {
+fn protox(files: &[String]) -> DynamicMessage {
     let descriptor = protox::compile(
-        [format!("{}.proto", name)],
+        files,
         [test_data_dir(), google_proto_dir(), google_src_dir()],
     )
     .unwrap();

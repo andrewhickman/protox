@@ -768,7 +768,10 @@ fn import_files() {
     assert_eq!(compiler.pool.files().len(), 3);
 
     assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
-    assert_eq!(compiler.files["dep2.proto"].path, Some(dir.join("dep2.proto")));
+    assert_eq!(
+        compiler.files["dep2.proto"].path,
+        Some(dir.join("dep2.proto"))
+    );
 
     assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
@@ -777,7 +780,10 @@ fn import_files() {
     );
 
     assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
-    assert_eq!(compiler.files["root.proto"].path, Some(dir.join("root.proto")));
+    assert_eq!(
+        compiler.files["root.proto"].path,
+        Some(dir.join("root.proto"))
+    );
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 1);
@@ -877,13 +883,22 @@ fn duplicated_import() {
     assert_eq!(compiler.pool.files().len(), 3);
 
     assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
-    assert_eq!(compiler.files["dep2.proto"].path, Some(dir.join("dep2.proto")));
+    assert_eq!(
+        compiler.files["dep2.proto"].path,
+        Some(dir.join("dep2.proto"))
+    );
 
     assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
-    assert_eq!(compiler.files["dep.proto"].path, Some(dir.join("include").join("dep.proto")));
+    assert_eq!(
+        compiler.files["dep.proto"].path,
+        Some(dir.join("include").join("dep.proto"))
+    );
 
     assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
-    assert_eq!(compiler.files["root.proto"].path, Some(dir.join("root.proto")));
+    assert_eq!(
+        compiler.files["root.proto"].path,
+        Some(dir.join("root.proto"))
+    );
 }
 
 #[test]
