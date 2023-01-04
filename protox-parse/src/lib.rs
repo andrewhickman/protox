@@ -3,7 +3,7 @@
 //! See the documentation for [`parse()`] for details.
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/protox-parse/0.1.0/")]
+#![doc(html_root_url = "https://docs.rs/protox-parse/0.2.0/")]
 
 use std::fmt;
 

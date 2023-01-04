@@ -47,7 +47,7 @@ once_cell = { version = "1.12.0", default_features = false }
 prost = "0.11.0"
 prost-reflect = { version = "0.10.0", features = ["miette", "text-format"] }
 prost-types = "0.11.0"
-protox-parse = { version = "0.1.0", path = "../protox-parse" }
+protox-parse = { version = "0.2.0", path = "../protox-parse" }
 thiserror = "1.0.31"
 
 [dev-dependencies]
