@@ -121,10 +121,7 @@ impl Error {
 
     /// Returns true if this is an instance of [`Error::file_not_found()`]
     pub fn is_file_not_found(&self) -> bool {
-        match &*self.kind {
-            ErrorKind::ImportNotFound { .. } => true,
-            _ => false,
-        }
+        matches!(&*self.kind, ErrorKind::ImportNotFound { .. })
     }
 }
 
