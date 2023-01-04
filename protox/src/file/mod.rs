@@ -7,7 +7,6 @@ mod include;
 
 pub use chain::ChainFileResolver;
 pub use descriptor_set::DescriptorSetFileResolver;
-// TODO compile descriptor sets at build time
 pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
 use prost_types::FileDescriptorProto;

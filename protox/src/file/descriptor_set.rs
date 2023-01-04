@@ -26,7 +26,7 @@ struct FileDescriptor {
 }
 
 impl DescriptorSetFileResolver {
-    /// Create an instance of [`DescriptorSetFileResolver`] from the file descriptor set.
+    /// Creates an instance of [`DescriptorSetFileResolver`] from the file descriptor set.
     pub fn new(set: prost_types::FileDescriptorSet) -> Self {
         DescriptorSetFileResolver {
             set: set
@@ -40,7 +40,7 @@ impl DescriptorSetFileResolver {
         }
     }
 
-    /// Create an instance of [`DescriptorSetFileResolver`] by deserializing a [`FileDescriptorSet`](prost_types::FileDescriptorSet)
+    /// Creates an instance of [`DescriptorSetFileResolver`] by deserializing a [`FileDescriptorSet`](prost_types::FileDescriptorSet)
     /// from the given bytes.
     ///
     /// Unlike when going through [`new()`](DescriptorSetFileResolver::new), extension options are preserved.

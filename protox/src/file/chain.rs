@@ -12,12 +12,12 @@ pub struct ChainFileResolver {
 }
 
 impl ChainFileResolver {
-    /// Create a new, empty [`ChainFileResolver`].
+    /// Creates a new, empty [`ChainFileResolver`].
     pub fn new() -> Self {
         Default::default()
     }
 
-    /// Add a new resolver.
+    /// Adds a new resolver.
     ///
     /// The new resolver will be searched after all previously-added resolvers.
     pub fn add<F>(&mut self, resolver: F)

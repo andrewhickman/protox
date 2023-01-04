@@ -32,7 +32,7 @@ struct ParsedFile {
 }
 
 impl Compiler {
-    /// Create a new [`Compiler`] with default options and the given set of include paths.
+    /// Creates a new [`Compiler`] with default options and the given set of include paths.
     ///
     /// In addition to the given include paths, the [`Compiler`] instance will be able to import
     /// standard files like `google/protobuf/descriptor.proto`.
@@ -54,7 +54,7 @@ impl Compiler {
         Ok(Compiler::with_file_resolver(resolver))
     }
 
-    /// Create a new [`Compiler`] with a custom [`FileResolver`] for looking up imported files.
+    /// Creates a new [`Compiler`] with a custom [`FileResolver`] for looking up imported files.
     pub fn with_file_resolver<R>(resolver: R) -> Self
     where
         R: FileResolver + 'static,
@@ -68,7 +68,7 @@ impl Compiler {
         }
     }
 
-    /// Set whether the output `FileDescriptorSet` should include source info.
+    /// Sets whether the output `FileDescriptorSet` should include source info.
     ///
     /// If set, the file descriptors returned by [`file_descriptor_set`](Compiler::file_descriptor_set) will have
     /// the [`FileDescriptorProto::source_code_info`](prost_types::FileDescriptorProto::source_code_info) field
@@ -78,7 +78,7 @@ impl Compiler {
         self
     }
 
-    /// Set whether the output `FileDescriptorSet` should include imported files.
+    /// Sets whether the output `FileDescriptorSet` should include imported files.
     ///
     /// By default, only files explicitly added with [`add_file`](Compiler::add_file) are returned by [`file_descriptor_set`](Compiler::file_descriptor_set).
     /// If this option is set, imported files are included too.
@@ -87,7 +87,7 @@ impl Compiler {
         self
     }
 
-    /// Compile the file at the given path, and add it to this `Compiler` instance.
+    /// Compiles the file at the given path, and adds it to this `Compiler` instance.
     ///
     /// If the path is absolute, or relative to the current directory, it must reside under one of the
     /// include paths. Otherwise, it is looked up relative to the given include paths in the same way as
@@ -144,7 +144,7 @@ impl Compiler {
         Ok(self)
     }
 
-    /// Convert all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet).
+    /// Converts all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet).
     ///
     /// Files are sorted topologically, with dependency files ordered before the files that import them.
     pub fn file_descriptor_set(&self) -> prost_types::FileDescriptorSet {
@@ -167,7 +167,7 @@ impl Compiler {
         prost_types::FileDescriptorSet { file }
     }
 
-    /// Convert all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet) and encodes it.
+    /// Converts all added files into an instance of [`FileDescriptorSet`](prost_types::FileDescriptorSet) and encodes it.
     ///
     /// This is equivalent to `file_descriptor_set()?.encode_to_vec()`, with the exception that extension
     /// options are included.
@@ -257,7 +257,6 @@ impl Compiler {
 impl fmt::Debug for Compiler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Compiler")
-            .field("files", &self.files)
             .field("include_imports", &self.include_imports)
             .field("include_source_info", &self.include_source_info)
             .finish_non_exhaustive()

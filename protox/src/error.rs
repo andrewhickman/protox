@@ -89,7 +89,7 @@ impl From<NamedSource> for DynSourceCode {
 }
 
 impl Error {
-    /// Create an instance of [`struct@Error`] with an arbitrary payload.
+    /// Creates an instance of [`struct@Error`] with an arbitrary payload.
     pub fn new<E>(error: E) -> Self
     where
         E: Into<Box<dyn std::error::Error + Send + Sync>>,
@@ -97,7 +97,7 @@ impl Error {
         Error::from_kind(ErrorKind::Custom(error.into()))
     }
 
-    /// Create an instance of [`struct@Error`] indicating that an imported file could not be found.
+    /// Creates an instance of [`struct@Error`] indicating that an imported file could not be found.
     ///
     /// This error should be returned by [`FileResolver`](crate::file::FileResolver) instances if a file is not found.
     pub fn file_not_found(name: &str) -> Self {
