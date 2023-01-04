@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking** The `parse()` function now takes an additional argument for the file name.
+- **Breaking**: The `parse()` function now takes an additional argument for the file name.
+- **Breaking**: `Compiler::add_file` is renamed to `Compiler::open_file`.
 
 ### Fixed
 

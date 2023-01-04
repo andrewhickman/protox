@@ -80,7 +80,7 @@ impl Compiler {
 
     /// Sets whether the output `FileDescriptorSet` should include imported files.
     ///
-    /// By default, only files explicitly added with [`add_file`](Compiler::add_file) are returned by [`file_descriptor_set`](Compiler::file_descriptor_set).
+    /// By default, only files explicitly added with [`open_file`](Compiler::open_file) are returned by [`file_descriptor_set`](Compiler::file_descriptor_set).
     /// If this option is set, imported files are included too.
     pub fn include_imports(&mut self, yes: bool) -> &mut Self {
         self.include_imports = yes;

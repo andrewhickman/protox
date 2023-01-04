@@ -53,7 +53,7 @@ pub use self::error::Error;
 /// compiler.include_source_info(true);
 /// compiler.include_imports(true);
 /// for file in files {
-///     compiler.add_file(file)?;
+///     compiler.open_file(file)?;
 /// }
 /// compiler.file_descriptor_set();
 /// # Ok(())
@@ -147,7 +147,7 @@ pub fn compile(
     compiler.include_imports(true);
 
     for file in files {
-        compiler.add_file(file)?;
+        compiler.open_file(file)?;
     }
 
     Ok(compiler.file_descriptor_set())

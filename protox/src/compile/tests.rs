@@ -19,7 +19,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     std::fs::write(include.join(name), EMPTY).unwrap();
 
     let mut compiler = Compiler::new(once(include)).unwrap();
-    compiler.add_file(file).unwrap();
+    compiler.open_file(file).unwrap();
 
     assert_eq!(compiler.pool.files().len(), 1);
     assert_eq!(
@@ -48,7 +48,7 @@ fn test_compile_error(
     std::fs::write(include.join(name), EMPTY).unwrap();
 
     let mut compiler = Compiler::new(once(include)).unwrap();
-    let err = compiler.add_file(file).unwrap_err();
+    let err = compiler.open_file(file).unwrap_err();
 
     match (err.kind(), &expected_err) {
         (
@@ -598,7 +598,7 @@ fn invalid_file() {
     std::fs::write(dir.join("foo.proto"), INVALID_UTF8).unwrap();
 
     let mut compiler = Compiler::new(once(&dir)).unwrap();
-    let err = compiler.add_file("foo.proto").unwrap_err();
+    let err = compiler.open_file("foo.proto").unwrap_err();
 
     match err.kind() {
         ErrorKind::OpenFile { path, err, .. } => {
@@ -618,7 +618,7 @@ fn shadow_file_rel() {
         std::fs::write(Path::new("include").join("foo.proto"), EMPTY).unwrap();
 
         let mut compiler = Compiler::new(["include", "."]).unwrap();
-        let err = compiler.add_file("foo.proto").unwrap_err();
+        let err = compiler.open_file("foo.proto").unwrap_err();
 
         match err.kind() {
             ErrorKind::FileShadowed { path, shadow } => {
@@ -642,7 +642,7 @@ fn shadow_file_rel_subdir() {
 
         let mut compiler = Compiler::new(["include1", "include2"]).unwrap();
         let err = compiler
-            .add_file(Path::new("include2").join("foo.proto"))
+            .open_file(Path::new("include2").join("foo.proto"))
             .unwrap_err();
 
         match err.kind() {
@@ -664,7 +664,7 @@ fn shadow_file_abs() {
     std::fs::write(dir.join("include").join("foo.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.join("include").as_ref(), dir.path()]).unwrap();
-    let err = compiler.add_file(dir.join("foo.proto")).unwrap_err();
+    let err = compiler.open_file(dir.join("foo.proto")).unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
@@ -687,7 +687,7 @@ fn shadow_file_abs_subdir() {
 
     let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
     let err = compiler
-        .add_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
@@ -711,7 +711,7 @@ fn shadow_invalid_file() {
 
     let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
     let err = compiler
-        .add_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
@@ -734,9 +734,9 @@ fn shadow_already_imported_file() {
     std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
-    compiler.add_file("foo.proto").unwrap();
+    compiler.open_file("foo.proto").unwrap();
     let err = compiler
-        .add_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
@@ -763,7 +763,7 @@ fn import_files() {
     std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
-    compiler.add_file("root.proto").unwrap();
+    compiler.open_file("root.proto").unwrap();
 
     assert_eq!(compiler.pool.files().len(), 3);
 
@@ -805,13 +805,13 @@ fn import_files_include_imports_path_already_imported() {
     std::fs::write(dir.join("root2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf()]).unwrap();
-    compiler.add_file("root1.proto").unwrap();
+    compiler.open_file("root1.proto").unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 1);
     assert_eq!(file_descriptor_set.file[0].name(), "root1.proto");
 
-    compiler.add_file("root2.proto").unwrap();
+    compiler.open_file("root2.proto").unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 2);
@@ -834,7 +834,7 @@ fn import_cycle() {
     std::fs::write(dir.join("dep2.proto"), "import 'root.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
-    let err = compiler.add_file("root.proto").unwrap_err();
+    let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
         ErrorKind::CircularImport { cycle } => {
@@ -851,7 +851,7 @@ fn import_cycle_short() {
     std::fs::write(dir.join("root.proto"), "import 'root.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
-    let err = compiler.add_file("root.proto").unwrap_err();
+    let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
         ErrorKind::CircularImport { cycle } => assert_eq!(cycle, "root.proto -> root.proto"),
@@ -878,7 +878,7 @@ fn duplicated_import() {
     std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
-    compiler.add_file("root.proto").unwrap();
+    compiler.open_file("root.proto").unwrap();
 
     assert_eq!(compiler.pool.files().len(), 3);
 
@@ -923,12 +923,12 @@ fn import_file_absolute_path() {
     .unwrap();
 
     let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
-    compiler.add_file("root.proto").unwrap_err();
+    compiler.open_file("root.proto").unwrap_err();
 }
 
 #[cfg(windows)]
 #[test]
-fn add_file_case_insensitive() {
+fn open_file_case_insensitive() {
     let dir = TempDir::new().unwrap();
     test_compile_success(
         dir.join("include"),

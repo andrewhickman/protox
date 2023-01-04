@@ -44,7 +44,7 @@ pub fn main() -> Result<()> {
     compiler.include_imports(args.include_imports);
     compiler.include_source_info(args.include_source_info);
     for file in args.files {
-        compiler.add_file(file)?;
+        compiler.open_file(file)?;
     }
     if let Some(output) = args.output {
         fs::write(output, compiler.encode_file_descriptor_set())
