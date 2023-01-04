@@ -92,7 +92,7 @@ impl Compiler {
     /// If the path is absolute, or relative to the current directory, it must reside under one of the
     /// include paths. Otherwise, it is looked up relative to the given include paths in the same way as
     /// `import` statements.
-    pub fn add_file(&mut self, path: impl AsRef<Path>) -> Result<&mut Self, Error> {
+    pub fn open_file(&mut self, path: impl AsRef<Path>) -> Result<&mut Self, Error> {
         let path = path.as_ref();
         let (name, is_resolved) = if let Some(name) = self.resolver.resolve_path(path) {
             (name, true)
@@ -247,7 +247,7 @@ impl Compiler {
             if let Some(source) = file.source.as_deref() {
                 err = err.with_source_code(source);
             }
-            Error::from_kind(ErrorKind::Check { err })
+            err
         })?;
 
         Ok(())

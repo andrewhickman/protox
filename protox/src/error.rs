@@ -123,9 +123,14 @@ impl Error {
     pub fn is_file_not_found(&self) -> bool {
         match &*self.kind {
             ErrorKind::ImportNotFound { .. } => true,
-            ErrorKind::OpenFile { err, .. } => err.kind() == io::ErrorKind::NotFound,
             _ => false,
         }
+    }
+}
+
+impl From<DescriptorError> for Error {
+    fn from(err: DescriptorError) -> Self {
+        Error::from_kind(ErrorKind::Check { err })
     }
 }
 

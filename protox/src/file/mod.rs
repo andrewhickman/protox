@@ -224,6 +224,11 @@ impl File {
         })
     }
 
+    /// Returns the name of this file.
+    pub fn name(&self) -> &str {
+        self.descriptor.name()
+    }
+
     /// Returns the filesystem path, if this source is backed by a physical file.
     pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
