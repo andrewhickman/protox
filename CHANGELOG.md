@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed name resolution in nested messages
 - Fixed source info for oneofs not including comments
 - Enums now respect the allow_alias option
+- Extension options are now supported
+- More validation checks have been added (some still remain, see [#5](https://github.com/andrewhickman/prost-reflect/issues/5))
 
 ## [0.1.0] - 2022-07-25
 
