@@ -731,3 +731,29 @@ fn reserved_range() {
         }"
     ));
 }
+
+#[test]
+fn options() {
+    assert_debug_snapshot!(parse("option (ext.foo).bar = true;"));
+    assert_debug_snapshot!(parse("option ext.(foo.bar) = true;"));
+    assert_debug_snapshot!(parse("option opt = ident;"));
+    assert_debug_snapshot!(parse("option opt = 5;"));
+    assert_debug_snapshot!(parse("option opt = -5;"));
+    assert_debug_snapshot!(parse("option opt = 1.1;"));
+    assert_debug_snapshot!(parse("option opt = 'foo';"));
+    assert_debug_snapshot!(parse("option opt = { foo: 1 };"));
+    assert_eq!(
+        parse("option opt = -ident;"),
+        Err(vec![NegativeIdentOutsideDefault { span: 13..19 }]),
+    );
+    assert_eq!(
+        parse("option opt = -13835058055282163711;"),
+        Err(vec![IntegerValueOutOfRange {
+            expected: "a 64-bit integer".to_owned(),
+            actual: "-13835058055282163711".to_string(),
+            span: 13..34,
+            min: "-9223372036854775808".to_owned(),
+            max: "18446744073709551615".to_owned(),
+        }]),
+    );
+}

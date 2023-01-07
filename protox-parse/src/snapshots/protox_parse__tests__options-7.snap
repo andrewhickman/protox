@@ -1,0 +1,111 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(\"option opt = 'foo';\")"
+---
+Ok(
+    FileDescriptorProto {
+        name: Some(
+            "test.proto",
+        ),
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: Some(
+            FileOptions {
+                java_package: None,
+                java_outer_classname: None,
+                java_multiple_files: None,
+                java_generate_equals_and_hash: None,
+                java_string_check_utf8: None,
+                optimize_for: None,
+                go_package: None,
+                cc_generic_services: None,
+                java_generic_services: None,
+                py_generic_services: None,
+                php_generic_services: None,
+                deprecated: None,
+                cc_enable_arenas: None,
+                objc_class_prefix: None,
+                csharp_namespace: None,
+                swift_prefix: None,
+                php_class_prefix: None,
+                php_namespace: None,
+                php_metadata_namespace: None,
+                ruby_package: None,
+                uninterpreted_option: [
+                    UninterpretedOption {
+                        name: [
+                            NamePart {
+                                name_part: "opt",
+                                is_extension: false,
+                            },
+                        ],
+                        identifier_value: None,
+                        positive_int_value: None,
+                        negative_int_value: None,
+                        double_value: None,
+                        string_value: Some(
+                            [
+                                102,
+                                111,
+                                111,
+                            ],
+                        ),
+                        aggregate_value: None,
+                    },
+                ],
+            },
+        ),
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            19,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            8,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            19,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            8,
+                            999,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            19,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

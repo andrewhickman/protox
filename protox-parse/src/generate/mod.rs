@@ -106,7 +106,7 @@ impl Context {
                     );
                     weak_dependency.push(index);
                 }
-                _ => (),
+                None => (),
             }
         }
 
