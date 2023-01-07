@@ -1,0 +1,15 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    File {
+        span: 0..1,
+        syntax: Proto2,
+        syntax_span: None,
+        package: None,
+        imports: [],
+        options: [],
+        items: [],
+    },
+)

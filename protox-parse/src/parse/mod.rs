@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            _ => self.unexpected_token("an identifier or '('")?,
+            _ => self.unexpected_token("a string")?,
         };
 
         let end = self.expect_eq(Token::Semicolon)?;
@@ -821,7 +821,7 @@ impl<'a> Parser<'a> {
                 }
                 Some((tok, _)) if terminators.iter().any(|e| e.matches(&tok)) => break,
                 _ => self.unexpected_token(fmt_expected(
-                    once(ExpectedToken::Token(Token::Dot)).chain(terminators.iter().cloned()),
+                    once(ExpectedToken::Token(Token::Comma)).chain(terminators.iter().cloned()),
                 ))?,
             }
         }

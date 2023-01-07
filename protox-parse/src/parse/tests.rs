@@ -42,6 +42,9 @@ pub fn parse_option() {
     case!(parse_option("option foo = { x:1"));
     case!(parse_option("option optimize_for = google.protobuf.SPEED;"));
     case!(parse_option("option ext.(.foo.bar) = 42;"));
+    case!(parse_option("option foo = -'a';"));
+    case!(parse_option("option foo = { } }"));
+    case!(parse_option("option foo = {"));
 }
 
 #[test]
@@ -102,6 +105,7 @@ fn parse_enum() {
     case!(parse_enum("enum Foo { message = 1; }"));
     case!(parse_enum("enum \"Foo\""));
     case!(parse_enum("enum Foo { BAR = 0 [(an.ext).opt = 0.5]; }"));
+    case!(parse_enum("enum Foo { BAR = 0 }"));
 }
 
 #[test]
@@ -149,6 +153,11 @@ fn parse_service() {
     case!(parse_service(
         "service Foo { rpc bar(stream .stream.rpc) returns (stream .map.enum); }"
     ));
+    case!(parse_service(
+        "service Foo {
+            option foo = bar;
+        }"
+    ));
 }
 
 #[test]
@@ -192,6 +201,7 @@ pub fn parse_extension() {
         "extend Foo { repeated group A = 1 { optional string name = 2; } }"
     ));
     case!(parse_extend("extend ] "));
+    case!(parse_extend("extend { 'foo' }"));
 }
 
 #[test]
@@ -249,6 +259,7 @@ pub fn parse_field() {
     case!(parse_field("map<foo;"));
     case!(parse_field("double double = 1 [default = -nan];"));
     case!(parse_field("optional int32 name = 5 [(ext) = \"foo\"];"));
+    case!(parse_field("{"));
 }
 
 #[test]
@@ -304,6 +315,11 @@ pub fn parse_message() {
     case!(parse_message(
         "message Foo { extensions 5, 7 to 8, 10 to max [(ext.ext).ext.(ext) = { a: IDENT }]; }"
     ));
+    case!(parse_message("message Foo { extensions 5 }"));
+    case!(parse_message("message Foo { extensions 5 to 5 }"));
+    case!(parse_message("message Foo { reserved 'a' }"));
+    case!(parse_message("message Foo { extensions 5 to }"));
+    case!(parse_message("message Foo { optional .a.b, }"));
 }
 
 #[test]
@@ -390,4 +406,8 @@ pub fn parse_file() {
     "
     ));
     case!(parse_file("syntax = \"pro\" \n\n 'to3';"));
+    case!(parse_file(";"));
+    case!(parse_file("syntax = 1;"));
+    case!(parse_file("thing"));
+    case!(parse_file("message } } } message } } }"));
 }

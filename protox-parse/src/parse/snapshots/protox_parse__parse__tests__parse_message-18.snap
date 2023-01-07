@@ -1,0 +1,13 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "',' or ';'",
+            found: "}",
+            span: 27..28,
+        },
+    ],
+)

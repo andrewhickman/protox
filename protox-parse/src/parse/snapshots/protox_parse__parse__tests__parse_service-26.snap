@@ -1,0 +1,47 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Service {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        options: [
+            Option {
+                body: OptionBody {
+                    name: [
+                        Ident(
+                            Ident {
+                                value: "foo",
+                                span: 33..36,
+                            },
+                        ),
+                    ],
+                    value: Ident {
+                        negative: false,
+                        ident: Ident {
+                            value: "bar",
+                            span: 39..42,
+                        },
+                        span: 39..42,
+                    },
+                },
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 26..43,
+            },
+        ],
+        methods: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..53,
+    },
+)
