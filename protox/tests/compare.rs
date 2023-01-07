@@ -240,7 +240,6 @@ fn google_test_messages_proto3() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest_custom_options() {
     compare("unittest_custom_options");
 }
@@ -261,7 +260,6 @@ fn google_unittest_import() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest_lazy_dependencies() {
     compare("unittest_lazy_dependencies");
 }
@@ -282,7 +280,6 @@ fn google_unittest_preserve_unknown_enum2() {
 }
 
 #[test]
-#[ignore]
 fn google_unittest_proto3_optional() {
     compare("unittest_proto3_optional");
 }
