@@ -1,0 +1,70 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(\"import public 'foo.proto';\")"
+---
+Ok(
+    FileDescriptorProto {
+        name: Some(
+            "test.proto",
+        ),
+        package: None,
+        dependency: [
+            "foo.proto",
+        ],
+        public_dependency: [
+            0,
+        ],
+        weak_dependency: [],
+        message_type: [],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            26,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            3,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            26,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            10,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            7,
+                            13,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

@@ -665,3 +665,10 @@ fn syntax() {
     assert_debug_snapshot!(parse("syntax = 'proto2';"));
     assert_debug_snapshot!(parse("syntax = 'proto3';"));
 }
+
+#[test]
+fn imports() {
+    assert_debug_snapshot!(parse("import 'foo.proto';"));
+    assert_debug_snapshot!(parse("import weak 'foo.proto';"));
+    assert_debug_snapshot!(parse("import public 'foo.proto';"));
+}

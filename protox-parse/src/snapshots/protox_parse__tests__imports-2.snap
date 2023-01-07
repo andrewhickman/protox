@@ -1,0 +1,70 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(\"import weak 'foo.proto';\")"
+---
+Ok(
+    FileDescriptorProto {
+        name: Some(
+            "test.proto",
+        ),
+        package: None,
+        dependency: [
+            "foo.proto",
+        ],
+        public_dependency: [],
+        weak_dependency: [
+            0,
+        ],
+        message_type: [],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            24,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            3,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            24,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            11,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            7,
+                            11,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)
