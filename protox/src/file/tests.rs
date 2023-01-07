@@ -1,18 +1,21 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::{self, Seek, Write},
+    path::{Path, PathBuf},
+};
 
 use crate::file::FileResolver;
 
-use super::IncludeFileResolver;
+use super::{File, IncludeFileResolver};
 
 #[test]
-fn test_resolve_path() {
+fn resolve_path() {
     let include = IncludeFileResolver::new("/path/to/include".into());
 
     #[cfg(unix)]
     fn non_utf8_path() -> PathBuf {
         use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
-        OsStr::from_bytes([0, 159, 146, 150]).into()
+        OsStr::from_bytes(&[0, 159, 146, 150]).into()
     }
 
     #[cfg(windows)]
@@ -83,4 +86,17 @@ fn test_resolve_path() {
             .as_deref(),
         Some("foo.proto")
     );
+}
+
+#[test]
+fn file_open() {
+    let mut tempfile = tempfile::NamedTempFile::new().unwrap();
+    tempfile.write_all("syntax = 'proto3';".as_bytes()).unwrap();
+    tempfile.seek(io::SeekFrom::Start(0)).unwrap();
+
+    let file = File::open("foo.proto", tempfile.path()).unwrap();
+
+    assert_eq!(file.name(), "foo.proto");
+    assert_eq!(file.path(), Some(tempfile.path()));
+    assert_eq!(file.source(), Some("syntax = 'proto3';"));
 }
