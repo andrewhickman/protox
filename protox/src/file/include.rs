@@ -2,7 +2,7 @@ use std::path::{self, Path, PathBuf};
 
 use crate::{error::ErrorKind, Error};
 
-use super::{path_to_file_name, File, FileResolver};
+use super::{File, FileResolver};
 
 /// An implementation of [`FileResolver`] which searches an include path on the file system.
 #[derive(Debug)]
@@ -66,6 +66,31 @@ impl FileResolver for IncludeFileResolver {
     /// ```
     fn open_file(&self, name: &str) -> Result<File, Error> {
         File::open(name, &self.include.join(name))
+    }
+}
+
+pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
+    let mut name = String::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::Normal(component) => {
+                if let Some(component) = component.to_str() {
+                    if !name.is_empty() {
+                        name.push('/');
+                    }
+                    name.push_str(component);
+                } else {
+                    return None;
+                }
+            }
+            _ => return None,
+        }
+    }
+
+    if name.is_empty() {
+        None
+    } else {
+        Some(name)
     }
 }
 

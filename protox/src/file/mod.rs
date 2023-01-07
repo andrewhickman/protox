@@ -4,6 +4,8 @@ mod chain;
 mod descriptor_set;
 mod google;
 mod include;
+#[cfg(test)]
+mod tests;
 
 pub use chain::ChainFileResolver;
 pub use descriptor_set::DescriptorSetFileResolver;
@@ -18,7 +20,7 @@ use std::{
 };
 
 use bytes::{Buf, Bytes};
-pub(crate) use include::check_shadow;
+pub(crate) use include::{check_shadow, path_to_file_name};
 use prost::{DecodeError, Message};
 
 use crate::{
@@ -240,25 +242,4 @@ impl File {
     pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
         self.descriptor.clone()
     }
-}
-
-pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
-    let mut name = String::new();
-    for component in path.components() {
-        match component {
-            std::path::Component::Normal(component) => {
-                if let Some(component) = component.to_str() {
-                    if !name.is_empty() {
-                        name.push('/');
-                    }
-                    name.push_str(component);
-                } else {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-    }
-
-    Some(name)
 }
