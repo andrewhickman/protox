@@ -1,16 +1,13 @@
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, Bytes};
 use prost::{
-    decode_length_delimiter,
-    encoding::{
-        check_wire_type, encode_key, encode_varint, message, skip_field, DecodeContext, WireType,
-    },
+    encoding::{check_wire_type, decode_key, decode_varint, skip_field, DecodeContext, WireType},
     DecodeError, Message,
 };
 use prost_types::FileDescriptorProto;
 
 use crate::{
     file::{File, FileResolver},
-    Error,
+    tag, Error,
 };
 
 /// An implementation of [`FileResolver`] which resolves files from a compiled [`FileDescriptorSet`](prost_types::FileDescriptorSet).
@@ -50,12 +47,17 @@ impl DescriptorSetFileResolver {
     {
         let mut set = Vec::new();
         while buf.has_remaining() {
-            message::merge_repeated(
-                WireType::LengthDelimited,
-                &mut set,
-                &mut buf,
-                DecodeContext::default(),
-            )?;
+            let (key, wire_type) = decode_key(&mut buf)?;
+            if key == tag::file_descriptor_set::FILE as u32 {
+                check_wire_type(WireType::LengthDelimited, wire_type)?;
+                let len = decode_varint(&mut buf)? as usize;
+                if len > buf.remaining() {
+                    return Err(DecodeError::new("buffer underflow"));
+                }
+                set.push(FileDescriptor::decode((&mut buf).take(len))?);
+            } else {
+                skip_field(wire_type, key, &mut buf, DecodeContext::default())?;
+            }
         }
         Ok(DescriptorSetFileResolver { set })
     }
@@ -78,55 +80,14 @@ impl FileResolver for DescriptorSetFileResolver {
     }
 }
 
-impl Message for FileDescriptor {
-    fn encode_raw<B>(&self, _: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        unimplemented!()
-    }
+impl FileDescriptor {
+    fn decode(mut buf: impl Buf) -> Result<Self, DecodeError> {
+        let encoded = buf.copy_to_bytes(buf.remaining());
+        let file = FileDescriptorProto::decode(&mut encoded.as_ref())?;
 
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        mut buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        if tag == crate::tag::file_descriptor_set::FILE as u32 {
-            let mut encoded = BytesMut::new();
-            if let Some(bytes) = &self.encoded {
-                encoded.extend_from_slice(bytes);
-            }
-
-            check_wire_type(WireType::LengthDelimited, wire_type)?;
-            let len = decode_length_delimiter(&mut buf)?;
-
-            encode_key(tag, wire_type, &mut encoded);
-            let start = encoded.len();
-            encode_varint(len as u64, &mut encoded);
-            encoded.put(buf.take(len));
-
-            let encoded = self.encoded.insert(encoded.freeze());
-            self.file
-                .merge_field(tag, wire_type, &mut &encoded[start..], ctx)?;
-        } else {
-            skip_field(wire_type, tag, buf, ctx)?;
-        }
-
-        Ok(())
-    }
-
-    fn encoded_len(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn clear(&mut self) {
-        unimplemented!()
+        Ok(FileDescriptor {
+            file,
+            encoded: Some(encoded),
+        })
     }
 }
