@@ -11,7 +11,7 @@
 //! # use std::{env, fs, path::PathBuf};
 //! # use prost::Message;
 //! # use protox::compile;
-//! # let tempdir = assert_fs::TempDir::new().unwrap();
+//! # let tempdir = tempfile::TempDir::new().unwrap();
 //! # env::set_current_dir(&tempdir).unwrap();
 //! # env::set_var("OUT_DIR", tempdir.path());
 //! # fs::write("root.proto", "").unwrap();
@@ -69,7 +69,7 @@ pub use self::error::Error;
 /// #    SourceCodeInfo, source_code_info::Location
 /// # };
 /// # use protox::compile;
-/// # let tempdir = assert_fs::TempDir::new().unwrap();
+/// # let tempdir = tempfile::TempDir::new().unwrap();
 /// # std::env::set_current_dir(&tempdir).unwrap();
 /// #
 /// fs::write("bar.proto", "

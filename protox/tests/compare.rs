@@ -4,7 +4,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use assert_fs::TempDir;
+use tempfile::TempDir;
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
@@ -58,7 +58,7 @@ fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
 
 fn protoc(files: &[String]) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();
-    let result = tempdir.join("desc.bin");
+    let result = tempdir.path().join("desc.bin");
     let output = Command::new(prost_build::protoc_from_env())
         .arg("--proto_path")
         .arg(test_data_dir())

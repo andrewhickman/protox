@@ -55,7 +55,7 @@ impl FileResolver for IncludeFileResolver {
     /// ```
     /// # use std::{fs, path::PathBuf};
     /// # use protox::file::{IncludeFileResolver, FileResolver};
-    /// # let tempdir = assert_fs::TempDir::new().unwrap();
+    /// # let tempdir = tempfile::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("./foo.proto", "/* hello! */").unwrap();
     ///

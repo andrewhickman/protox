@@ -82,7 +82,7 @@ impl File {
     /// # use std::{fs, path::PathBuf};
     /// # use protox::file::File;
     /// # use prost_types::{DescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location};
-    /// # let tempdir = assert_fs::TempDir::new().unwrap();
+    /// # let tempdir = tempfile::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("foo.proto", "message Foo { }").unwrap();
     ///

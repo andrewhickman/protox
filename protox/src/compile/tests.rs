@@ -1,6 +1,6 @@
 use std::{fs, io, iter::once};
 
-use assert_fs::TempDir;
+use tempfile::TempDir;
 
 use super::*;
 use crate::with_current_dir;
@@ -95,7 +95,7 @@ fn abs_include_rel_subdir_file() {
 #[test]
 fn abs_include_abs_file() {
     let dir = TempDir::new().unwrap();
-    test_compile_success(dir.path(), dir.join("foo.proto"), "foo.proto");
+    test_compile_success(dir.path(), dir.path().join("foo.proto"), "foo.proto");
 }
 
 #[test]
@@ -103,7 +103,7 @@ fn abs_include_abs_subdir_file() {
     let dir = TempDir::new().unwrap();
     test_compile_success(
         dir.path(),
-        dir.join("dir").join("foo.proto"),
+        dir.path().join("dir").join("foo.proto"),
         "dir/foo.proto",
     );
 }
@@ -141,13 +141,13 @@ fn abs_include_dot_subdir_file() {
 #[test]
 fn abs_subdir_include_simple_file() {
     let dir = TempDir::new().unwrap();
-    test_compile_success(dir.join("include"), "foo.proto", "foo.proto");
+    test_compile_success(dir.path().join("include"), "foo.proto", "foo.proto");
 }
 
 #[test]
 fn abs_subdir_include_simple_subdir_file() {
     let dir = TempDir::new().unwrap();
-    test_compile_success(dir.join("include"), "dir/foo.proto", "dir/foo.proto");
+    test_compile_success(dir.path().join("include"), "dir/foo.proto", "dir/foo.proto");
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn abs_subdir_include_rel_file() {
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         test_compile_error(
-            dir.join("include"),
+            dir.path().join("include"),
             Path::new("include").join("foo.proto"),
             "foo.proto",
             ErrorKind::FileNotIncluded {
@@ -170,7 +170,7 @@ fn abs_subdir_include_rel_subdir_file() {
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         test_compile_error(
-            dir.join("include"),
+            dir.path().join("include"),
             Path::new("include").join("dir").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
@@ -183,15 +183,15 @@ fn abs_subdir_include_rel_subdir_file() {
 #[test]
 fn abs_subdir_include_abs_file() {
     let dir = TempDir::new().unwrap();
-    test_compile_success(&dir, dir.join("foo.proto"), "foo.proto");
+    test_compile_success(&dir, dir.path().join("foo.proto"), "foo.proto");
 }
 
 #[test]
 fn abs_subdir_include_abs_subdir_file() {
     let dir = TempDir::new().unwrap();
     test_compile_success(
-        dir.join("include"),
-        dir.join("include").join("foo.proto"),
+        dir.path().join("include"),
+        dir.path().join("include").join("foo.proto"),
         "foo.proto",
     );
 }
@@ -201,7 +201,7 @@ fn abs_subdir_include_dot_file() {
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         test_compile_error(
-            dir.join("include"),
+            dir.path().join("include"),
             Path::new(".").join("include").join("foo.proto"),
             "foo.proto",
             ErrorKind::FileNotIncluded {
@@ -216,7 +216,7 @@ fn abs_subdir_include_dot_subdir_file() {
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         test_compile_error(
-            dir.join("include"),
+            dir.path().join("include"),
             Path::new(".").join("include").join("dir").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
@@ -231,10 +231,10 @@ fn abs_include_complex_file() {
     let dir = TempDir::new().unwrap();
     test_compile_error(
         &dir,
-        dir.join("dir").join("..").join("dir").join("foo.proto"),
+        dir.path().join("dir").join("..").join("dir").join("foo.proto"),
         "dir/foo.proto",
         ErrorKind::FileNotIncluded {
-            path: dir.join("dir").join("..").join("dir").join("foo.proto"),
+            path: dir.path().join("dir").join("..").join("dir").join("foo.proto"),
         },
     );
 }
@@ -243,14 +243,15 @@ fn abs_include_complex_file() {
 fn abs_subdir_include_complex_file() {
     let dir = TempDir::new().unwrap();
     test_compile_error(
-        dir.join("include"),
-        dir.join("include")
+        dir.path().join("include"),
+        dir.path().join("include")
             .join("..")
             .join("include")
             .join("foo.proto"),
         "foo.proto",
         ErrorKind::FileNotIncluded {
             path: dir
+                .path()
                 .join("include")
                 .join("..")
                 .join("include")
@@ -305,10 +306,10 @@ fn rel_subdir_include_abs_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             "include",
-            dir.join("foo.proto"),
+            dir.path().join("foo.proto"),
             "foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("foo.proto"),
+                path: dir.path().join("foo.proto"),
             },
         );
     });
@@ -320,10 +321,10 @@ fn rel_subdir_include_abs_subdir_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             "include",
-            dir.join("dir").join("foo.proto"),
+            dir.path().join("dir").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("dir").join("foo.proto"),
+                path: dir.path().join("dir").join("foo.proto"),
             },
         );
     });
@@ -412,10 +413,10 @@ fn dot_include_abs_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             ".",
-            dir.join("foo.proto"),
+            dir.path().join("foo.proto"),
             "foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("foo.proto"),
+                path: dir.path().join("foo.proto"),
             },
         );
     });
@@ -427,10 +428,10 @@ fn dot_include_abs_subdir_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             ".",
-            dir.join("dir").join("foo.proto"),
+            dir.path().join("dir").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("dir").join("foo.proto"),
+                path: dir.path().join("dir").join("foo.proto"),
             },
         );
     });
@@ -506,10 +507,10 @@ fn dot_subdir_include_abs_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             Path::new(".").join("include"),
-            dir.join("include").join("foo.proto"),
+            dir.path().join("include").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("include").join("foo.proto"),
+                path: dir.path().join("include").join("foo.proto"),
             },
         );
     });
@@ -521,10 +522,10 @@ fn dot_subdir_include_abs_subdir_file() {
     with_current_dir(&dir, || {
         test_compile_error(
             Path::new(".").join("include"),
-            dir.join("include").join("dir").join("foo.proto"),
+            dir.path().join("include").join("dir").join("foo.proto"),
             "dir/foo.proto",
             ErrorKind::FileNotIncluded {
-                path: dir.join("include").join("dir").join("foo.proto"),
+                path: dir.path().join("include").join("dir").join("foo.proto"),
             },
         );
     });
@@ -595,14 +596,14 @@ fn complex_include_complex_file() {
 fn invalid_file() {
     let dir = TempDir::new().unwrap();
 
-    std::fs::write(dir.join("foo.proto"), INVALID_UTF8).unwrap();
+    std::fs::write(dir.path().join("foo.proto"), INVALID_UTF8).unwrap();
 
     let mut compiler = Compiler::new(once(&dir)).unwrap();
     let err = compiler.open_file("foo.proto").unwrap_err();
 
     match err.kind() {
         ErrorKind::OpenFile { path, err, .. } => {
-            assert_eq!(path, &dir.join("foo.proto"));
+            assert_eq!(path, &dir.path().join("foo.proto"));
             assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         }
         kind => panic!("unexpected error: {}", kind),
@@ -659,17 +660,17 @@ fn shadow_file_rel_subdir() {
 fn shadow_file_abs() {
     let dir = TempDir::new().unwrap();
 
-    std::fs::write(dir.join("foo.proto"), EMPTY).unwrap();
-    fs::create_dir_all(dir.join("include")).unwrap();
-    std::fs::write(dir.join("include").join("foo.proto"), EMPTY).unwrap();
+    std::fs::write(dir.path().join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include")).unwrap();
+    std::fs::write(dir.path().join("include").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.join("include").as_ref(), dir.path()]).unwrap();
-    let err = compiler.open_file(dir.join("foo.proto")).unwrap_err();
+    let mut compiler = Compiler::new([dir.path().join("include").as_ref(), dir.path()]).unwrap();
+    let err = compiler.open_file(dir.path().join("foo.proto")).unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
-            assert_eq!(path, &dir.join("foo.proto"));
-            assert_eq!(shadow, &dir.join("include").join("foo.proto"));
+            assert_eq!(path, &dir.path().join("foo.proto"));
+            assert_eq!(shadow, &dir.path().join("include").join("foo.proto"));
         }
         kind => panic!("unexpected error: {}", kind),
     }
@@ -679,21 +680,21 @@ fn shadow_file_abs() {
 fn shadow_file_abs_subdir() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir_all(dir.join("include1")).unwrap();
-    std::fs::write(dir.join("include1").join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include1")).unwrap();
+    std::fs::write(dir.path().join("include1").join("foo.proto"), EMPTY).unwrap();
 
-    fs::create_dir_all(dir.join("include2")).unwrap();
-    std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include2")).unwrap();
+    std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     let err = compiler
-        .open_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.path().join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
-            assert_eq!(path, &dir.join("include2").join("foo.proto"));
-            assert_eq!(shadow, &dir.join("include1").join("foo.proto"));
+            assert_eq!(path, &dir.path().join("include2").join("foo.proto"));
+            assert_eq!(shadow, &dir.path().join("include1").join("foo.proto"));
         }
         kind => panic!("unexpected error: {}", kind),
     }
@@ -703,20 +704,20 @@ fn shadow_file_abs_subdir() {
 fn shadow_invalid_file() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir_all(dir.join("include1")).unwrap();
-    std::fs::write(dir.join("include1").join("foo.proto"), INVALID_UTF8).unwrap();
+    fs::create_dir_all(dir.path().join("include1")).unwrap();
+    std::fs::write(dir.path().join("include1").join("foo.proto"), INVALID_UTF8).unwrap();
 
-    fs::create_dir_all(dir.join("include2")).unwrap();
-    std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include2")).unwrap();
+    std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     let err = compiler
-        .open_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.path().join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
         ErrorKind::OpenFile { path, err, .. } => {
-            assert_eq!(path, &dir.join("include1").join("foo.proto"));
+            assert_eq!(path, &dir.path().join("include1").join("foo.proto"));
             assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         }
         kind => panic!("unexpected error: {}", kind),
@@ -727,22 +728,22 @@ fn shadow_invalid_file() {
 fn shadow_already_imported_file() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir_all(dir.join("include1")).unwrap();
-    std::fs::write(dir.join("include1").join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include1")).unwrap();
+    std::fs::write(dir.path().join("include1").join("foo.proto"), EMPTY).unwrap();
 
-    fs::create_dir_all(dir.join("include2")).unwrap();
-    std::fs::write(dir.join("include2").join("foo.proto"), EMPTY).unwrap();
+    fs::create_dir_all(dir.path().join("include2")).unwrap();
+    std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.join("include1"), dir.join("include2")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     compiler.open_file("foo.proto").unwrap();
     let err = compiler
-        .open_file(dir.join("include2").join("foo.proto"))
+        .open_file(dir.path().join("include2").join("foo.proto"))
         .unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
-            assert_eq!(path, &dir.join("include2").join("foo.proto"));
-            assert_eq!(shadow, &dir.join("include1").join("foo.proto"));
+            assert_eq!(path, &dir.path().join("include2").join("foo.proto"));
+            assert_eq!(shadow, &dir.path().join("include1").join("foo.proto"));
         }
         kind => panic!("unexpected error: {}", kind),
     }
@@ -752,17 +753,17 @@ fn shadow_already_imported_file() {
 fn import_files() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir(dir.join("include")).unwrap();
+    fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
-        dir.join("include").join("dep.proto"),
+        dir.path().join("include").join("dep.proto"),
         "import 'dep2.proto';",
     )
     .unwrap();
 
-    std::fs::write(dir.join("root.proto"), "import 'dep.proto';").unwrap();
-    std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
+    std::fs::write(dir.path().join("root.proto"), "import 'dep.proto';").unwrap();
+    std::fs::write(dir.path().join("dep2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     compiler.open_file("root.proto").unwrap();
 
     assert_eq!(compiler.pool.files().len(), 3);
@@ -770,19 +771,19 @@ fn import_files() {
     assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
         compiler.files["dep2.proto"].path,
-        Some(dir.join("dep2.proto"))
+        Some(dir.path().join("dep2.proto"))
     );
 
     assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
         compiler.files["dep.proto"].path,
-        Some(dir.join("include").join("dep.proto"))
+        Some(dir.path().join("include").join("dep.proto"))
     );
 
     assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
         compiler.files["root.proto"].path,
-        Some(dir.join("root.proto"))
+        Some(dir.path().join("root.proto"))
     );
 
     let file_descriptor_set = compiler.file_descriptor_set();
@@ -801,10 +802,10 @@ fn import_files() {
 fn import_files_include_imports_path_already_imported() {
     let dir = TempDir::new().unwrap();
 
-    std::fs::write(dir.join("root1.proto"), "import 'root2.proto';").unwrap();
-    std::fs::write(dir.join("root2.proto"), EMPTY).unwrap();
+    std::fs::write(dir.path().join("root1.proto"), "import 'root2.proto';").unwrap();
+    std::fs::write(dir.path().join("root2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf()]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned()]).unwrap();
     compiler.open_file("root1.proto").unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
@@ -823,17 +824,17 @@ fn import_files_include_imports_path_already_imported() {
 fn import_cycle() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir(dir.join("include")).unwrap();
+    fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
-        dir.join("include").join("dep.proto"),
+        dir.path().join("include").join("dep.proto"),
         "import 'dep2.proto';",
     )
     .unwrap();
 
-    std::fs::write(dir.join("root.proto"), "import 'dep.proto';").unwrap();
-    std::fs::write(dir.join("dep2.proto"), "import 'root.proto';").unwrap();
+    std::fs::write(dir.path().join("root.proto"), "import 'dep.proto';").unwrap();
+    std::fs::write(dir.path().join("dep2.proto"), "import 'root.proto';").unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
@@ -848,9 +849,9 @@ fn import_cycle() {
 fn import_cycle_short() {
     let dir = TempDir::new().unwrap();
 
-    std::fs::write(dir.join("root.proto"), "import 'root.proto';").unwrap();
+    std::fs::write(dir.path().join("root.proto"), "import 'root.proto';").unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
@@ -863,21 +864,21 @@ fn import_cycle_short() {
 fn duplicated_import() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir(dir.join("include")).unwrap();
+    fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
-        dir.join("include").join("dep.proto"),
+        dir.path().join("include").join("dep.proto"),
         "import 'dep2.proto';",
     )
     .unwrap();
 
     std::fs::write(
-        dir.join("root.proto"),
+        dir.path().join("root.proto"),
         "import 'dep.proto'; import 'dep2.proto';",
     )
     .unwrap();
-    std::fs::write(dir.join("dep2.proto"), EMPTY).unwrap();
+    std::fs::write(dir.path().join("dep2.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     compiler.open_file("root.proto").unwrap();
 
     assert_eq!(compiler.pool.files().len(), 3);
@@ -885,19 +886,19 @@ fn duplicated_import() {
     assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
         compiler.files["dep2.proto"].path,
-        Some(dir.join("dep2.proto"))
+        Some(dir.path().join("dep2.proto"))
     );
 
     assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
         compiler.files["dep.proto"].path,
-        Some(dir.join("include").join("dep.proto"))
+        Some(dir.path().join("include").join("dep.proto"))
     );
 
     assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
         compiler.files["root.proto"].path,
-        Some(dir.join("root.proto"))
+        Some(dir.path().join("root.proto"))
     );
 }
 
@@ -905,14 +906,14 @@ fn duplicated_import() {
 fn import_file_absolute_path() {
     let dir = TempDir::new().unwrap();
 
-    fs::create_dir(dir.join("include")).unwrap();
-    std::fs::write(dir.join("include").join("dep.proto"), EMPTY).unwrap();
+    fs::create_dir(dir.path().join("include")).unwrap();
+    std::fs::write(dir.path().join("include").join("dep.proto"), EMPTY).unwrap();
 
     std::fs::write(
-        dir.join("root.proto"),
+        dir.path().join("root.proto"),
         format!(
             "import '{}';",
-            dir.join("include")
+            dir.path().join("include")
                 .join("dep.proto")
                 .display()
                 .to_string()
@@ -922,7 +923,7 @@ fn import_file_absolute_path() {
     )
     .unwrap();
 
-    let mut compiler = Compiler::new([dir.to_path_buf(), dir.join("include")]).unwrap();
+    let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     compiler.open_file("root.proto").unwrap_err();
 }
 
@@ -931,8 +932,8 @@ fn import_file_absolute_path() {
 fn open_file_case_insensitive() {
     let dir = TempDir::new().unwrap();
     test_compile_success(
-        dir.join("include"),
-        dir.join("INCLUDE").join("foo.proto"),
+        dir.path().join("include"),
+        dir.path().join("INCLUDE").join("foo.proto"),
         "foo.proto",
     );
 }
