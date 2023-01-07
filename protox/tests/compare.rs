@@ -5,7 +5,7 @@ use std::{
 };
 
 use prost::Message;
-use prost_reflect::{DynamicMessage, ReflectMessage, SerializeOptions};
+use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
 use similar_asserts::assert_serde_eq;
 use tempfile::TempDir;
@@ -42,19 +42,18 @@ fn compare(name: &str) {
     assert_serde_eq!(expected, actual);
 }
 
-#[allow(unused)]
-fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
-    let mut serializer = serde_yaml::Serializer::new(Vec::new());
-    message
-        .serialize_with_options(
-            &mut serializer,
-            &SerializeOptions::new()
-                .skip_default_fields(true)
-                .stringify_64_bit_integers(false),
-        )
-        .unwrap();
-    serializer.into_inner().unwrap()
-}
+// fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
+//     let mut serializer = serde_yaml::Serializer::new(Vec::new());
+//     message
+//         .serialize_with_options(
+//             &mut serializer,
+//             &SerializeOptions::new()
+//                 .skip_default_fields(true)
+//                 .stringify_64_bit_integers(false),
+//         )
+//         .unwrap();
+//     serializer.into_inner().unwrap()
+// }
 
 fn protoc(files: &[String]) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();

@@ -22,8 +22,8 @@ pub(crate) use include::check_shadow;
 use prost::{DecodeError, Message};
 
 use crate::{
-    error::{DynSourceCode, ErrorKind},
-    Error, MAX_FILE_LEN,
+    error::{Error, ErrorKind},
+    MAX_FILE_LEN,
 };
 
 /// A strategy for locating protobuf source files.
@@ -116,8 +116,6 @@ impl File {
                 Error::from_kind(ErrorKind::OpenFile {
                     path: path.to_owned(),
                     err,
-                    src: DynSourceCode::default(),
-                    span: None,
                 })
             }
         };
@@ -127,8 +125,7 @@ impl File {
 
         if metadata.len() > MAX_FILE_LEN {
             return Err(Error::from_kind(ErrorKind::FileTooLarge {
-                src: DynSourceCode::default(),
-                span: None,
+                name: name.to_owned(),
             }));
         }
 

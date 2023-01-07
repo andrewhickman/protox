@@ -1,6 +1,6 @@
-use std::{fmt, io, path::PathBuf};
+use std::{io, path::PathBuf};
 
-use miette::{Diagnostic, MietteError, NamedSource, SourceCode, SourceSpan};
+use miette::Diagnostic;
 use prost_reflect::DescriptorError;
 use protox_parse::ParseError;
 use thiserror::Error;
@@ -26,27 +26,12 @@ pub(crate) enum ErrorKind {
         path: PathBuf,
         #[source]
         err: io::Error,
-        #[source_code]
-        src: DynSourceCode,
-        #[label("imported here")]
-        span: Option<SourceSpan>,
     },
-    #[error("file is too large")]
+    #[error("file '{name}' is too large")]
     #[diagnostic(help("the maximum file length is 2,147,483,647 bytes"))]
-    FileTooLarge {
-        #[source_code]
-        src: DynSourceCode,
-        #[label("imported here")]
-        span: Option<SourceSpan>,
-    },
+    FileTooLarge { name: String },
     #[error("import '{name}' not found")]
-    ImportNotFound {
-        name: String,
-        #[source_code]
-        src: DynSourceCode,
-        #[label("imported here")]
-        span: Option<SourceSpan>,
-    },
+    ImportNotFound { name: String },
     #[error("import cycle detected: {cycle}")]
     CircularImport { cycle: String },
     #[error("file '{path}' is not in any include path")]
@@ -56,36 +41,6 @@ pub(crate) enum ErrorKind {
     FileShadowed { path: PathBuf, shadow: PathBuf },
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
-}
-
-#[derive(Default)]
-pub(crate) struct DynSourceCode(Option<Box<dyn SourceCode>>);
-
-impl fmt::Debug for DynSourceCode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("DynSourceCode").finish_non_exhaustive()
-    }
-}
-
-impl SourceCode for DynSourceCode {
-    fn read_span<'a>(
-        &'a self,
-        span: &miette::SourceSpan,
-        context_lines_before: usize,
-        context_lines_after: usize,
-    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, MietteError> {
-        if let Some(src) = &self.0 {
-            src.read_span(span, context_lines_before, context_lines_after)
-        } else {
-            Err(MietteError::OutOfBounds)
-        }
-    }
-}
-
-impl From<NamedSource> for DynSourceCode {
-    fn from(source: NamedSource) -> Self {
-        DynSourceCode(Some(Box::new(source)))
-    }
 }
 
 impl Error {
@@ -103,8 +58,6 @@ impl Error {
     pub fn file_not_found(name: &str) -> Self {
         Error::from_kind(ErrorKind::ImportNotFound {
             name: name.to_owned(),
-            src: DynSourceCode::default(),
-            span: None,
         })
     }
 
