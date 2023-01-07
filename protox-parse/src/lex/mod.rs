@@ -364,7 +364,7 @@ fn line_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
         .strip_prefix("//")
         .or_else(|| lex.slice().strip_prefix('#'))
         .expect("invalid line comment");
-    content.into()
+    normalize_newlines(content.into())
 }
 
 fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {

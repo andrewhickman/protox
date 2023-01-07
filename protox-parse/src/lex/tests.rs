@@ -283,6 +283,18 @@ fn line_comment() {
 }
 
 #[test]
+fn line_comment_normalize_newlines() {
+    let source = "// foo\r\n // bar\r\n";
+    let mut lexer = Token::lexer(source);
+
+    assert_eq!(lexer.next(), Some(Token::LineComment(" foo\n".into())));
+    assert_eq!(lexer.next(), Some(Token::LineComment(" bar\n".into())));
+    assert_eq!(lexer.next(), None);
+
+    assert_eq!(lexer.extras.errors, vec![]);
+}
+
+#[test]
 fn block_comment() {
     let source = "foo /* bar\n */ quz";
     let mut lexer = Token::lexer(source);
