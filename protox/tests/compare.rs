@@ -4,11 +4,11 @@ use std::{
     process::{Command, Stdio},
 };
 
-use tempfile::TempDir;
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage, SerializeOptions};
 use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
 use similar_asserts::assert_serde_eq;
+use tempfile::TempDir;
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")

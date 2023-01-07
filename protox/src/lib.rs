@@ -15,7 +15,7 @@
 //! # env::set_current_dir(&tempdir).unwrap();
 //! # env::set_var("OUT_DIR", tempdir.path());
 //! # fs::write("root.proto", "").unwrap();
-//! let file_descriptors = compile(&["root.proto"], &["."]).unwrap();
+//! let file_descriptors = compile(["root.proto"], ["."]).unwrap();
 //! let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
 //!     .join("file_descriptor_set.bin");
 //! fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
@@ -41,21 +41,20 @@ use std::path::Path;
 pub use self::compile::Compiler;
 pub use self::error::Error;
 
-/// Convenience function for compiling a set of protobuf files.
+/// Compiles a set of protobuf files using the given include paths.
 ///
 /// For more control over how files are compiled, see [`Compiler`]. This function is equivalent to:
+///
 /// ```rust
 /// # use protox::Compiler;
 /// # fn main() -> Result<(), protox::Error> {
 /// # let files: Vec<std::path::PathBuf> = vec![];
 /// # let includes: Vec<std::path::PathBuf> = vec![".".into()];
-/// let mut compiler = Compiler::new(includes)?;
-/// compiler.include_source_info(true);
-/// compiler.include_imports(true);
-/// for file in files {
-///     compiler.open_file(file)?;
-/// }
-/// compiler.file_descriptor_set();
+/// let file_descriptor_set = Compiler::new(includes)?
+///     .include_source_info(true)
+///     .include_imports(true)
+///     .open_files(files)?
+///     .file_descriptor_set();
 /// # Ok(())
 /// # }
 /// ```
@@ -83,7 +82,7 @@ pub use self::error::Error;
 ///     }
 /// ").unwrap();
 ///
-/// assert_eq!(compile(&["root.proto"], &["."]).unwrap(), FileDescriptorSet {
+/// assert_eq!(compile(["root.proto"], ["."]).unwrap(), FileDescriptorSet {
 ///     file: vec![
 ///         FileDescriptorProto {
 ///             name: Some("bar.proto".to_owned()),

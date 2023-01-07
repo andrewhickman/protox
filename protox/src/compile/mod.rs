@@ -17,6 +17,34 @@ use crate::{
 mod tests;
 
 /// Options for compiling protobuf files.
+///
+/// # Examples
+///
+/// ```
+/// # use std::fs;
+/// # use prost_types::{
+/// #    DescriptorProto, FieldDescriptorProto, field_descriptor_proto::{Label, Type}, FileDescriptorSet, FileDescriptorProto,
+/// #    SourceCodeInfo, source_code_info::Location
+/// # };
+/// # use protox::Compiler;
+/// # fn main() -> Result<(), protox::Error> {
+/// # let tempdir = tempfile::TempDir::new().unwrap();
+/// # std::env::set_current_dir(&tempdir).unwrap();
+/// #
+/// fs::write("bar.proto", "
+///     message Bar { }
+/// ").unwrap();
+///
+/// let file_descriptor_set = Compiler::new(["."])?
+///     .include_imports(true)
+///     .include_source_info(false)
+///     .open_file("bar.proto")?
+///     .file_descriptor_set();
+///
+/// assert_eq!(file_descriptor_set.file[0].message_type[0].name(), "Bar");
+/// # Ok(())
+/// # }
+/// ```
 pub struct Compiler {
     pool: DescriptorPool,
     resolver: Box<dyn FileResolver>,
@@ -141,6 +169,20 @@ impl Compiler {
                 is_root: true,
             },
         );
+        Ok(self)
+    }
+
+    /// Compiles the given files, and adds them to this `Compiler` instance.
+    ///
+    /// See [`open_file()`][Compiler::open_file()].
+    pub fn open_files(
+        &mut self,
+        paths: impl IntoIterator<Item = impl AsRef<Path>>,
+    ) -> Result<&mut Self, Error> {
+        for path in paths {
+            self.open_file(path)?;
+        }
+
         Ok(self)
     }
 

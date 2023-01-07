@@ -231,10 +231,19 @@ fn abs_include_complex_file() {
     let dir = TempDir::new().unwrap();
     test_compile_error(
         &dir,
-        dir.path().join("dir").join("..").join("dir").join("foo.proto"),
+        dir.path()
+            .join("dir")
+            .join("..")
+            .join("dir")
+            .join("foo.proto"),
         "dir/foo.proto",
         ErrorKind::FileNotIncluded {
-            path: dir.path().join("dir").join("..").join("dir").join("foo.proto"),
+            path: dir
+                .path()
+                .join("dir")
+                .join("..")
+                .join("dir")
+                .join("foo.proto"),
         },
     );
 }
@@ -244,7 +253,8 @@ fn abs_subdir_include_complex_file() {
     let dir = TempDir::new().unwrap();
     test_compile_error(
         dir.path().join("include"),
-        dir.path().join("include")
+        dir.path()
+            .join("include")
             .join("..")
             .join("include")
             .join("foo.proto"),
@@ -665,7 +675,9 @@ fn shadow_file_abs() {
     std::fs::write(dir.path().join("include").join("foo.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.path().join("include").as_ref(), dir.path()]).unwrap();
-    let err = compiler.open_file(dir.path().join("foo.proto")).unwrap_err();
+    let err = compiler
+        .open_file(dir.path().join("foo.proto"))
+        .unwrap_err();
 
     match err.kind() {
         ErrorKind::FileShadowed { path, shadow } => {
@@ -686,7 +698,8 @@ fn shadow_file_abs_subdir() {
     fs::create_dir_all(dir.path().join("include2")).unwrap();
     std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
+    let mut compiler =
+        Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     let err = compiler
         .open_file(dir.path().join("include2").join("foo.proto"))
         .unwrap_err();
@@ -710,7 +723,8 @@ fn shadow_invalid_file() {
     fs::create_dir_all(dir.path().join("include2")).unwrap();
     std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
+    let mut compiler =
+        Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     let err = compiler
         .open_file(dir.path().join("include2").join("foo.proto"))
         .unwrap_err();
@@ -734,7 +748,8 @@ fn shadow_already_imported_file() {
     fs::create_dir_all(dir.path().join("include2")).unwrap();
     std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
 
-    let mut compiler = Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
+    let mut compiler =
+        Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     compiler.open_file("foo.proto").unwrap();
     let err = compiler
         .open_file(dir.path().join("include2").join("foo.proto"))
@@ -913,7 +928,8 @@ fn import_file_absolute_path() {
         dir.path().join("root.proto"),
         format!(
             "import '{}';",
-            dir.path().join("include")
+            dir.path()
+                .join("include")
                 .join("dep.proto")
                 .display()
                 .to_string()
