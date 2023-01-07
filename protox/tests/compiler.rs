@@ -185,6 +185,62 @@ fn include_source_info() {
 }
 
 #[test]
+fn include_source_info_and_imports() {
+    let mut compiler = Compiler::with_file_resolver(TestFileResolver {
+        files: &[("dep.proto", ""), ("root.proto", "import 'dep.proto';")],
+    });
+
+    compiler.include_imports(true);
+    compiler.include_source_info(true);
+    compiler.open_file("root.proto").unwrap();
+
+    let files = compiler.file_descriptor_set();
+    assert_eq!(
+        files,
+        FileDescriptorSet {
+            file: vec![
+                FileDescriptorProto {
+                    name: Some("dep.proto".to_owned()),
+                    source_code_info: Some(SourceCodeInfo {
+                        location: vec![Location {
+                            path: vec![],
+                            span: vec![0, 0, 0],
+                            ..Default::default()
+                        },]
+                    }),
+                    ..Default::default()
+                },
+                FileDescriptorProto {
+                    name: Some("root.proto".to_owned()),
+                    dependency: vec!["dep.proto".to_owned()],
+                    source_code_info: Some(SourceCodeInfo {
+                        location: vec![
+                            Location {
+                                path: vec![],
+                                span: vec![0, 0, 19],
+                                ..Default::default()
+                            },
+                            Location {
+                                path: vec![3, 0],
+                                span: vec![0, 0, 19],
+                                ..Default::default()
+                            }
+                        ]
+                    }),
+                    ..Default::default()
+                },
+            ],
+        }
+    );
+
+    let encoded = compiler.encode_file_descriptor_set();
+    assert_eq!(
+        FileDescriptorSet::decode(encoded.as_slice()).unwrap(),
+        files
+    );
+}
+
+#[test]
 fn pass_through_extension_options() {
     let mut resolver = ChainFileResolver::new();
     resolver.add(TestFileResolver {
