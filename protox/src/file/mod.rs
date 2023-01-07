@@ -201,7 +201,7 @@ impl File {
         }
     }
 
-    /// Create an instance of [`File`] by deserializing a [`FileDescriptorSet`](prost_types::FileDescriptorSet)
+    /// Create an instance of [`File`] by deserializing a [`FileDescriptorProto`](prost_types::FileDescriptorProto)
     /// from the given bytes.
     ///
     /// Unlike when going through [`from_file_descriptor_proto()`](File::from_file_descriptor_proto), extension options are preserved.
