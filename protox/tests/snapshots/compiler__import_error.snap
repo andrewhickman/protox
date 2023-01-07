@@ -1,5 +1,5 @@
 ---
-source: protox/tests/error.rs
+source: protox/tests/compiler.rs
 expression: "check_err(&[(\"root.proto\", \"import 'customerror.proto';\")])"
 ---
 causes: []
