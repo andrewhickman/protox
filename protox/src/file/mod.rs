@@ -17,7 +17,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, Bytes};
 pub(crate) use include::check_shadow;
 use prost::{DecodeError, Message};
 
@@ -208,13 +208,11 @@ impl File {
     /// Unlike when going through [`from_file_descriptor_proto()`](File::from_file_descriptor_proto), extension options are preserved.
     ///
     /// The file does not need to have type names or imports resolved.
-    pub fn decode_file_descriptor_proto<B>(buf: B) -> Result<Self, DecodeError>
+    pub fn decode_file_descriptor_proto<B>(mut buf: B) -> Result<Self, DecodeError>
     where
         B: Buf,
     {
-        let mut encoded = BytesMut::new();
-        encoded.put(buf);
-        let encoded = encoded.freeze();
+        let encoded = buf.copy_to_bytes(buf.remaining());
 
         Ok(File {
             path: None,
