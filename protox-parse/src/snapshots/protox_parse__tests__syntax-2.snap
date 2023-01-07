@@ -1,0 +1,51 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(\"syntax = 'proto2';\")"
+---
+Ok(
+    FileDescriptorProto {
+        name: Some(
+            "test.proto",
+        ),
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            18,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            12,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            18,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

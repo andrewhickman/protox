@@ -1,0 +1,120 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Message {
+        name: Ident {
+            value: "Foo",
+            span: 8..11,
+        },
+        body: MessageBody {
+            items: [],
+            extensions: [
+                Extensions {
+                    ranges: [
+                        ReservedRange {
+                            start: Int {
+                                negative: false,
+                                value: 5,
+                                span: 25..26,
+                            },
+                            end: None,
+                        },
+                        ReservedRange {
+                            start: Int {
+                                negative: false,
+                                value: 7,
+                                span: 28..29,
+                            },
+                            end: Int(
+                                Int {
+                                    negative: false,
+                                    value: 8,
+                                    span: 33..34,
+                                },
+                            ),
+                        },
+                        ReservedRange {
+                            start: Int {
+                                negative: false,
+                                value: 10,
+                                span: 36..38,
+                            },
+                            end: Max(
+                                42..45,
+                            ),
+                        },
+                    ],
+                    options: Some(
+                        OptionList {
+                            options: [
+                                OptionBody {
+                                    name: [
+                                        Extension(
+                                            TypeName {
+                                                leading_dot: None,
+                                                name: FullIdent {
+                                                    parts: [
+                                                        Ident {
+                                                            value: "ext",
+                                                            span: 48..51,
+                                                        },
+                                                        Ident {
+                                                            value: "ext",
+                                                            span: 52..55,
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                            47..56,
+                                        ),
+                                        Ident(
+                                            Ident {
+                                                value: "ext",
+                                                span: 57..60,
+                                            },
+                                        ),
+                                        Extension(
+                                            TypeName {
+                                                leading_dot: None,
+                                                name: FullIdent {
+                                                    parts: [
+                                                        Ident {
+                                                            value: "ext",
+                                                            span: 62..65,
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                            61..66,
+                                        ),
+                                    ],
+                                    value: Aggregate(
+                                        "a : IDENT",
+                                        69..81,
+                                    ),
+                                },
+                            ],
+                            span: 46..82,
+                        },
+                    ),
+                    comments: Comments {
+                        leading_detached_comments: [],
+                        leading_comment: None,
+                        trailing_comment: None,
+                    },
+                    span: 14..83,
+                },
+            ],
+            options: [],
+            reserved: [],
+        },
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..85,
+    },
+)

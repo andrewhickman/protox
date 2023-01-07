@@ -2,7 +2,6 @@ use std::{
     convert::TryFrom,
     fmt::{self, Write},
     ops::Range,
-    vec,
 };
 
 use prost_types::field_descriptor_proto;
@@ -533,12 +532,6 @@ impl ReservedRange {
 
     pub fn span(&self) -> Span {
         join_span(self.start_span(), self.end_span())
-    }
-}
-
-impl From<Ident> for FullIdent {
-    fn from(value: Ident) -> Self {
-        FullIdent { parts: vec![value] }
     }
 }
 

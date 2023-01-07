@@ -1,0 +1,80 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Ok(
+    Enum {
+        name: Ident {
+            value: "Foo",
+            span: 5..8,
+        },
+        options: [],
+        values: [
+            EnumValue {
+                name: Ident {
+                    value: "BAR",
+                    span: 11..14,
+                },
+                number: Int {
+                    negative: false,
+                    value: 0,
+                    span: 17..18,
+                },
+                options: Some(
+                    OptionList {
+                        options: [
+                            OptionBody {
+                                name: [
+                                    Extension(
+                                        TypeName {
+                                            leading_dot: None,
+                                            name: FullIdent {
+                                                parts: [
+                                                    Ident {
+                                                        value: "an",
+                                                        span: 21..23,
+                                                    },
+                                                    Ident {
+                                                        value: "ext",
+                                                        span: 24..27,
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                        20..28,
+                                    ),
+                                    Ident(
+                                        Ident {
+                                            value: "opt",
+                                            span: 29..32,
+                                        },
+                                    ),
+                                ],
+                                value: Float(
+                                    Float {
+                                        value: 0.5,
+                                        span: 35..38,
+                                    },
+                                ),
+                            },
+                        ],
+                        span: 19..39,
+                    },
+                ),
+                comments: Comments {
+                    leading_detached_comments: [],
+                    leading_comment: None,
+                    trailing_comment: None,
+                },
+                span: 11..40,
+            },
+        ],
+        reserved: [],
+        comments: Comments {
+            leading_detached_comments: [],
+            leading_comment: None,
+            trailing_comment: None,
+        },
+        span: 0..42,
+    },
+)

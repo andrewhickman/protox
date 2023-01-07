@@ -583,4 +583,85 @@ fn field_default_invalid_type() {
         ),
         Err(vec![InvalidUtf8String { span: 82..88 }]),
     );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional fixed64 foo = 1 [default = -5];
+            }"#
+        ),
+        Err(vec![IntegerValueOutOfRange {
+            expected: "an unsigned 64-bit integer".to_owned(),
+            actual: "-5".to_owned(),
+            span: 83..85,
+            min: "0".to_owned(),
+            max: "18446744073709551615".to_owned()
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional int32 foo = 1 [default = 5.0];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "an integer".to_owned(),
+            actual: "5.0".to_owned(),
+            span: 81..84,
+        }]),
+    );
+    assert_debug_snapshot!(parse(
+        r#"
+        message Message {
+            optional double foo = 1 [default = nan];
+            optional float foo = 1 [default = -inf];
+        }"#
+    ));
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional double foo = 1 [default = ident];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "a floating-point number".to_owned(),
+            actual: "ident".to_owned(),
+            span: 82..87,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional double foo = 1 [default = {a:0}];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "a floating-point number".to_owned(),
+            actual: "a : 0".to_owned(),
+            span: 82..87,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional double foo = 1 [default = "abc"];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "a floating-point number".to_owned(),
+            actual: "abc".to_owned(),
+            span: 82..87,
+        }]),
+    );
+}
+
+#[test]
+fn syntax() {
+    assert_debug_snapshot!(parse(""));
+    assert_debug_snapshot!(parse("syntax = 'proto2';"));
+    assert_debug_snapshot!(parse("syntax = 'proto3';"));
 }

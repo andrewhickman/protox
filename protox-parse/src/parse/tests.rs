@@ -101,6 +101,7 @@ fn parse_enum() {
     case!(parse_enum("enum Foo { BAR = foo"));
     case!(parse_enum("enum Foo { message = 1; }"));
     case!(parse_enum("enum \"Foo\""));
+    case!(parse_enum("enum Foo { BAR = 0 [(an.ext).opt = 0.5]; }"));
 }
 
 #[test]
@@ -247,6 +248,7 @@ pub fn parse_field() {
     case!(parse_field("map<string, Foo> foo = 1 service"));
     case!(parse_field("map<foo;"));
     case!(parse_field("double double = 1 [default = -nan];"));
+    case!(parse_field("optional int32 name = 5 [(ext) = \"foo\"];"));
 }
 
 #[test]
@@ -299,6 +301,9 @@ pub fn parse_message() {
     ));
     case!(parse_message("message Foo { service foo = 1; }"));
     case!(parse_message("message Foo { optional rpc foo = 1; }"));
+    case!(parse_message(
+        "message Foo { extensions 5, 7 to 8, 10 to max [(ext.ext).ext.(ext) = { a: IDENT }]; }"
+    ));
 }
 
 #[test]
