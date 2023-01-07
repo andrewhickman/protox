@@ -744,7 +744,7 @@ impl Context {
                 });
                 None
             }
-            (None | Some(Type::Message | Type::Group | Type::Enum), _) => None,
+            (None | Some(Type::Message | Type::Group | Type::Enum), _) => unreachable!(),
         }
     }
 

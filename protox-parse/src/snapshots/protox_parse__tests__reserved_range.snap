@@ -1,0 +1,215 @@
+---
+source: protox-parse/src/tests.rs
+expression: "parse(\"message Foo {\n            reserved 1 to max;\n\n            option message_set_wire_format = false;\n        }\")"
+---
+Ok(
+    FileDescriptorProto {
+        name: Some(
+            "test.proto",
+        ),
+        package: None,
+        dependency: [],
+        public_dependency: [],
+        weak_dependency: [],
+        message_type: [
+            DescriptorProto {
+                name: Some(
+                    "Foo",
+                ),
+                field: [],
+                extension: [],
+                nested_type: [],
+                enum_type: [],
+                extension_range: [],
+                oneof_decl: [],
+                options: Some(
+                    MessageOptions {
+                        message_set_wire_format: None,
+                        no_standard_descriptor_accessor: None,
+                        deprecated: None,
+                        map_entry: None,
+                        uninterpreted_option: [
+                            UninterpretedOption {
+                                name: [
+                                    NamePart {
+                                        name_part: "message_set_wire_format",
+                                        is_extension: false,
+                                    },
+                                ],
+                                identifier_value: Some(
+                                    "false",
+                                ),
+                                positive_int_value: None,
+                                negative_int_value: None,
+                                double_value: None,
+                                string_value: None,
+                                aggregate_value: None,
+                            },
+                        ],
+                    },
+                ),
+                reserved_range: [
+                    ReservedRange {
+                        start: Some(
+                            1,
+                        ),
+                        end: Some(
+                            536870912,
+                        ),
+                    },
+                ],
+                reserved_name: [],
+            },
+        ],
+        enum_type: [],
+        service: [],
+        extension: [],
+        options: None,
+        source_code_info: Some(
+            SourceCodeInfo {
+                location: [
+                    Location {
+                        path: [],
+                        span: [
+                            0,
+                            0,
+                            4,
+                            9,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                        ],
+                        span: [
+                            0,
+                            0,
+                            4,
+                            9,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            0,
+                            8,
+                            11,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            7,
+                        ],
+                        span: [
+                            3,
+                            12,
+                            51,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            7,
+                            999,
+                            0,
+                        ],
+                        span: [
+                            3,
+                            12,
+                            51,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                        ],
+                        span: [
+                            1,
+                            12,
+                            30,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                        ],
+                        span: [
+                            1,
+                            21,
+                            29,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                            1,
+                        ],
+                        span: [
+                            1,
+                            21,
+                            22,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                    Location {
+                        path: [
+                            4,
+                            0,
+                            9,
+                            0,
+                            2,
+                        ],
+                        span: [
+                            1,
+                            26,
+                            29,
+                        ],
+                        leading_comments: None,
+                        trailing_comments: None,
+                        leading_detached_comments: [],
+                    },
+                ],
+            },
+        ),
+        syntax: None,
+    },
+)

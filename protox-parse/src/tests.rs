@@ -657,6 +657,47 @@ fn field_default_invalid_type() {
             span: 82..87,
         }]),
     );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional sint64 foo = 1 [default = 13835058055282163711];
+            }"#
+        ),
+        Err(vec![IntegerValueOutOfRange {
+            expected: "a signed 64-bit integer".to_owned(),
+            actual: "13835058055282163711".to_owned(),
+            span: 82..102,
+            min: "-9223372036854775808".to_owned(),
+            max: "9223372036854775807".to_owned()
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional string foo = 1 [default = 123];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "a string".to_owned(),
+            actual: "123".to_owned(),
+            span: 82..85,
+        }]),
+    );
+    assert_eq!(
+        parse(
+            r#"
+            message Message {
+                optional bytes foo = 1 [default = 123];
+            }"#
+        ),
+        Err(vec![ValueInvalidType {
+            expected: "a string".to_owned(),
+            actual: "123".to_owned(),
+            span: 81..84,
+        }]),
+    );
 }
 
 #[test]
@@ -671,4 +712,22 @@ fn imports() {
     assert_debug_snapshot!(parse("import 'foo.proto';"));
     assert_debug_snapshot!(parse("import weak 'foo.proto';"));
     assert_debug_snapshot!(parse("import public 'foo.proto';"));
+}
+
+#[test]
+fn reserved_range() {
+    assert_debug_snapshot!(parse(
+        "message Foo {
+            reserved 1 to max;
+
+            option message_set_wire_format = false;
+        }"
+    ));
+    assert_debug_snapshot!(parse(
+        "message Foo {
+            reserved 1 to max;
+
+            option message_set_wire_format = true;
+        }"
+    ));
 }
