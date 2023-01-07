@@ -535,6 +535,12 @@ impl ReservedRange {
     }
 }
 
+impl From<Ident> for FullIdent {
+    fn from(part: Ident) -> Self {
+        FullIdent { parts: vec![part] }
+    }
+}
+
 impl From<Vec<Ident>> for FullIdent {
     fn from(parts: Vec<Ident>) -> Self {
         debug_assert!(!parts.is_empty());
@@ -645,4 +651,40 @@ impl fmt::Display for String {
 
         Ok(())
     }
+}
+
+#[test]
+fn option_span() {
+    let options = OptionBody {
+        name: vec![
+            OptionNamePart::Extension(
+                TypeName {
+                    leading_dot: Some(1..2),
+                    name: FullIdent::from(Ident {
+                        value: "ext".to_owned(),
+                        span: 2..5,
+                    }),
+                },
+                0..6,
+            ),
+            OptionNamePart::Ident(Ident {
+                value: "ident".to_owned(),
+                span: 7..12,
+            }),
+        ],
+        value: OptionValue::Int(Int {
+            negative: true,
+            value: 5,
+            span: 14..16,
+        }),
+    };
+
+    assert_eq!(options.name_span(), 0..12);
+    assert_eq!(options.span(), 0..16);
+}
+
+#[test]
+fn fmt_syntax() {
+    assert_eq!(Syntax::Proto2.to_string(), "proto2");
+    assert_eq!(Syntax::Proto3.to_string(), "proto3");
 }
