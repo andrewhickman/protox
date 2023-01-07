@@ -1,0 +1,15 @@
+---
+source: protox/tests/error.rs
+expression: "check_err(&[(\"root.proto\",\n                    \"\n        message Foo {\n            optional NotFound foo = 1;\n        }\n    \")])"
+---
+causes: []
+filename: root.proto
+labels:
+  - label: found here
+    span:
+      length: 8
+      offset: 44
+message: "name 'NotFound' is not defined"
+related: []
+severity: error
+

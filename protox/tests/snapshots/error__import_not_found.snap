@@ -1,0 +1,10 @@
+---
+source: protox/tests/error.rs
+expression: "check_err(&[(\"root.proto\", \"import 'notfound.proto';\")])"
+---
+causes: []
+labels: []
+message: "import 'notfound.proto' not found"
+related: []
+severity: error
+
