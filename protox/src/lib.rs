@@ -34,7 +34,6 @@ pub mod file;
 
 mod compile;
 mod error;
-mod tag;
 
 use std::path::Path;
 

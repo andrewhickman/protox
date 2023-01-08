@@ -7,7 +7,7 @@ use prost_types::FileDescriptorProto;
 
 use crate::{
     file::{File, FileResolver},
-    tag, Error,
+    Error,
 };
 
 /// An implementation of [`FileResolver`] which resolves files from a compiled [`FileDescriptorSet`](prost_types::FileDescriptorSet).
@@ -45,10 +45,12 @@ impl DescriptorSetFileResolver {
     where
         B: Buf,
     {
+        const FILE_TAG: u32 = 1;
+
         let mut set = Vec::new();
         while buf.has_remaining() {
             let (key, wire_type) = decode_key(&mut buf)?;
-            if key == tag::file_descriptor_set::FILE as u32 {
+            if key == FILE_TAG {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let len = decode_varint(&mut buf)? as usize;
                 if len > buf.remaining() {
