@@ -290,7 +290,7 @@ pub fn parse(name: &str, source: &str) -> Result<FileDescriptorProto, ParseError
         return Err(ParseError::new(
             vec![ParseErrorKind::FileTooLarge],
             name,
-            source.to_owned(),
+            String::default(),
         ));
     }
 
