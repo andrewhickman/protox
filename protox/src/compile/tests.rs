@@ -3,10 +3,33 @@ use std::{fs, io, iter::once};
 use tempfile::TempDir;
 
 use super::*;
-use crate::with_current_dir;
 
 const EMPTY: &[u8] = &[];
 const INVALID_UTF8: &[u8] = &[255];
+
+fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
+    use std::{
+        env::{current_dir, set_current_dir},
+        sync::Mutex,
+    };
+
+    use once_cell::sync::Lazy;
+    use scopeguard::defer;
+
+    static CURRENT_DIR_LOCK: Lazy<Mutex<()>> = Lazy::new(Default::default);
+
+    let _lock = CURRENT_DIR_LOCK
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
+
+    let prev_dir = current_dir().unwrap();
+    defer!({
+        let _ = set_current_dir(prev_dir);
+    });
+
+    set_current_dir(path).unwrap();
+    f();
+}
 
 fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name: &str) {
     let include = include.as_ref();

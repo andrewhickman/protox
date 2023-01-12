@@ -23,10 +23,9 @@ use bytes::{Buf, Bytes};
 pub(crate) use include::{check_shadow, path_to_file_name};
 use prost::{DecodeError, Message};
 
-use crate::{
-    error::{Error, ErrorKind},
-    MAX_FILE_LEN,
-};
+use crate::error::{Error, ErrorKind};
+
+const MAX_FILE_LEN: u64 = i32::MAX as u64;
 
 /// A strategy for locating protobuf source files.
 ///

@@ -150,30 +150,3 @@ pub fn compile(
 
     Ok(compiler.file_descriptor_set())
 }
-
-const MAX_FILE_LEN: u64 = i32::MAX as u64;
-
-#[cfg(test)]
-fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
-    use std::{
-        env::{current_dir, set_current_dir},
-        sync::Mutex,
-    };
-
-    use once_cell::sync::Lazy;
-    use scopeguard::defer;
-
-    static CURRENT_DIR_LOCK: Lazy<Mutex<()>> = Lazy::new(Default::default);
-
-    let _lock = CURRENT_DIR_LOCK
-        .lock()
-        .unwrap_or_else(|err| err.into_inner());
-
-    let prev_dir = current_dir().unwrap();
-    defer!({
-        let _ = set_current_dir(prev_dir);
-    });
-
-    set_current_dir(path).unwrap();
-    f();
-}
