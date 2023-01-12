@@ -308,9 +308,9 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
                 let end = lex.span().end + char_lexer.span().end;
 
                 if char_lexer.slice().contains('\n') {
-                    lex.extras.errors.push(ParseErrorKind::UnterminatedString {
-                        span: lex.span().start..end,
-                    });
+                    lex.extras
+                        .errors
+                        .push(ParseErrorKind::UnterminatedString { span: start..end });
                     break;
                 } else {
                     match lex.extras.errors.last_mut() {

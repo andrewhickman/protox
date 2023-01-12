@@ -139,14 +139,9 @@ pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
 ) -> Result<prost_types::FileDescriptorSet, Error> {
-    let mut compiler = Compiler::new(includes)?;
-
-    compiler.include_source_info(true);
-    compiler.include_imports(true);
-
-    for file in files {
-        compiler.open_file(file)?;
-    }
-
-    Ok(compiler.file_descriptor_set())
+    Ok(Compiler::new(includes)?
+        .include_source_info(true)
+        .include_imports(true)
+        .open_files(files)?
+        .file_descriptor_set())
 }
