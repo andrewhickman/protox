@@ -34,9 +34,7 @@ Ok(
                         extendee: None,
                         default_value: None,
                         oneof_index: None,
-                        json_name: Some(
-                            "i",
-                        ),
+                        json_name: None,
                         options: None,
                         proto3_optional: None,
                     },

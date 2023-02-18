@@ -36,9 +36,7 @@ Ok(
                             "\"\"",
                         ),
                         oneof_index: None,
-                        json_name: Some(
-                            "foo",
-                        ),
+                        json_name: None,
                         options: None,
                         proto3_optional: None,
                     },

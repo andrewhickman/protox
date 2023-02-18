@@ -36,9 +36,7 @@ Ok(
                             "9000000",
                         ),
                         oneof_index: None,
-                        json_name: Some(
-                            "defaultFloatExp",
-                        ),
+                        json_name: None,
                         options: None,
                         proto3_optional: None,
                     },
@@ -61,9 +59,7 @@ Ok(
                             "90000000000000000000000",
                         ),
                         oneof_index: None,
-                        json_name: Some(
-                            "defaultDoubleExp",
-                        ),
+                        json_name: None,
                         options: None,
                         proto3_optional: None,
                     },

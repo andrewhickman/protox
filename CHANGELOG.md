@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `protox_parse::parse` will no longer automatically populate the `json_name` field of fields. This behaviour has moved to `prost-reflect` (see (#27)[https://github.com/andrewhickman/prost-reflect/pull/27]), so the behaviour of `protox::compile` is unchanged.
+
 ## [0.2.1] - 2023-01-07
 
 ### Fixed

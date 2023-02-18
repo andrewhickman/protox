@@ -10,9 +10,7 @@ use prost_types::{
 
 use self::lines::LineResolver;
 use crate::{
-    ast,
-    case::{to_json_name, to_pascal_case},
-    index_to_i32, tag, ParseErrorKind, MAX_MESSAGE_FIELD_NUMBER,
+    ast, case::to_pascal_case, index_to_i32, tag, ParseErrorKind, MAX_MESSAGE_FIELD_NUMBER,
 };
 
 mod lines;
@@ -552,7 +550,7 @@ impl Context {
             self.add_span_for(&[tag::field::JSON_NAME], o.value.span());
             self.generate_string_option_value(o.value)
         } else {
-            Some(to_json_name(&name))
+            None
         };
 
         self.path.push(tag::field::OPTIONS);

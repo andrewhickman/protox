@@ -36,9 +36,7 @@ Ok(
                             "ONE",
                         ),
                         oneof_index: None,
-                        json_name: Some(
-                            "enum",
-                        ),
+                        json_name: None,
                         options: None,
                         proto3_optional: None,
                     },

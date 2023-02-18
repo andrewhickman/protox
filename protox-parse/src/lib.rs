@@ -263,7 +263,6 @@ pub(crate) enum ParseErrorKind {
 ///             name: Some("bar".to_owned()),
 ///             number: Some(1),
 ///             type_name: Some("Bar".to_owned()),
-///             json_name: Some("bar".to_owned()),
 ///             ..Default::default()
 ///         }],
 ///         ..Default::default()
