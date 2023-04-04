@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated `prost-reflect` dependency to [0.11.0](https://crates.io/crates/prost-reflect/0.11.0).
 - Renamed [`File::to_file_descriptor_proto`] to [`File::file_descriptor_proto`] and changed it to return a reference instead of cloning.
 
 ## [0.2.2] - 2023-02-19
