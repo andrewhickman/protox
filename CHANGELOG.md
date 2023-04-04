@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2023-04-04
+
 ### Added
 
 - Added the [`Compiler::descriptor_pool`](https://docs.rs/protox/latest/protox/struct.Compiler.html#method.descriptor_pool) method to get the descriptor pool containing all referenced files.
@@ -51,7 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.2.2...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.0...HEAD
+[0.3.0]: https://github.com/andrewhickman/protox/compare/0.2.2...0.3.0
 [0.2.2]: https://github.com/andrewhickman/protox/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/andrewhickman/protox/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/andrewhickman/protox/compare/0.1.0...0.2.0
