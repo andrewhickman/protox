@@ -90,7 +90,7 @@ impl File {
     /// let file = File::open("foo.proto", "foo.proto".as_ref()).unwrap();
     /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
     /// assert_eq!(file.source(), Some("message Foo { }"));
-    /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
+    /// assert_eq!(file.file_descriptor_proto(), &FileDescriptorProto {
     ///     name: Some("foo.proto".to_owned()),
     ///     message_type: vec![DescriptorProto {
     ///         name: Some("Foo".to_owned()),
@@ -160,7 +160,7 @@ impl File {
     /// let file = File::from_source("foo.proto", "message Foo { }").unwrap();
     /// assert_eq!(file.path(), None);
     /// assert_eq!(file.source(), Some("message Foo { }"));
-    /// assert_eq!(file.to_file_descriptor_proto(), FileDescriptorProto {
+    /// assert_eq!(file.file_descriptor_proto(), &FileDescriptorProto {
     ///     name: Some("foo.proto".to_owned()),
     ///     message_type: vec![DescriptorProto {
     ///         name: Some("Foo".to_owned()),
@@ -238,7 +238,7 @@ impl File {
     /// Returns the parsed value of the source file.
     ///
     /// This is typically equivalent to calling [`parse()`](protox_parse::parse()) on the string returned by [`source()`](File::source).
-    pub fn to_file_descriptor_proto(&self) -> prost_types::FileDescriptorProto {
-        self.descriptor.clone()
+    pub fn file_descriptor_proto(&self) -> &prost_types::FileDescriptorProto {
+        &self.descriptor
     }
 }

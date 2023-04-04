@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.2] - 2023-02-19
-
 ### Added
 
 - Added the [`Compiler::descriptor_pool`](https://docs.rs/protox/latest/protox/struct.Compiler.html#method.descriptor_pool) method to get the descriptor pool containing all referenced files.
+
+### Changed
+
+- Renamed [`File::to_file_descriptor_proto`] to [`File::file_descriptor_proto`] and changed it to return a reference instead of cloning.
+
+## [0.2.2] - 2023-02-19
 
 ### Changed
 

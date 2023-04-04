@@ -33,7 +33,7 @@ impl FileResolver for SingleFileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error> {
         if name == self.0.name() {
             Ok(File::from_file_descriptor_proto(
-                self.0.to_file_descriptor_proto(),
+                self.0.file_descriptor_proto().clone(),
             ))
         } else {
             Err(Error::file_not_found(name))
@@ -86,8 +86,8 @@ fn descriptor_set_file_resolver() {
     assert_eq!(file.source(), None);
     assert_eq!(file.path(), None);
     assert_eq!(
-        file.to_file_descriptor_proto(),
-        FileDescriptorProto {
+        file.file_descriptor_proto(),
+        &FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             ..Default::default()
@@ -291,8 +291,8 @@ fn file_open() {
     assert_eq!(file.path(), Some(tempfile.path()));
     assert_eq!(file.source(), Some("syntax = 'proto3';"));
     assert_eq!(
-        file.to_file_descriptor_proto(),
-        FileDescriptorProto {
+        file.file_descriptor_proto(),
+        &FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             source_code_info: Some(SourceCodeInfo {
@@ -322,8 +322,8 @@ fn file_from_source() {
     assert_eq!(file.path(), None);
     assert_eq!(file.source(), Some("syntax = 'proto3';"));
     assert_eq!(
-        file.to_file_descriptor_proto(),
-        FileDescriptorProto {
+        file.file_descriptor_proto(),
+        &FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             source_code_info: Some(SourceCodeInfo {
@@ -357,8 +357,8 @@ fn file_from_file_descriptor_proto() {
     assert_eq!(file.path(), None);
     assert_eq!(file.source(), None);
     assert_eq!(
-        file.to_file_descriptor_proto(),
-        FileDescriptorProto {
+        file.file_descriptor_proto(),
+        &FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             ..Default::default()
@@ -381,8 +381,8 @@ fn file_decode_file_descriptor_proto() {
     assert_eq!(file.path(), None);
     assert_eq!(file.source(), None);
     assert_eq!(
-        file.to_file_descriptor_proto(),
-        FileDescriptorProto {
+        file.file_descriptor_proto(),
+        &FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             ..Default::default()
