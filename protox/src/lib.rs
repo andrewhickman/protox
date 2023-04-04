@@ -15,15 +15,7 @@
 //! # env::set_var("OUT_DIR", tempdir.path());
 //! # fs::write("root.proto", "").unwrap();
 //! let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
-//! let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
-//!     .join("file_descriptor_set.bin");
-//! fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
-//!
-//! prost_build::Config::new()
-//!     .file_descriptor_set_path(&file_descriptor_path)
-//!     .skip_protoc_run()
-//!     .compile_protos(&["root.proto"], &["."])
-//!     .unwrap();
+//! prost_build::compile_fds(file_descriptors).unwrap();
 //! ```
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
