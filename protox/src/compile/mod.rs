@@ -243,6 +243,11 @@ impl Compiler {
         file_descriptor_set.encode_to_vec()
     }
 
+    /// Gets a copy of the [`DescriptorPool`] containing all referenced files.
+    pub fn descriptor_pool(&self) -> DescriptorPool {
+        self.pool.clone()
+    }
+
     fn add_import(&mut self, file_name: &str, import_stack: &mut Vec<String>) -> Result<(), Error> {
         if import_stack.iter().any(|name| name == file_name) {
             let mut cycle = String::new();

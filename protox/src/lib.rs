@@ -10,12 +10,11 @@
 //! ```
 //! # use std::{env, fs, path::PathBuf};
 //! # use prost::Message;
-//! # use protox::compile;
 //! # let tempdir = tempfile::TempDir::new().unwrap();
 //! # env::set_current_dir(&tempdir).unwrap();
 //! # env::set_var("OUT_DIR", tempdir.path());
 //! # fs::write("root.proto", "").unwrap();
-//! let file_descriptors = compile(["root.proto"], ["."]).unwrap();
+//! let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
 //! let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
 //!     .join("file_descriptor_set.bin");
 //! fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.2] - 2023-02-19
 
+### Added
+
+- Added the [`Compiler::descriptor_pool`](https://docs.rs/protox/latest/protox/struct.Compiler.html#method.descriptor_pool) method to get the descriptor pool containing all referenced files.
+
 ### Changed
 
 - `protox_parse::parse` will no longer automatically populate the `json_name` field of fields. This behaviour has moved to `prost-reflect` (see (#27)[https://github.com/andrewhickman/prost-reflect/pull/27]), so the behaviour of `protox::compile` is unchanged.
