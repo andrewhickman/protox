@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+import "google/protobuf/descriptor.proto";
+
+message Composite {
+  optional string str = 1001;
+  optional group CompositeGroup = 1006 {
+    required int32 grouped_int32 = 1;
+    optional string grouped_str = 2;
+  }
+}
+
+extend google.protobuf.MessageOptions {
+  optional Composite compo = 30000;
+}
+
+message Message {
+  option (compo) = {
+    str: "a string"
+    CompositeGroup: {
+      grouped_int32: 1
+      grouped_str: "hello"
+    }
+  };
+}

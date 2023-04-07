@@ -158,6 +158,7 @@ compare!(custom_json_name);
 compare!(reserved_ranges);
 compare!(oneof_group_field);
 compare!(service);
+compare!(option_group_field);
 
 #[test]
 fn google_protobuf_any() {
