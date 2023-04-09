@@ -10,7 +10,7 @@ use prost_types::{
 
 use self::lines::LineResolver;
 use crate::{
-    ast, case::to_pascal_case, index_to_i32, tag, ParseErrorKind, MAX_MESSAGE_FIELD_NUMBER,
+    ast, case::to_pascal_case, error::ParseErrorKind, index_to_i32, tag, MAX_MESSAGE_FIELD_NUMBER,
 };
 
 mod lines;

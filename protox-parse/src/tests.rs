@@ -1,13 +1,20 @@
 use insta::assert_debug_snapshot;
 use prost_types::FileDescriptorProto;
 
-use crate::ParseErrorKind::{self, *};
+use crate::error::ParseErrorKind::{self, *};
 
 fn parse(source: &str) -> Result<FileDescriptorProto, Vec<ParseErrorKind>> {
-    crate::parse("test.proto", source).map_err(|mut err| {
-        err.related.insert(0, *err.kind);
-        err.related
-    })
+    crate::parse("test.proto", source).map_err(|err| err.into_inner())
+}
+
+#[test]
+fn error_fmt_debug() {
+    let error = crate::parse("foo.proto", "message {}").unwrap_err();
+
+    assert_eq!(
+        format!("{:?}", error),
+        "foo.proto:1:9: expected an identifier, but found '{'"
+    );
 }
 
 #[test]

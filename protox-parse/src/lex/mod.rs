@@ -5,7 +5,7 @@ use std::{ascii, borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
 use logos::{skip, Lexer, Logos};
 
-use super::ParseErrorKind;
+use super::error::ParseErrorKind;
 
 #[derive(Debug, Clone, Logos, PartialEq, Eq)]
 #[logos(extras = TokenExtras)]

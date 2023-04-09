@@ -10,9 +10,9 @@ use self::comments::Comments;
 use crate::{
     ast,
     case::{is_valid_group_name, is_valid_ident},
+    error::ParseErrorKind,
     join_span,
     lex::{EqFloat, Token},
-    ParseErrorKind,
 };
 
 mod comments;
