@@ -32,6 +32,8 @@ let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
 prost_build::compile_fds(file_descriptors).unwrap();
 ```
 
+For better error messages, enable the `fancy` feature of `miette` and return a [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your `main()` function.
+
 ## Minimum Supported Rust Version
 
 Rust **1.61** or higher.
