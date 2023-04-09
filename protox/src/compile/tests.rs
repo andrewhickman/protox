@@ -44,7 +44,8 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     let mut compiler = Compiler::new(once(include)).unwrap();
     compiler.open_file(file).unwrap();
 
-    assert_eq!(compiler.pool.files().len(), 1);
+    assert_eq!(compiler.files().len(), 1);
+    assert_eq!(compiler.descriptor_pool().files().len(), 1);
     assert_eq!(
         compiler.file_descriptor_set().file[0],
         prost_types::FileDescriptorProto {
@@ -52,7 +53,10 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
             ..Default::default()
         }
     );
-    assert_eq!(compiler.files[name].path, Some(include.join(name)));
+    assert_eq!(
+        compiler.files[name].file.path(),
+        Some(include.join(name).as_ref())
+    );
 }
 
 fn test_compile_error(
@@ -80,7 +84,7 @@ fn test_compile_error(
         ) => assert_eq!(lpath, rpath),
         (err, _) => panic!("unexpected error: {}", err),
     }
-    assert_eq!(compiler.pool.files().len(), 0);
+    assert_eq!(compiler.files().len(), 0);
 }
 
 #[test]
@@ -804,24 +808,24 @@ fn import_files() {
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     compiler.open_file("root.proto").unwrap();
 
-    assert_eq!(compiler.pool.files().len(), 3);
+    assert_eq!(compiler.files().len(), 3);
 
-    assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
+    assert_eq!(compiler.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
-        compiler.files["dep2.proto"].path,
-        Some(dir.path().join("dep2.proto"))
+        compiler.files["dep2.proto"].file.path(),
+        Some(dir.path().join("dep2.proto").as_ref())
     );
 
-    assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
+    assert_eq!(compiler.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
-        compiler.files["dep.proto"].path,
-        Some(dir.path().join("include").join("dep.proto"))
+        compiler.files["dep.proto"].file.path(),
+        Some(dir.path().join("include").join("dep.proto").as_ref())
     );
 
-    assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
+    assert_eq!(compiler.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
-        compiler.files["root.proto"].path,
-        Some(dir.path().join("root.proto"))
+        compiler.files["root.proto"].file.path(),
+        Some(dir.path().join("root.proto").as_ref())
     );
 
     let file_descriptor_set = compiler.file_descriptor_set();
@@ -919,24 +923,24 @@ fn duplicated_import() {
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     compiler.open_file("root.proto").unwrap();
 
-    assert_eq!(compiler.pool.files().len(), 3);
+    assert_eq!(compiler.files().len(), 3);
 
-    assert_eq!(compiler.pool.files().next().unwrap().name(), "dep2.proto");
+    assert_eq!(compiler.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
-        compiler.files["dep2.proto"].path,
-        Some(dir.path().join("dep2.proto"))
+        compiler.files["dep2.proto"].file.path(),
+        Some(dir.path().join("dep2.proto").as_ref())
     );
 
-    assert_eq!(compiler.pool.files().nth(1).unwrap().name(), "dep.proto");
+    assert_eq!(compiler.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
-        compiler.files["dep.proto"].path,
-        Some(dir.path().join("include").join("dep.proto"))
+        compiler.files["dep.proto"].file.path(),
+        Some(dir.path().join("include").join("dep.proto").as_ref())
     );
 
-    assert_eq!(compiler.pool.files().nth(2).unwrap().name(), "root.proto");
+    assert_eq!(compiler.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
-        compiler.files["root.proto"].path,
-        Some(dir.path().join("root.proto"))
+        compiler.files["root.proto"].file.path(),
+        Some(dir.path().join("root.proto").as_ref())
     );
 }
 

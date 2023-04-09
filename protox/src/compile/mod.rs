@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use prost::Message;
@@ -55,7 +55,7 @@ pub struct Compiler {
 
 #[derive(Debug)]
 struct ParsedFile {
-    path: Option<PathBuf>,
+    file: File,
     is_root: bool,
 }
 
@@ -134,7 +134,7 @@ impl Compiler {
 
         if let Some(parsed_file) = self.files.get_mut(&name) {
             if is_resolved {
-                check_shadow(parsed_file.path.as_deref(), path)?;
+                check_shadow(parsed_file.file.path(), path)?;
             }
             parsed_file.is_root = true;
             return Ok(self);
@@ -159,13 +159,11 @@ impl Compiler {
         }
         drop(import_stack);
 
-        let path = file.path.clone();
-
-        self.check_file(file)?;
+        self.check_file(&file)?;
         self.files.insert(
             name,
             ParsedFile {
-                path,
+                file,
                 is_root: true,
             },
         );
@@ -248,6 +246,13 @@ impl Compiler {
         self.pool.clone()
     }
 
+    /// Gets a reference to all imported source files.
+    ///
+    /// The files will appear in topological order, so each file appears before any file that imports it.
+    pub fn files(&self) -> impl ExactSizeIterator<Item = &'_ File> {
+        self.pool.files().map(|f| &self.files[f.name()].file)
+    }
+
     fn add_import(&mut self, file_name: &str, import_stack: &mut Vec<String>) -> Result<(), Error> {
         if import_stack.iter().any(|name| name == file_name) {
             let mut cycle = String::new();
@@ -271,27 +276,25 @@ impl Compiler {
         }
         import_stack.pop();
 
-        let path = file.path.clone();
-
-        self.check_file(file)?;
+        self.check_file(&file)?;
         self.files.insert(
             file_name.to_owned(),
             ParsedFile {
-                path,
+                file,
                 is_root: false,
             },
         );
         Ok(())
     }
 
-    fn check_file(&mut self, file: File) -> Result<(), Error> {
-        if let Some(encoded) = file.encoded {
-            self.pool.decode_file_descriptor_proto(encoded)
+    fn check_file(&mut self, file: &File) -> Result<(), Error> {
+        if let Some(encoded) = &file.encoded {
+            self.pool.decode_file_descriptor_proto(encoded.clone())
         } else {
-            self.pool.add_file_descriptor_proto(file.descriptor)
+            self.pool.add_file_descriptor_proto(file.descriptor.clone())
         }
         .map_err(|mut err| {
-            if let Some(source) = file.source.as_deref() {
+            if let Some(source) = file.source() {
                 err = err.with_source_code(source);
             }
             err

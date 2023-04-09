@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added the [`Compiler::files`](https://docs.rs/protox/latest/protox/struct.Compiler.html#method.files) method to get all imported files. This may be used to emit [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#rerun-if-changed) directives in a build script.
+
 ## [0.3.0] - 2023-04-04
 
 ### Added
