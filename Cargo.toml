@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "protox",
-    "protox-parse",
-]
+members = ["protox", "protox-parse"]
 
 [workspace.metadata.release]
 allow-branch = ["main"]

@@ -299,3 +299,35 @@ fn pass_through_extension_options() {
         &Value::I32(1)
     );
 }
+
+#[test]
+fn error_fmt_debug() {
+    let parse_err = check(&[("root.proto", "message {")]).unwrap_err();
+    let check_err = check(&[("root.proto", "message Foo {} service Foo {}")]).unwrap_err();
+    let import_err = check(&[("root.proto", "import 'notfound.proto';")]).unwrap_err();
+    let open_err = check(&[("root.proto", "import 'customerror.proto';")]).unwrap_err();
+
+    assert_eq!(
+        parse_err.to_string(),
+        "expected an identifier, but found '{'"
+    );
+    assert_eq!(
+        format!("{:?}", parse_err),
+        "root.proto:1:9: expected an identifier, but found '{'"
+    );
+
+    assert_eq!(check_err.to_string(), "name 'Foo' is defined twice");
+    assert_eq!(
+        format!("{:?}", check_err),
+        "root.proto:1:24: name 'Foo' is defined twice"
+    );
+
+    assert_eq!(import_err.to_string(), "import 'notfound.proto' not found");
+    assert_eq!(
+        format!("{:?}", import_err),
+        "import 'notfound.proto' not found"
+    );
+
+    assert_eq!(open_err.to_string(), "failed to load file!");
+    assert_eq!(format!("{:?}", open_err), "\"failed to load file!\"");
+}

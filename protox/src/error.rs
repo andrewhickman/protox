@@ -1,4 +1,4 @@
-use std::{io, path::PathBuf};
+use std::{fmt, io, path::PathBuf};
 
 use miette::Diagnostic;
 use prost_reflect::DescriptorError;
@@ -6,7 +6,7 @@ use protox_parse::ParseError;
 use thiserror::Error;
 
 /// An error that can occur when compiling protobuf files.
-#[derive(Debug, Diagnostic, Error)]
+#[derive(Diagnostic, Error)]
 #[error(transparent)]
 #[diagnostic(transparent)]
 pub struct Error {
@@ -88,4 +88,33 @@ impl From<ParseError> for Error {
     fn from(err: ParseError) -> Self {
         Error::from_kind(ErrorKind::Parse { err })
     }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &*self.kind {
+            ErrorKind::Parse { err } => err.fmt(f),
+            ErrorKind::Check { err } => err.fmt(f),
+            ErrorKind::OpenFile { err, .. } => write!(f, "{}: {}", self, err),
+            ErrorKind::FileTooLarge { .. }
+            | ErrorKind::ImportNotFound { .. }
+            | ErrorKind::CircularImport { .. }
+            | ErrorKind::FileNotIncluded { .. }
+            | ErrorKind::FileShadowed { .. } => write!(f, "{}", self),
+            ErrorKind::Custom(err) => err.fmt(f),
+        }
+    }
+}
+
+#[test]
+fn fmt_debug() {
+    let err = Error::from_kind(ErrorKind::OpenFile {
+        path: "path/to/file.proto".into(),
+        err: io::Error::new(io::ErrorKind::Other, "io error"),
+    });
+
+    assert_eq!(
+        format!("{:?}", err),
+        "error opening file 'path/to/file.proto': io error"
+    );
 }
