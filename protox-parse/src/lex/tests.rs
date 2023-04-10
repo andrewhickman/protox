@@ -8,28 +8,44 @@ fn simple_tokens() {
         false "hello \a\b\f\n\r\t\v\?\\\'\" \052 \x2a" 'hello 😀' _foo"#;
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next().unwrap(), Token::Ident("hell0"));
-    assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
-    assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
-    assert_eq!(lexer.next().unwrap(), Token::IntLiteral(42));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(52e3)));
-    assert_eq!(lexer.next().unwrap(), Token::Ident("true"));
-    assert_eq!(lexer.next().unwrap(), Token::Newline);
-    assert_eq!(lexer.next().unwrap(), Token::Ident("false"));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Ident("hell0")));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::IntLiteral(42)));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::IntLiteral(42)));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::IntLiteral(42)));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(5.))));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(0.5))));
     assert_eq!(
         lexer.next().unwrap(),
-        Token::StringLiteral(b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into())
+        Ok(Token::FloatLiteral(EqFloat(0.42e+2)))
     );
     assert_eq!(
         lexer.next().unwrap(),
-        Token::StringLiteral(b"hello \xF0\x9F\x98\x80".as_ref().into())
+        Ok(Token::FloatLiteral(EqFloat(2e-4)))
     );
-    assert_eq!(lexer.next().unwrap(), Token::Ident("_foo"));
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(0.2e+3)))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(52e3)))
+    );
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Ident("true")));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Newline));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Ident("false")));
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::StringLiteral(
+            b"hello \x07\x08\x0c\n\r\t\x0b?\\'\" * *".as_ref().into()
+        ))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::StringLiteral(
+            b"hello \xF0\x9F\x98\x80".as_ref().into()
+        ))
+    );
+    assert_eq!(lexer.next().unwrap(), Ok(Token::Ident("_foo")));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -40,8 +56,8 @@ fn integer_overflow() {
     let source = "99999999999999999999999999999999999999 4";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::IntLiteral(0)));
-    assert_eq!(lexer.next(), Some(Token::IntLiteral(4)));
+    assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(0))));
+    assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(4))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -57,12 +73,21 @@ fn float_suffix() {
     let source = "10f 5.f 0.5f 0.42e+2f 2e-4f .2e+3f";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(10.)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(10.))));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(5.))));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(0.5))));
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(0.42e+2)))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(2e-4)))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(0.2e+3)))
+    );
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -80,12 +105,21 @@ fn float_suffix() {
     let mut lexer = Token::lexer(source);
     lexer.extras.text_format_mode = true;
 
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(10.)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(5.)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.5)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.42e+2)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(2e-4)));
-    assert_eq!(lexer.next().unwrap(), Token::FloatLiteral(EqFloat(0.2e+3)));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(10.))));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(5.))));
+    assert_eq!(lexer.next().unwrap(), Ok(Token::FloatLiteral(EqFloat(0.5))));
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(0.42e+2)))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(2e-4)))
+    );
+    assert_eq!(
+        lexer.next().unwrap(),
+        Ok(Token::FloatLiteral(EqFloat(0.2e+3)))
+    );
     assert_eq!(lexer.next(), None);
     assert_eq!(lexer.extras.errors, vec![]);
 }
@@ -95,8 +129,8 @@ fn invalid_token() {
     let source = "@ foo";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::Error));
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
+    assert_eq!(lexer.next(), Some(Err(())));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -107,8 +141,11 @@ fn invalid_string_char() {
     let source = "\"\x00\" foo";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::StringLiteral(Default::default())));
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token::StringLiteral(Default::default())))
+    );
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -124,9 +161,9 @@ fn unterminated_string() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b"hello ".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b"hello ".as_ref().into())))
     );
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -142,9 +179,9 @@ fn invalid_string_escape() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b"m".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b"m".as_ref().into())))
     );
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -160,7 +197,7 @@ fn string_escape_invalid_utf8() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral([0xff].as_ref().into()))
+        Some(Ok(Token::StringLiteral([0xff].as_ref().into())))
     );
     assert_eq!(lexer.next(), None);
 }
@@ -172,7 +209,7 @@ fn string_unterminated() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b"a".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b"a".as_ref().into())))
     );
     assert_eq!(lexer.next(), None);
 
@@ -191,9 +228,9 @@ fn merge_string_errors() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b"".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b"".as_ref().into())))
     );
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -207,10 +244,10 @@ fn merge_string_errors2() {
     let source = "9999999999999999999999 \"\\\x00\"";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::IntLiteral(0)));
+    assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(0))));
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b"".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b"".as_ref().into())))
     );
     assert_eq!(lexer.next(), None);
 
@@ -230,7 +267,7 @@ fn merge_string_errors3() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(b" ".as_ref().into()))
+        Some(Ok(Token::StringLiteral(b" ".as_ref().into())))
     );
     assert_eq!(lexer.next(), None);
 
@@ -250,9 +287,9 @@ fn string_unicode_escape() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::StringLiteral(
+        Some(Ok(Token::StringLiteral(
             b"hello \xF0\x9F\x98\x80".as_ref().into()
-        ))
+        )))
     );
     assert_eq!(lexer.next(), None);
 
@@ -274,9 +311,9 @@ fn line_comment() {
     let source = "foo // bar \n quz";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
-    assert_eq!(lexer.next(), Some(Token::LineComment(" bar \n".into())));
-    assert_eq!(lexer.next(), Some(Token::Ident("quz")));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
+    assert_eq!(lexer.next(), Some(Ok(Token::LineComment(" bar \n".into()))));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("quz"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -287,8 +324,8 @@ fn line_comment_normalize_newlines() {
     let source = "// foo\r\n // bar\r\n";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::LineComment(" foo\n".into())));
-    assert_eq!(lexer.next(), Some(Token::LineComment(" bar\n".into())));
+    assert_eq!(lexer.next(), Some(Ok(Token::LineComment(" foo\n".into()))));
+    assert_eq!(lexer.next(), Some(Ok(Token::LineComment(" bar\n".into()))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -299,9 +336,9 @@ fn block_comment() {
     let source = "foo /* bar\n */ quz";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::Ident("foo")));
-    assert_eq!(lexer.next(), Some(Token::BlockComment(" bar\n".into())));
-    assert_eq!(lexer.next(), Some(Token::Ident("quz")));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("foo"))));
+    assert_eq!(lexer.next(), Some(Ok(Token::BlockComment(" bar\n".into()))));
+    assert_eq!(lexer.next(), Some(Ok(Token::Ident("quz"))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -314,7 +351,7 @@ fn block_comment_multiline() {
 
     assert_eq!(
         lexer.next(),
-        Some(Token::BlockComment(" foo\n bar\nquz".into()))
+        Some(Ok(Token::BlockComment(" foo\n bar\nquz".into())))
     );
     assert_eq!(lexer.next(), None);
 
@@ -367,8 +404,8 @@ fn block_comment_trailing_newline() {
     let source = "/* bar */\n";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::BlockComment(" bar ".into())));
-    assert_eq!(lexer.next(), Some(Token::Newline));
+    assert_eq!(lexer.next(), Some(Ok(Token::BlockComment(" bar ".into()))));
+    assert_eq!(lexer.next(), Some(Ok(Token::Newline)));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -379,7 +416,10 @@ fn block_comment_normalize_newlines() {
     let source = "/* foo\r\n bar */";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::BlockComment(" foo\nbar ".into())));
+    assert_eq!(
+        lexer.next(),
+        Some(Ok(Token::BlockComment(" foo\nbar ".into())))
+    );
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -390,7 +430,7 @@ fn hash_comment() {
     let source = "# bar";
     let mut lexer = Token::lexer(source);
 
-    assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
+    assert_eq!(lexer.next(), Some(Ok(Token::LineComment(" bar".into()))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(
@@ -401,7 +441,7 @@ fn hash_comment() {
     let mut lexer = Token::lexer(source);
     lexer.extras.text_format_mode = true;
 
-    assert_eq!(lexer.next(), Some(Token::LineComment(" bar".into())));
+    assert_eq!(lexer.next(), Some(Ok(Token::LineComment(" bar".into()))));
     assert_eq!(lexer.next(), None);
 
     assert_eq!(lexer.extras.errors, vec![]);
@@ -412,81 +452,81 @@ fn whitespace() {
     assert_eq!(
         Token::lexer("value: -2.0").collect::<Vec<_>>(),
         vec![
-            Token::Ident("value"),
-            Token::Colon,
-            Token::Minus,
-            Token::FloatLiteral(EqFloat(2.0)),
+            Ok(Token::Ident("value")),
+            Ok(Token::Colon),
+            Ok(Token::Minus),
+            Ok(Token::FloatLiteral(EqFloat(2.0))),
         ]
     );
     assert_eq!(
         Token::lexer("value: - 2.0").collect::<Vec<_>>(),
         vec![
-            Token::Ident("value"),
-            Token::Colon,
-            Token::Minus,
-            Token::FloatLiteral(EqFloat(2.0)),
+            Ok(Token::Ident("value")),
+            Ok(Token::Colon),
+            Ok(Token::Minus),
+            Ok(Token::FloatLiteral(EqFloat(2.0))),
         ]
     );
     assert_eq!(
         Token::lexer("value: -\n  #comment\n  2.0").collect::<Vec<_>>(),
         vec![
-            Token::Ident("value"),
-            Token::Colon,
-            Token::Minus,
-            Token::Newline,
-            Token::LineComment("comment\n".into()),
-            Token::FloatLiteral(EqFloat(2.0)),
+            Ok(Token::Ident("value")),
+            Ok(Token::Colon),
+            Ok(Token::Minus),
+            Ok(Token::Newline),
+            Ok(Token::LineComment("comment\n".into())),
+            Ok(Token::FloatLiteral(EqFloat(2.0))),
         ]
     );
     assert_eq!(
         Token::lexer("value: 2 . 0").collect::<Vec<_>>(),
         vec![
-            Token::Ident("value"),
-            Token::Colon,
-            Token::IntLiteral(2),
-            Token::Dot,
-            Token::IntLiteral(0),
+            Ok(Token::Ident("value")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(2)),
+            Ok(Token::Dot),
+            Ok(Token::IntLiteral(0)),
         ]
     );
 
     assert_eq!(
         Token::lexer("foo: 10 bar: 20").collect::<Vec<_>>(),
         vec![
-            Token::Ident("foo"),
-            Token::Colon,
-            Token::IntLiteral(10),
-            Token::Ident("bar"),
-            Token::Colon,
-            Token::IntLiteral(20),
+            Ok(Token::Ident("foo")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(10)),
+            Ok(Token::Ident("bar")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(20)),
         ]
     );
     assert_eq!(
         Token::lexer("foo: 10,bar: 20").collect::<Vec<_>>(),
         vec![
-            Token::Ident("foo"),
-            Token::Colon,
-            Token::IntLiteral(10),
-            Token::Comma,
-            Token::Ident("bar"),
-            Token::Colon,
-            Token::IntLiteral(20),
+            Ok(Token::Ident("foo")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(10)),
+            Ok(Token::Comma),
+            Ok(Token::Ident("bar")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(20)),
         ]
     );
     assert_eq!(
         Token::lexer("foo: 10[com.foo.ext]: 20").collect::<Vec<_>>(),
         vec![
-            Token::Ident("foo"),
-            Token::Colon,
-            Token::IntLiteral(10),
-            Token::LeftBracket,
-            Token::Ident("com"),
-            Token::Dot,
-            Token::Ident("foo"),
-            Token::Dot,
-            Token::Ident("ext"),
-            Token::RightBracket,
-            Token::Colon,
-            Token::IntLiteral(20),
+            Ok(Token::Ident("foo")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(10)),
+            Ok(Token::LeftBracket),
+            Ok(Token::Ident("com")),
+            Ok(Token::Dot),
+            Ok(Token::Ident("foo")),
+            Ok(Token::Dot),
+            Ok(Token::Ident("ext")),
+            Ok(Token::RightBracket),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(20)),
         ]
     );
 
@@ -494,13 +534,13 @@ fn whitespace() {
     assert_eq!(
         lexer.by_ref().collect::<Vec<_>>(),
         vec![
-            Token::Ident("foo"),
-            Token::Colon,
-            Token::IntLiteral(10),
-            Token::Ident("bar"),
-            Token::Colon,
-            Token::IntLiteral(20),
-            Token::Ident("_foo"),
+            Ok(Token::Ident("foo")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(10)),
+            Ok(Token::Ident("bar")),
+            Ok(Token::Colon),
+            Ok(Token::IntLiteral(20)),
+            Ok(Token::Ident("_foo")),
         ]
     );
     assert_eq!(

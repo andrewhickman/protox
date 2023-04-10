@@ -3,12 +3,13 @@ mod tests;
 
 use std::{ascii, borrow::Cow, convert::TryInto, fmt, num::IntErrorKind};
 
-use logos::{skip, Lexer, Logos};
+use logos::{Lexer, Logos};
 
 use super::error::ParseErrorKind;
 
 #[derive(Debug, Clone, Logos, PartialEq, Eq)]
 #[logos(extras = TokenExtras)]
+#[logos(skip r"[\t\v\f\r ]+")]
 #[logos(subpattern exponent = r"[eE][+\-]?[0-9]+")]
 pub(crate) enum Token<'a> {
     #[regex("[A-Za-z_][A-Za-z0-9_]*")]
@@ -64,9 +65,6 @@ pub(crate) enum Token<'a> {
     BlockComment(Cow<'a, str>),
     #[token("\n")]
     Newline,
-    #[error]
-    #[regex(r"[\t\v\f\r ]+", skip)]
-    Error,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -161,7 +159,6 @@ impl<'a> fmt::Display for Token<'a> {
             Token::LineComment(value) => writeln!(f, "//{}", value),
             Token::BlockComment(value) => write!(f, "/*{}*/", value),
             Token::Newline => writeln!(f),
-            Token::Error => write!(f, "<ERROR>"),
         }
     }
 }
@@ -236,8 +233,6 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
             unicode_escape
         )]
         Char(char),
-        #[error]
-        Error,
     }
 
     fn terminator<'a>(lex: &mut Lexer<'a, Component<'a>>) -> u8 {
@@ -288,14 +283,14 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
 
     loop {
         match char_lexer.next() {
-            Some(Component::Unescaped(s)) => cow_push_bytes(&mut result, s.as_bytes()),
-            Some(Component::Terminator(t)) if t == terminator => {
+            Some(Ok(Component::Unescaped(s))) => cow_push_bytes(&mut result, s.as_bytes()),
+            Some(Ok(Component::Terminator(t))) if t == terminator => {
                 break;
             }
-            Some(Component::Terminator(ch) | Component::Byte(ch)) => {
+            Some(Ok(Component::Terminator(ch) | Component::Byte(ch))) => {
                 result.get_or_insert_with(Cow::default).to_mut().push(ch)
             }
-            Some(Component::Char(ch)) => {
+            Some(Ok(Component::Char(ch))) => {
                 let mut buf = [0; 4];
                 let ch = ch.encode_utf8(&mut buf);
                 result
@@ -303,7 +298,7 @@ fn string<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, [u8]> {
                     .to_mut()
                     .extend_from_slice(ch.as_bytes())
             }
-            Some(Component::Error) => {
+            Some(Err(_)) => {
                 let start = lex.span().end + char_lexer.span().start;
                 let end = lex.span().end + char_lexer.span().end;
 
@@ -376,8 +371,6 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
         StartComment,
         #[token("\n")]
         Newline,
-        #[error]
-        Text,
     }
 
     let mut comment_lexer = Component::lexer(lex.remainder());
@@ -387,7 +380,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
     let mut last_end = None;
     let len = loop {
         match comment_lexer.next() {
-            Some(Component::EndComment) => {
+            Some(Ok(Component::EndComment)) => {
                 depth -= 1;
                 if depth == 0 {
                     break comment_lexer.span().end;
@@ -395,7 +388,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                     last_end = Some(comment_lexer.span().end);
                 }
             }
-            Some(Component::StartComment) => {
+            Some(Ok(Component::StartComment)) => {
                 let start = lex.span().end + comment_lexer.span().start;
                 let end = lex.span().end + comment_lexer.span().end;
                 lex.extras
@@ -403,7 +396,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                     .push(ParseErrorKind::NestedBlockComment { span: start..end });
                 depth += 1;
             }
-            Some(Component::Newline) => {
+            Some(Ok(Component::Newline)) => {
                 cow_push_str(&mut result, "\n");
                 let stripped = comment_lexer.remainder().trim_start();
                 comment_lexer.bump(comment_lexer.remainder().len() - stripped.len());
@@ -411,7 +404,7 @@ fn block_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Cow<'a, str> {
                     comment_lexer.bump(1);
                 }
             }
-            Some(Component::Text) => cow_push_str(&mut result, comment_lexer.slice()),
+            Some(Err(())) => cow_push_str(&mut result, comment_lexer.slice()),
             None => {
                 if let Some(last_end) = last_end {
                     // This must be a nested block comment
