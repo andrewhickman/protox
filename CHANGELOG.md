@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Updated logos dependency to [0.13.0](https://github.com/maciejhirsz/logos/releases/tag/v0.13).
+
 ## [0.3.1] - 2023-04-10
 
 ### Added
