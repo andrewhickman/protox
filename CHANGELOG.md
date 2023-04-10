@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2023-04-10
+
 ### Added
 
 - Added the [`Compiler::files`](https://docs.rs/protox/latest/protox/struct.Compiler.html#method.files) method to get all imported files. This may be used to emit [`rerun-if-changed`](https://doc.rust-lang.org/cargo/reference/build-scripts.html#rerun-if-changed) directives in a build script.
@@ -61,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/andrewhickman/protox/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/andrewhickman/protox/compare/0.2.2...0.3.0
 [0.2.2]: https://github.com/andrewhickman/protox/compare/0.2.1...0.2.2
 [0.2.1]: https://github.com/andrewhickman/protox/compare/0.2.0...0.2.1
