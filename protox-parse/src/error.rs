@@ -16,6 +16,7 @@ pub struct ParseError {
     related: Vec<ParseErrorKind>,
     #[source_code]
     source_code: NamedSource,
+    file: String,
 }
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -226,6 +227,8 @@ impl ParseError {
         ParseError {
             kind: Box::new(kind),
             related,
+            // TODO avoid this clone https://github.com/zkat/miette/pull/252
+            file: name.to_owned(),
             source_code: NamedSource::new(name, source),
         }
     }
@@ -238,8 +241,7 @@ impl ParseError {
 
     /// Gets the name of the file in which this error occurred.
     pub fn file(&self) -> &str {
-        // TODO https://github.com/zkat/miette/pull/252
-        ""
+        self.file.as_ref()
     }
 
     /// Gets the primary source code span associated with this error, if any.

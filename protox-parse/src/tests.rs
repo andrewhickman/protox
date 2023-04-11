@@ -11,6 +11,9 @@ fn parse(source: &str) -> Result<FileDescriptorProto, Vec<ParseErrorKind>> {
 fn error_fmt_debug() {
     let error = crate::parse("foo.proto", "message {}").unwrap_err();
 
+    assert_eq!(error.file(), "foo.proto");
+    assert_eq!(error.span(), Some(8..9));
+
     assert_eq!(
         format!("{:?}", error),
         "foo.proto:1:9: expected an identifier, but found '{'"
