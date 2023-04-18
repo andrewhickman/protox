@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Range};
 
 use logos::Span;
 use miette::{Diagnostic, NamedSource, SourceCode};
@@ -245,7 +245,7 @@ impl ParseError {
     }
 
     /// Gets the primary source code span associated with this error, if any.
-    pub fn span(&self) -> Option<Span> {
+    pub fn span(&self) -> Option<Range<usize>> {
         match &*self.kind {
             ParseErrorKind::InvalidToken { span } => Some(span.clone()),
             ParseErrorKind::IntegerOutOfRange { span } => Some(span.clone()),
