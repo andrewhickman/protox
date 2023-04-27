@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated logos dependency to [0.13.0](https://github.com/maciejhirsz/logos/releases/tag/v0.13).
+- Reduce minimum supported rust version to 1.60.0 to match [prost-reflect](https://crates.io/crates/prost-reflect).
 
 ## [0.3.1] - 2023-04-10
 
