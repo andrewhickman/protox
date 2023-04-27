@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2023-04-27
+
 ### Changed
 
 - Updated logos dependency to [0.13.0](https://github.com/maciejhirsz/logos/releases/tag/v0.13).
@@ -68,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.3...HEAD
+[0.3.3]: https://github.com/andrewhickman/protox/compare/0.3.1...0.3.3
 [0.3.1]: https://github.com/andrewhickman/protox/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/andrewhickman/protox/compare/0.2.2...0.3.0
 [0.2.2]: https://github.com/andrewhickman/protox/compare/0.2.1...0.2.2

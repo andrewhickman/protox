@@ -3,7 +3,7 @@ name = "protox"
 description = "A rust implementation of the protobuf compiler."
 keywords = ["protobuf", "serialization"]
 categories = ["compilers", "encoding", "development-tools::build-utils"]
-version = "0.3.1"
+version = "0.3.3"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/protox"
 documentation = "https://docs.rs/protox"
@@ -46,7 +46,7 @@ miette = "5.8.0"
 prost = "0.11.0"
 prost-reflect = { version = "0.11.0", features = ["miette", "text-format"] }
 prost-types = "0.11.0"
-protox-parse = { version = "0.3.0", path = "../protox-parse" }
+protox-parse = { version = "0.3.3", path = "../protox-parse" }
 thiserror = "1.0.31"
 
 [dev-dependencies]
