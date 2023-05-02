@@ -347,7 +347,7 @@ fn file_from_source() {
 
 #[test]
 fn file_from_file_descriptor_proto() {
-    let file = File::from_file_descriptor_proto(FileDescriptorProto {
+    let file = File::from(FileDescriptorProto {
         name: Some("foo.proto".to_owned()),
         syntax: Some("proto3".to_owned()),
         ..Default::default()
@@ -359,6 +359,15 @@ fn file_from_file_descriptor_proto() {
     assert_eq!(
         file.file_descriptor_proto(),
         &FileDescriptorProto {
+            name: Some("foo.proto".to_owned()),
+            syntax: Some("proto3".to_owned()),
+            ..Default::default()
+        }
+    );
+
+    assert_eq!(
+        FileDescriptorProto::from(file),
+        FileDescriptorProto {
             name: Some("foo.proto".to_owned()),
             syntax: Some("proto3".to_owned()),
             ..Default::default()
@@ -388,4 +397,10 @@ fn file_decode_file_descriptor_proto() {
             ..Default::default()
         }
     );
+}
+
+#[test]
+fn file_decode_file_descriptor_proto_err() {
+    let invalid = b"invalid";
+    assert!(File::decode_file_descriptor_proto(invalid.as_ref()).is_err());
 }

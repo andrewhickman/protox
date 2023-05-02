@@ -238,7 +238,19 @@ impl File {
     /// Returns the parsed value of the source file.
     ///
     /// This is typically equivalent to calling [`parse()`](protox_parse::parse()) on the string returned by [`source()`](File::source).
-    pub fn file_descriptor_proto(&self) -> &prost_types::FileDescriptorProto {
+    pub fn file_descriptor_proto(&self) -> &FileDescriptorProto {
         &self.descriptor
+    }
+}
+
+impl From<FileDescriptorProto> for File {
+    fn from(file: FileDescriptorProto) -> Self {
+        File::from_file_descriptor_proto(file)
+    }
+}
+
+impl From<File> for FileDescriptorProto {
+    fn from(file: File) -> Self {
+        file.descriptor
     }
 }
