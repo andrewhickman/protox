@@ -23,6 +23,7 @@ pub(crate) enum ErrorKind {
     Check { err: DescriptorError },
     #[error("error opening file '{path}'")]
     OpenFile {
+        name: String,
         path: PathBuf,
         #[source]
         err: io::Error,
@@ -33,12 +34,16 @@ pub(crate) enum ErrorKind {
     #[error("import '{name}' not found")]
     ImportNotFound { name: String },
     #[error("import cycle detected: {cycle}")]
-    CircularImport { cycle: String },
+    CircularImport { name: String, cycle: String },
     #[error("file '{path}' is not in any include path")]
     FileNotIncluded { path: PathBuf },
     #[error("path '{path}' is shadowed by '{shadow}' in the include paths")]
     #[diagnostic(help("either pass '{}' as the input file, or re-order the include paths so that '{}' comes first", shadow.display(), path.display()))]
-    FileShadowed { path: PathBuf, shadow: PathBuf },
+    FileShadowed {
+        name: String,
+        path: PathBuf,
+        shadow: PathBuf,
+    },
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
 }
@@ -61,6 +66,21 @@ impl Error {
         })
     }
 
+    /// The file in which this error occurred, if available.
+    pub fn file(&self) -> Option<&str> {
+        match &*self.kind {
+            ErrorKind::Parse { err } => Some(err.file()),
+            ErrorKind::Check { err } => err.file(),
+            ErrorKind::OpenFile { name, .. }
+            | ErrorKind::FileTooLarge { name }
+            | ErrorKind::ImportNotFound { name }
+            | ErrorKind::CircularImport { name, .. }
+            | ErrorKind::FileShadowed { name, .. } => Some(name),
+            ErrorKind::FileNotIncluded { .. } => None,
+            ErrorKind::Custom(_) => None,
+        }
+    }
+
     pub(crate) fn from_kind(kind: ErrorKind) -> Self {
         Error {
             kind: Box::new(kind),
@@ -76,6 +96,23 @@ impl Error {
     pub fn is_file_not_found(&self) -> bool {
         matches!(&*self.kind, ErrorKind::ImportNotFound { .. })
     }
+
+    /// Returns true if this error is caused by an invalid protobuf source file.
+    pub fn is_parse(&self) -> bool {
+        matches!(
+            &*self.kind,
+            ErrorKind::Parse { .. } | ErrorKind::FileTooLarge { .. }
+        )
+    }
+
+    /// Returns true if this error is caused by an IO error while opening a file.
+    pub fn is_io(&self) -> bool {
+        match &*self.kind {
+            ErrorKind::OpenFile { .. } => true,
+            ErrorKind::Custom(err) if err.downcast_ref::<io::Error>().is_some() => true,
+            _ => false,
+        }
+    }
 }
 
 impl From<DescriptorError> for Error {
@@ -87,6 +124,12 @@ impl From<DescriptorError> for Error {
 impl From<ParseError> for Error {
     fn from(err: ParseError) -> Self {
         Error::from_kind(ErrorKind::Parse { err })
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(err: io::Error) -> Self {
+        Error::new(err)
     }
 }
 
@@ -107,14 +150,29 @@ impl fmt::Debug for Error {
 }
 
 #[test]
-fn fmt_debug() {
+fn fmt_debug_io() {
     let err = Error::from_kind(ErrorKind::OpenFile {
+        name: "file.proto".into(),
         path: "path/to/file.proto".into(),
         err: io::Error::new(io::ErrorKind::Other, "io error"),
     });
 
+    assert!(err.is_io());
+    assert_eq!(err.file(), Some("file.proto"));
     assert_eq!(
         format!("{:?}", err),
         "error opening file 'path/to/file.proto': io error"
+    );
+}
+
+#[test]
+fn fmt_debug_parse() {
+    let err = Error::from(protox_parse::parse("file.proto", "invalid").unwrap_err());
+
+    assert!(err.is_parse());
+    assert_eq!(err.file(), Some("file.proto"));
+    assert_eq!(
+        format!("{:?}", err),
+        "file.proto:1:1: expected 'enum', 'extend', 'import', 'message', 'option', 'service', 'package' or ';', but found 'invalid'"
     );
 }

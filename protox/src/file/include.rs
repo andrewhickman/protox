@@ -94,11 +94,16 @@ pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
     }
 }
 
-pub(crate) fn check_shadow(actual_path: Option<&Path>, expected_path: &Path) -> Result<(), Error> {
+pub(crate) fn check_shadow(
+    file: &str,
+    actual_path: Option<&Path>,
+    expected_path: &Path,
+) -> Result<(), Error> {
     // actual_path is expected to be an include path concatenated with `expected_path`
     if let Some(actual_path) = actual_path {
         if !path_eq(actual_path, expected_path) {
             return Err(Error::from_kind(ErrorKind::FileShadowed {
+                name: file.to_string(),
                 path: expected_path.to_owned(),
                 shadow: actual_path.to_owned(),
             }));

@@ -115,6 +115,7 @@ impl File {
                 Error::file_not_found(name)
             } else {
                 Error::from_kind(ErrorKind::OpenFile {
+                    name: name.to_owned(),
                     path: path.to_owned(),
                     err,
                 })

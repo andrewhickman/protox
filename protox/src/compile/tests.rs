@@ -659,7 +659,8 @@ fn shadow_file_rel() {
         let err = compiler.open_file("foo.proto").unwrap_err();
 
         match err.kind() {
-            ErrorKind::FileShadowed { path, shadow } => {
+            ErrorKind::FileShadowed { name, path, shadow } => {
+                assert_eq!(name, "foo.proto");
                 assert_eq!(path, Path::new("foo.proto"));
                 assert_eq!(shadow, &Path::new("include").join("foo.proto"));
             }
@@ -684,7 +685,8 @@ fn shadow_file_rel_subdir() {
             .unwrap_err();
 
         match err.kind() {
-            ErrorKind::FileShadowed { path, shadow } => {
+            ErrorKind::FileShadowed { name, path, shadow } => {
+                assert_eq!(name, "foo.proto");
                 assert_eq!(path, &Path::new("include2").join("foo.proto"));
                 assert_eq!(shadow, &Path::new("include1").join("foo.proto"));
             }
@@ -707,7 +709,8 @@ fn shadow_file_abs() {
         .unwrap_err();
 
     match err.kind() {
-        ErrorKind::FileShadowed { path, shadow } => {
+        ErrorKind::FileShadowed { name, path, shadow } => {
+            assert_eq!(name, "foo.proto");
             assert_eq!(path, &dir.path().join("foo.proto"));
             assert_eq!(shadow, &dir.path().join("include").join("foo.proto"));
         }
@@ -732,7 +735,8 @@ fn shadow_file_abs_subdir() {
         .unwrap_err();
 
     match err.kind() {
-        ErrorKind::FileShadowed { path, shadow } => {
+        ErrorKind::FileShadowed { name, path, shadow } => {
+            assert_eq!(name, "foo.proto");
             assert_eq!(path, &dir.path().join("include2").join("foo.proto"));
             assert_eq!(shadow, &dir.path().join("include1").join("foo.proto"));
         }
@@ -783,7 +787,8 @@ fn shadow_already_imported_file() {
         .unwrap_err();
 
     match err.kind() {
-        ErrorKind::FileShadowed { path, shadow } => {
+        ErrorKind::FileShadowed { name, path, shadow } => {
+            assert_eq!(name, "foo.proto");
             assert_eq!(path, &dir.path().join("include2").join("foo.proto"));
             assert_eq!(shadow, &dir.path().join("include1").join("foo.proto"));
         }
@@ -880,7 +885,8 @@ fn import_cycle() {
     let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
-        ErrorKind::CircularImport { cycle } => {
+        ErrorKind::CircularImport { name, cycle } => {
+            assert_eq!(name, "root.proto");
             assert_eq!(cycle, "root.proto -> dep.proto -> dep2.proto -> root.proto")
         }
         kind => panic!("unexpected error: {}", kind),
@@ -891,13 +897,35 @@ fn import_cycle() {
 fn import_cycle_short() {
     let dir = TempDir::new().unwrap();
 
+    std::fs::write(dir.path().join("root.proto"), "import 'dep.proto';").unwrap();
+    std::fs::write(dir.path().join("dep.proto"), "import 'dep.proto';").unwrap();
+
+    let mut compiler = Compiler::new([dir.path()]).unwrap();
+    let err = compiler.open_file("root.proto").unwrap_err();
+
+    match err.kind() {
+        ErrorKind::CircularImport { name, cycle } => {
+            assert_eq!(name, "dep.proto");
+            assert_eq!(cycle, "root.proto -> dep.proto -> dep.proto")
+        }
+        kind => panic!("unexpected error: {}", kind),
+    }
+}
+
+#[test]
+fn import_cycle_nested() {
+    let dir = TempDir::new().unwrap();
+
     std::fs::write(dir.path().join("root.proto"), "import 'root.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
     let err = compiler.open_file("root.proto").unwrap_err();
 
     match err.kind() {
-        ErrorKind::CircularImport { cycle } => assert_eq!(cycle, "root.proto -> root.proto"),
+        ErrorKind::CircularImport { name, cycle } => {
+            assert_eq!(name, "root.proto");
+            assert_eq!(cycle, "root.proto -> root.proto")
+        }
         kind => panic!("unexpected error: {}", kind),
     }
 }

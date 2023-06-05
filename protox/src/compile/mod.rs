@@ -134,7 +134,7 @@ impl Compiler {
 
         if let Some(parsed_file) = self.files.get_mut(&name) {
             if is_resolved {
-                check_shadow(parsed_file.file.path(), path)?;
+                check_shadow(&name, parsed_file.file.path(), path)?;
             }
             parsed_file.is_root = true;
             return Ok(self);
@@ -150,7 +150,7 @@ impl Compiler {
             }
         })?;
         if is_resolved {
-            check_shadow(file.path(), path)?;
+            check_shadow(&name, file.path(), path)?;
         }
 
         let mut import_stack = vec![name.clone()];
@@ -261,7 +261,10 @@ impl Compiler {
             }
             write!(&mut cycle, "{}", file_name).unwrap();
 
-            return Err(Error::from_kind(ErrorKind::CircularImport { cycle }));
+            return Err(Error::from_kind(ErrorKind::CircularImport {
+                name: file_name.to_owned(),
+                cycle,
+            }));
         }
 
         if self.files.contains_key(file_name) {

@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, io};
 
 use insta::assert_yaml_snapshot;
 use miette::{Diagnostic, JSONReportHandler};
@@ -19,7 +19,10 @@ struct TestFileResolver {
 impl FileResolver for TestFileResolver {
     fn open_file(&self, name: &str) -> Result<File, Error> {
         if name == "customerror.proto" {
-            return Err(Error::new("failed to load file!"));
+            return Err(Error::new(io::Error::new(
+                io::ErrorKind::Other,
+                "failed to load file!",
+            )));
         }
 
         for file in self.files {
@@ -307,6 +310,8 @@ fn error_fmt_debug() {
     let import_err = check(&[("root.proto", "import 'notfound.proto';")]).unwrap_err();
     let open_err = check(&[("root.proto", "import 'customerror.proto';")]).unwrap_err();
 
+    assert!(parse_err.is_parse());
+    assert_eq!(parse_err.file(), Some("root.proto"));
     assert_eq!(
         parse_err.to_string(),
         "expected an identifier, but found '{'"
@@ -316,18 +321,27 @@ fn error_fmt_debug() {
         "root.proto:1:9: expected an identifier, but found '{'"
     );
 
+    assert!(!check_err.is_io() && !check_err.is_parse());
+    assert_eq!(check_err.file(), Some("root.proto"));
     assert_eq!(check_err.to_string(), "name 'Foo' is defined twice");
     assert_eq!(
         format!("{:?}", check_err),
         "root.proto:1:24: name 'Foo' is defined twice"
     );
 
+    assert!(import_err.is_file_not_found());
+    assert_eq!(import_err.file(), Some("notfound.proto"));
     assert_eq!(import_err.to_string(), "import 'notfound.proto' not found");
     assert_eq!(
         format!("{:?}", import_err),
         "import 'notfound.proto' not found"
     );
 
+    assert!(open_err.is_io());
+    assert!(open_err.file().is_none());
     assert_eq!(open_err.to_string(), "failed to load file!");
-    assert_eq!(format!("{:?}", open_err), "\"failed to load file!\"");
+    assert_eq!(
+        format!("{:?}", open_err),
+        "Custom { kind: Other, error: \"failed to load file!\" }"
+    );
 }

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added new methods to get error details: `Error::is_parse`, `Error::is_io` and `Error::file`.
+
 ## [0.3.3] - 2023-04-27
 
 ### Changed
