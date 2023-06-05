@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2023-06-05
+
 ### Changed
 
 - The error when reading invalid UTF-8 is now classified as a parse error, not an IO error.
@@ -80,7 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.4...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.5...HEAD
+[0.3.5]: https://github.com/andrewhickman/protox/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/andrewhickman/protox/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/andrewhickman/protox/compare/0.3.1...0.3.3
 [0.3.1]: https://github.com/andrewhickman/protox/compare/0.3.0...0.3.1
