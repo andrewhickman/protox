@@ -31,6 +31,8 @@ pub(crate) enum ErrorKind {
     #[error("file '{name}' is too large")]
     #[diagnostic(help("the maximum file length is 2,147,483,647 bytes"))]
     FileTooLarge { name: String },
+    #[error("file '{name}' is not valid utf-8")]
+    FileInvalidUtf8 { name: String },
     #[error("import '{name}' not found")]
     ImportNotFound { name: String },
     #[error("import cycle detected: {cycle}")]
@@ -73,6 +75,7 @@ impl Error {
             ErrorKind::Check { err } => err.file(),
             ErrorKind::OpenFile { name, .. }
             | ErrorKind::FileTooLarge { name }
+            | ErrorKind::FileInvalidUtf8 { name }
             | ErrorKind::ImportNotFound { name }
             | ErrorKind::CircularImport { name, .. }
             | ErrorKind::FileShadowed { name, .. } => Some(name),
@@ -101,7 +104,9 @@ impl Error {
     pub fn is_parse(&self) -> bool {
         matches!(
             &*self.kind,
-            ErrorKind::Parse { .. } | ErrorKind::FileTooLarge { .. }
+            ErrorKind::Parse { .. }
+                | ErrorKind::FileTooLarge { .. }
+                | ErrorKind::FileInvalidUtf8 { .. }
         )
     }
 
@@ -140,6 +145,7 @@ impl fmt::Debug for Error {
             ErrorKind::Check { err } => err.fmt(f),
             ErrorKind::OpenFile { err, .. } => write!(f, "{}: {}", self, err),
             ErrorKind::FileTooLarge { .. }
+            | ErrorKind::FileInvalidUtf8 { .. }
             | ErrorKind::ImportNotFound { .. }
             | ErrorKind::CircularImport { .. }
             | ErrorKind::FileNotIncluded { .. }

@@ -8,9 +8,11 @@ use prost_types::{
     source_code_info::Location, FileDescriptorProto, FileDescriptorSet, SourceCodeInfo,
 };
 use protox::{
+    compile,
     file::{ChainFileResolver, DescriptorSetFileResolver, File, FileResolver, GoogleFileResolver},
     Compiler, Error,
 };
+use tempfile::TempDir;
 
 struct TestFileResolver {
     files: &'static [(&'static str, &'static str)],
@@ -344,4 +346,18 @@ fn error_fmt_debug() {
         format!("{:?}", open_err),
         "Custom { kind: Other, error: \"failed to load file!\" }"
     );
+}
+
+#[test]
+fn error_invalid_utf8() {
+    let dir = TempDir::new().unwrap();
+
+    fs::write(dir.path().join("foo.proto"), b"message \xF0\x90\x80Foo {}").unwrap();
+
+    let err = compile([dir.path().join("foo.proto")], [dir.path()]).unwrap_err();
+
+    assert!(err.is_parse());
+    assert_eq!(err.file(), Some("foo.proto"));
+    assert_eq!(err.to_string(), "file 'foo.proto' is not valid utf-8");
+    assert_eq!(format!("{:?}", err), "file 'foo.proto' is not valid utf-8");
 }

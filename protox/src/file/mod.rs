@@ -111,14 +111,16 @@ impl File {
     /// ```
     pub fn open(name: &str, path: &Path) -> Result<Self, Error> {
         let map_io_err = |err: io::Error| -> Error {
-            if err.kind() == io::ErrorKind::NotFound {
-                Error::file_not_found(name)
-            } else {
-                Error::from_kind(ErrorKind::OpenFile {
+            match err.kind() {
+                io::ErrorKind::NotFound => Error::file_not_found(name),
+                io::ErrorKind::InvalidData => Error::from_kind(ErrorKind::FileInvalidUtf8 {
+                    name: name.to_owned(),
+                }),
+                _ => Error::from_kind(ErrorKind::OpenFile {
                     name: name.to_owned(),
                     path: path.to_owned(),
                     err,
-                })
+                }),
             }
         };
 

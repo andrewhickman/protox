@@ -1,4 +1,4 @@
-use std::{fs, io, iter::once};
+use std::{fs, iter::once};
 
 use tempfile::TempDir;
 
@@ -639,9 +639,8 @@ fn invalid_file() {
     let err = compiler.open_file("foo.proto").unwrap_err();
 
     match err.kind() {
-        ErrorKind::OpenFile { path, err, .. } => {
-            assert_eq!(path, &dir.path().join("foo.proto"));
-            assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        ErrorKind::FileInvalidUtf8 { name } => {
+            assert_eq!(name, "foo.proto");
         }
         kind => panic!("unexpected error: {}", kind),
     }
@@ -761,9 +760,8 @@ fn shadow_invalid_file() {
         .unwrap_err();
 
     match err.kind() {
-        ErrorKind::OpenFile { path, err, .. } => {
-            assert_eq!(path, &dir.path().join("include1").join("foo.proto"));
-            assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        ErrorKind::FileInvalidUtf8 { name } => {
+            assert_eq!(name, "foo.proto");
         }
         kind => panic!("unexpected error: {}", kind),
     }

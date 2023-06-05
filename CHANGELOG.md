@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The error when reading invalid UTF-8 is now classified as a parse error, not an IO error.
+
 ## [0.3.4] - 2023-06-05
 
 ### Added
