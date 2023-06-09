@@ -10,7 +10,7 @@
 
 An implementation of the protobuf compiler in rust, intended for use as a library with crates such as [`prost-build`](https://crates.io/crates/prost-build) to avoid needing to build `protoc`.
 
-## Usage
+## Examples
 
 Compiling a single source file:
 
@@ -25,16 +25,12 @@ assert_eq!(protox::compile(["root.proto"], ["."]).unwrap(), FileDescriptorSet {
 });
 ```
 
-## prost-build
-
 Usage with `prost-build`:
 
 ```rust
 let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
 prost_build::compile_fds(file_descriptors).unwrap();
 ```
-
-## tonic-build
 
 Usage with `tonic-build`:
 
@@ -52,7 +48,7 @@ tonic_build::Config::new()
     .unwrap();
 ```
 
-## Error messages
+### Error messages
 
 This crate uses [`miette`](https://crates.io/crates/miette) to add additional details to errors. For nice error messages, add `miette` as a dependency with the `fancy` feature enabled and return a [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your build script.
 
@@ -69,7 +65,7 @@ Example error message:
 ```
 Error:
   × name 'Bar' is not defined
-   ╭─[test.proto:3:1]
+   ╭─[root.proto:3:1]
  3 │ message Foo {
  4 │     Bar bar = 1;
    ·     ─┬─
