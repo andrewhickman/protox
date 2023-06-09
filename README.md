@@ -25,6 +25,8 @@ assert_eq!(protox::compile(["root.proto"], ["."]).unwrap(), FileDescriptorSet {
 });
 ```
 
+## prost-build
+
 Usage with `prost-build`:
 
 ```rust
@@ -32,7 +34,49 @@ let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
 prost_build::compile_fds(file_descriptors).unwrap();
 ```
 
-For better error messages, enable the `fancy` feature of `miette` and return a [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your `main()` function.
+## tonic-build
+
+Usage with `tonic-build`:
+
+```rust
+let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
+
+let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
+    .join("file_descriptor_set.bin");
+fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
+
+tonic_build::Config::new()
+    .file_descriptor_set_path(&file_descriptor_path)
+    .skip_protoc_run()
+    .compile_protos(["root.proto"], ["."])
+    .unwrap();
+```
+
+## Error messages
+
+This crate uses [`miette`](https://crates.io/crates/miette) to add additional details to errors. For nice error messages, add `miette` as a dependency with the `fancy` feature enabled and return a [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your build script.
+
+```rust
+fn main() -> miette::Result<()> {
+  let _ = protox::compile(["root.proto"], ["."])?;
+
+  Ok(())
+}
+```
+
+Example error message:
+
+```
+Error:
+  × name 'Bar' is not defined
+   ╭─[test.proto:3:1]
+ 3 │ message Foo {
+ 4 │     Bar bar = 1;
+   ·     ─┬─
+   ·      ╰── found here
+ 5 │ }
+   ╰────
+```
 
 ## Minimum Supported Rust Version
 
