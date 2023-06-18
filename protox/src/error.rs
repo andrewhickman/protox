@@ -97,7 +97,7 @@ impl Error {
 
     /// Returns true if this is an instance of [`Error::file_not_found()`]
     pub fn is_file_not_found(&self) -> bool {
-        matches!(&*self.kind, ErrorKind::ImportNotFound { .. })
+        matches!(&*self.kind, ErrorKind::ImportNotFound { .. } | ErrorKind::FileNotIncluded { .. })
     }
 
     /// Returns true if this error is caused by an invalid protobuf source file.
