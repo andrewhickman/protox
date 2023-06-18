@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2023-06-18
+
 ## Changed
 
 - **Breaking**: `Compiler::files` is now returns an iterator of `FileMetadata` instances, to avoid some clones while compiling a file.
@@ -86,7 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.3.5...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/andrewhickman/protox/compare/0.3.5...0.4.0
 [0.3.5]: https://github.com/andrewhickman/protox/compare/0.3.4...0.3.5
 [0.3.4]: https://github.com/andrewhickman/protox/compare/0.3.3...0.3.4
 [0.3.3]: https://github.com/andrewhickman/protox/compare/0.3.1...0.3.3
