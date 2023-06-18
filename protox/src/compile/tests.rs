@@ -54,7 +54,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
         }
     );
     assert_eq!(
-        compiler.files[name].file.path(),
+        compiler.files[name].path(),
         Some(include.join(name).as_ref())
     );
 }
@@ -815,19 +815,19 @@ fn import_files() {
 
     assert_eq!(compiler.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
-        compiler.files["dep2.proto"].file.path(),
+        compiler.files["dep2.proto"].path(),
         Some(dir.path().join("dep2.proto").as_ref())
     );
 
     assert_eq!(compiler.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
-        compiler.files["dep.proto"].file.path(),
+        compiler.files["dep.proto"].path(),
         Some(dir.path().join("include").join("dep.proto").as_ref())
     );
 
     assert_eq!(compiler.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
-        compiler.files["root.proto"].file.path(),
+        compiler.files["root.proto"].path(),
         Some(dir.path().join("root.proto").as_ref())
     );
 
@@ -953,19 +953,19 @@ fn duplicated_import() {
 
     assert_eq!(compiler.files().next().unwrap().name(), "dep2.proto");
     assert_eq!(
-        compiler.files["dep2.proto"].file.path(),
+        compiler.files["dep2.proto"].path(),
         Some(dir.path().join("dep2.proto").as_ref())
     );
 
     assert_eq!(compiler.files().nth(1).unwrap().name(), "dep.proto");
     assert_eq!(
-        compiler.files["dep.proto"].file.path(),
+        compiler.files["dep.proto"].path(),
         Some(dir.path().join("include").join("dep.proto").as_ref())
     );
 
     assert_eq!(compiler.files().nth(2).unwrap().name(), "root.proto");
     assert_eq!(
-        compiler.files["root.proto"].file.path(),
+        compiler.files["root.proto"].path(),
         Some(dir.path().join("root.proto").as_ref())
     );
 }

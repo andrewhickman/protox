@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Changed
+
+- **Breaking**: `Compiler::files` is now returns an iterator of `FileMetadata` instances, to avoid some clones while compiling a file.
+
 ## [0.3.5] - 2023-06-05
 
 ### Changed

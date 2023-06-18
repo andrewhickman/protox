@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use prost::Message;
@@ -10,7 +10,7 @@ use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::{
     error::{Error, ErrorKind},
-    file::{check_shadow, path_to_file_name, File, FileResolver},
+    file::{check_shadow, path_to_file_name, File, FileMetadata, FileResolver},
 };
 
 #[cfg(test)]
@@ -48,15 +48,9 @@ mod tests;
 pub struct Compiler {
     pool: DescriptorPool,
     resolver: Box<dyn FileResolver>,
-    files: HashMap<String, ParsedFile>,
+    files: HashMap<String, FileMetadata>,
     include_imports: bool,
     include_source_info: bool,
-}
-
-#[derive(Debug)]
-struct ParsedFile {
-    file: File,
-    is_root: bool,
 }
 
 impl Compiler {
@@ -132,11 +126,11 @@ impl Compiler {
             }));
         };
 
-        if let Some(parsed_file) = self.files.get_mut(&name) {
+        if let Some(file_metadata) = self.files.get_mut(&name) {
             if is_resolved {
-                check_shadow(&name, parsed_file.file.path(), path)?;
+                check_shadow(&name, file_metadata.path(), path)?;
             }
-            parsed_file.is_root = true;
+            file_metadata.is_import = false;
             return Ok(self);
         }
 
@@ -159,12 +153,13 @@ impl Compiler {
         }
         drop(import_stack);
 
-        self.check_file(&file)?;
+        let path = self.check_file(file)?;
         self.files.insert(
-            name,
-            ParsedFile {
-                file,
-                is_root: true,
+            name.clone(),
+            FileMetadata {
+                name,
+                path,
+                is_import: false,
             },
         );
         Ok(self)
@@ -191,7 +186,7 @@ impl Compiler {
         let file = self
             .pool
             .files()
-            .filter(|f| self.include_imports || self.files[f.name()].is_root)
+            .filter(|f| self.include_imports || !self.files[f.name()].is_import)
             .map(|f| {
                 if self.include_source_info {
                     f.file_descriptor_proto().clone()
@@ -222,7 +217,7 @@ impl Compiler {
         let files = self
             .pool
             .files()
-            .filter(|f| self.include_imports || self.files[f.name()].is_root)
+            .filter(|f| self.include_imports || !self.files[f.name()].is_import)
             .map(|f| {
                 let file_buf = f.encode_to_vec();
 
@@ -249,8 +244,8 @@ impl Compiler {
     /// Gets a reference to all imported source files.
     ///
     /// The files will appear in topological order, so each file appears before any file that imports it.
-    pub fn files(&self) -> impl ExactSizeIterator<Item = &'_ File> {
-        self.pool.files().map(|f| &self.files[f.name()].file)
+    pub fn files(&self) -> impl ExactSizeIterator<Item = &'_ FileMetadata> {
+        self.pool.files().map(|f| &self.files[f.name()])
     }
 
     fn add_import(&mut self, file_name: &str, import_stack: &mut Vec<String>) -> Result<(), Error> {
@@ -279,31 +274,40 @@ impl Compiler {
         }
         import_stack.pop();
 
-        self.check_file(&file)?;
+        let path = self.check_file(file)?;
         self.files.insert(
             file_name.to_owned(),
-            ParsedFile {
-                file,
-                is_root: false,
+            FileMetadata {
+                name: file_name.to_owned(),
+                path,
+                is_import: true,
             },
         );
         Ok(())
     }
 
-    fn check_file(&mut self, file: &File) -> Result<(), Error> {
-        if let Some(encoded) = &file.encoded {
+    fn check_file(
+        &mut self,
+        File {
+            path,
+            source,
+            descriptor,
+            encoded,
+        }: File,
+    ) -> Result<Option<PathBuf>, Error> {
+        if let Some(encoded) = &encoded {
             self.pool.decode_file_descriptor_proto(encoded.clone())
         } else {
-            self.pool.add_file_descriptor_proto(file.descriptor.clone())
+            self.pool.add_file_descriptor_proto(descriptor)
         }
         .map_err(|mut err| {
-            if let Some(source) = file.source() {
-                err = err.with_source_code(source);
+            if let Some(source) = source {
+                err = err.with_source_code(&source);
             }
             err
         })?;
 
-        Ok(())
+        Ok(path)
     }
 }
 

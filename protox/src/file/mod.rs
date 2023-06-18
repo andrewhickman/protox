@@ -67,6 +67,14 @@ pub struct File {
     pub(crate) encoded: Option<Bytes>,
 }
 
+/// Information about a [`File`] after it has been added to a [`Compiler`](crate::Compiler) instance.
+#[derive(Debug, Clone)]
+pub struct FileMetadata {
+    pub(crate) name: String,
+    pub(crate) path: Option<PathBuf>,
+    pub(crate) is_import: bool,
+}
+
 impl File {
     /// Read a protobuf source file from the filesystem into a new instance of [`File`]
     ///
@@ -243,6 +251,24 @@ impl File {
     /// This is typically equivalent to calling [`parse()`](protox_parse::parse()) on the string returned by [`source()`](File::source).
     pub fn file_descriptor_proto(&self) -> &FileDescriptorProto {
         &self.descriptor
+    }
+}
+
+impl FileMetadata {
+    /// Returns the name of this file.
+    pub fn name(&self) -> &str {
+        self.name.as_str()
+    }
+
+    /// Returns the filesystem path, if this source is backed by a physical file.
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
+    }
+
+    /// Returns `true` if this file was added explicitly by [`open_file()`](crate::Compiler::open_file), or `false` if it
+    /// is was added as an import of some other file.
+    pub fn is_import(&self) -> bool {
+        self.is_import
     }
 }
 
