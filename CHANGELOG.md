@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Fixed
+
+- Fixed a panic while parsing an invalid file like `{ $`.
+
 ## [0.4.0] - 2023-06-18
 
 ## Changed

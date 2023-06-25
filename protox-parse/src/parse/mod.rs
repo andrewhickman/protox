@@ -1162,8 +1162,11 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Ok(None) => return,
                 Ok(Some((tok, _))) if tokens.contains(&tok) => return,
-                _ => {
+                Ok(Some(_)) => {
                     self.bump();
+                }
+                Err(()) => {
+                    self.peek = None;
                 }
             }
         }

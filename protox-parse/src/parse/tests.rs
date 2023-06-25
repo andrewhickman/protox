@@ -410,4 +410,5 @@ pub fn parse_file() {
     case!(parse_file("syntax = 1;"));
     case!(parse_file("thing"));
     case!(parse_file("message } } } message } } }"));
+    case!(parse_file("thing $"));
 }

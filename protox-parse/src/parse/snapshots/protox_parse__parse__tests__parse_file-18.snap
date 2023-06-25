@@ -1,0 +1,16 @@
+---
+source: protox-parse/src/parse/tests.rs
+expression: "if parser.lexer.extras.errors.is_empty() {\n        Ok(result.unwrap())\n    } else { Err(parser.lexer.extras.errors) }"
+---
+Err(
+    [
+        UnexpectedToken {
+            expected: "'enum', 'extend', 'import', 'message', 'option', 'service', 'package' or ';'",
+            found: "thing",
+            span: 0..5,
+        },
+        InvalidToken {
+            span: 6..7,
+        },
+    ],
+)
