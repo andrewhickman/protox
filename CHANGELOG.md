@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The minimum supported rust version is now **1.64.0**.
+- Updated to prost [**0.12.0**](https://github.com/tokio-rs/prost/releases/tag/v0.12.0)
+- Protox now validates that all referenced types are included in imported files (#6)
 
 ## [0.4.1] - 2023-06-25
 
