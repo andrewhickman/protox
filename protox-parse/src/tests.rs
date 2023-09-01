@@ -586,10 +586,10 @@ fn field_default_invalid_type() {
     );
     assert_eq!(
         parse(
-            r#"
+            r"
             message Message {
                 optional string foo = 1 [default = '\xFF'];
-            }"#
+            }"
         ),
         Err(vec![InvalidUtf8String { span: 82..88 }]),
     );

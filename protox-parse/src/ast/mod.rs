@@ -8,8 +8,9 @@ use prost_types::field_descriptor_proto;
 
 use crate::{join_span, Span};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Default, Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Syntax {
+    #[default]
     Proto2,
     Proto3,
 }
@@ -307,12 +308,6 @@ pub(crate) struct Method {
     pub server_streaming: std::option::Option<Span>,
     pub comments: Comments,
     pub span: Span,
-}
-
-impl Default for Syntax {
-    fn default() -> Self {
-        Syntax::Proto2
-    }
 }
 
 impl Int {
