@@ -22,7 +22,7 @@ mod tests;
 
 const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 
-/// Parses a single protobuf source file into a [`FileDescriptorProto`](prost_types::FileDescriptorProto).
+/// Parses a single protobuf source file into a [`FileDescriptorProto`].
 ///
 /// This function only looks at the syntax of the file, without resolving type names or reading
 /// imported files.
@@ -58,18 +58,17 @@ const MAX_MESSAGE_FIELD_NUMBER: i32 = 536_870_911;
 ///         ..Default::default()
 ///     }],
 ///     source_code_info: Some(SourceCodeInfo {
-///         /* ... */
-/// #       location: vec![
-/// #            Location { path: vec![], span: vec![1, 4, 6, 5], ..Default::default() },
-/// #            Location { path: vec![3, 0], span: vec![2, 4, 23], ..Default::default() },
-/// #            Location { path: vec![4, 0], span: vec![4, 4, 6, 5], ..Default::default() },
-/// #            Location { path: vec![4, 0, 1], span: vec![4, 12, 15], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0], span: vec![5, 8, 20], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 1], span: vec![5, 12, 15], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 3], span: vec![5, 18, 19], ..Default::default() },
-/// #            Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], ..Default::default() },
-/// #            Location { path: vec![12], span: vec![1, 4, 22], ..Default::default() },
-/// #       ],
+///         location: vec![
+///             Location { path: vec![], span: vec![1, 4, 6, 5], ..Default::default() },
+///             Location { path: vec![3, 0], span: vec![2, 4, 23], ..Default::default() },
+///             Location { path: vec![4, 0], span: vec![4, 4, 6, 5], ..Default::default() },
+///             Location { path: vec![4, 0, 1], span: vec![4, 12, 15], ..Default::default() },
+///             Location { path: vec![4, 0, 2, 0], span: vec![5, 8, 20], ..Default::default() },
+///             Location { path: vec![4, 0, 2, 0, 1], span: vec![5, 12, 15], ..Default::default() },
+///             Location { path: vec![4, 0, 2, 0, 3], span: vec![5, 18, 19], ..Default::default() },
+///             Location { path: vec![4, 0, 2, 0, 6], span: vec![5, 8, 11], ..Default::default() },
+///             Location { path: vec![12], span: vec![1, 4, 22], ..Default::default() },
+///         ],
 ///     }),
 ///     ..Default::default()
 /// })

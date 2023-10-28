@@ -106,10 +106,9 @@ impl File {
     ///     }],
     ///     source_code_info: Some(SourceCodeInfo {
     ///         location: vec![
-    ///             /* ... */
-    /// #           Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
-    /// #           Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
-    /// #           Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
+    ///             Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
+    ///             Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
+    ///             Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
     ///         ]
     ///     }),
     ///     ..Default::default()
@@ -179,10 +178,9 @@ impl File {
     ///     }],
     ///     source_code_info: Some(SourceCodeInfo {
     ///         location: vec![
-    ///             /* ... */
-    /// #           Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
-    /// #           Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
-    /// #           Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
+    ///             Location { path: vec![], span: vec![0, 0, 15], ..Default::default() },
+    ///             Location { path: vec![4, 0], span: vec![0, 0, 15], ..Default::default() },
+    ///             Location { path: vec![4, 0, 1], span: vec![0, 8, 11], ..Default::default() }
     ///         ]
     ///     }),
     ///     ..Default::default()
@@ -199,7 +197,7 @@ impl File {
         })
     }
 
-    /// Create a new instance of [`File`] from a parsed [`FileDescriptorProto`](prost_types::FileDescriptorProto).
+    /// Create a new instance of [`File`] from a parsed [`FileDescriptorProto`].
     ///
     /// The file does not need to have type names or imports resolved. Typically, it would be returned by the [`parse()`](protox_parse::parse()) method.
     pub fn from_file_descriptor_proto(file: prost_types::FileDescriptorProto) -> Self {
@@ -211,7 +209,7 @@ impl File {
         }
     }
 
-    /// Create an instance of [`File`] by deserializing a [`FileDescriptorProto`](prost_types::FileDescriptorProto)
+    /// Create an instance of [`File`] by deserializing a [`FileDescriptorProto`]
     /// from the given bytes.
     ///
     /// Unlike when going through [`from_file_descriptor_proto()`](File::from_file_descriptor_proto), extension options are preserved.

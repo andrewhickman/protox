@@ -84,12 +84,11 @@ pub use self::error::Error;
 ///                 ..Default::default()
 ///             }],
 ///             source_code_info: Some(SourceCodeInfo {
-///                 /* ... */
-/// #               location: vec![
-/// #                   Location { path: vec![], span: vec![1, 4, 19], ..Default::default() },
-/// #                   Location { path: vec![4, 0], span: vec![1, 4, 19], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 1], span: vec![1, 12, 15], ..Default::default() },
-/// #               ],
+///                 location: vec![
+///                     Location { path: vec![], span: vec![1, 4, 19], ..Default::default() },
+///                     Location { path: vec![4, 0], span: vec![1, 4, 19], ..Default::default() },
+///                     Location { path: vec![4, 0, 1], span: vec![1, 12, 15], ..Default::default() },
+///                ],
 ///             }),
 ///             ..Default::default()
 ///         },
@@ -110,18 +109,17 @@ pub use self::error::Error;
 ///                 ..Default::default()
 ///             }],
 ///             source_code_info: Some(SourceCodeInfo {
-///                 /* ... */
-/// #               location: vec![
-/// #                   Location { path: vec![], span: vec![1, 4, 5, 5], ..Default::default() },
-/// #                   Location { path: vec![3, 0], span: vec![1, 4, 23], ..Default::default() },
-/// #                   Location { path: vec![4, 0], span: vec![3, 4, 5, 5], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 1], span: vec![3, 12, 15], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 2, 0], span: vec![4, 8, 29], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 2, 0, 1], span: vec![4, 21, 24], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 2, 0, 3], span: vec![4, 27, 28], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 2, 0, 4], span: vec![4, 8, 16], ..Default::default() },
-/// #                   Location { path: vec![4, 0, 2, 0, 6], span: vec![4, 17, 20], ..Default::default() },
-/// #               ],
+///                 location: vec![
+///                     Location { path: vec![], span: vec![1, 4, 5, 5], ..Default::default() },
+///                     Location { path: vec![3, 0], span: vec![1, 4, 23], ..Default::default() },
+///                     Location { path: vec![4, 0], span: vec![3, 4, 5, 5], ..Default::default() },
+///                     Location { path: vec![4, 0, 1], span: vec![3, 12, 15], ..Default::default() },
+///                     Location { path: vec![4, 0, 2, 0], span: vec![4, 8, 29], ..Default::default() },
+///                     Location { path: vec![4, 0, 2, 0, 1], span: vec![4, 21, 24], ..Default::default() },
+///                     Location { path: vec![4, 0, 2, 0, 3], span: vec![4, 27, 28], ..Default::default() },
+///                     Location { path: vec![4, 0, 2, 0, 4], span: vec![4, 8, 16], ..Default::default() },
+///                     Location { path: vec![4, 0, 2, 0, 6], span: vec![4, 17, 20], ..Default::default() },
+///                 ],
 ///             }),
 ///             ..Default::default()
 ///         },
