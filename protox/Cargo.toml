@@ -41,7 +41,7 @@ bin = ["dep:clap", "miette/fancy"]
 
 [dependencies]
 bytes = "1.5.0"
-clap = { version = "4.4.4", features = ["derive"], optional = true }
+clap = { version = "4.4.7", features = ["derive"], optional = true }
 miette = "5.8.0"
 prost = "0.12.1"
 prost-reflect = { version = "0.12.0", features = ["miette", "text-format"] }
