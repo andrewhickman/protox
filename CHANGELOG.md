@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2023-11-02
+
 ### Added
 
 - The [`prost`](https://crates.io/crates/prost) and [`prost-reflect`](https://crates.io/crates/prost-reflect) dependencies are now re-exported at the crate root, for easier use in build scripts.
@@ -106,7 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/andrewhickman/protox/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/andrewhickman/protox/compare/0.4.1...0.5.0
 [0.4.1]: https://github.com/andrewhickman/protox/compare/0.4.0...0.4.1
 [0.4.0]: https://github.com/andrewhickman/protox/compare/0.3.5...0.4.0
