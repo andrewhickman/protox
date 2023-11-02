@@ -31,6 +31,8 @@ mod error;
 
 use std::path::Path;
 
+pub use {prost, prost_reflect};
+
 pub use self::compile::Compiler;
 pub use self::error::Error;
 

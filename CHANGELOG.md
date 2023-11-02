@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The [`prost`](https://crates.io/crates/prost) and [`prost-reflect`](https://crates.io/crates/prost-reflect) dependencies are now re-exported at the crate root, for easier use in build scripts.
+
 ## [0.5.0] - 2023-09-01
 
 ### Changed
