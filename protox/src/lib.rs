@@ -5,7 +5,7 @@
 //!
 //! # Examples
 //!
-//! Usage with prost-build:
+//! Usage with [`prost-build`](https://crates.io/crates/prost-build):
 //!
 //! ```
 //! # use std::{env, fs, path::PathBuf};
@@ -18,8 +18,60 @@
 //! prost_build::compile_fds(file_descriptors).unwrap();
 //! ```
 //!
-//! For better error messages, enable the `fancy` feature of `miette` and return a
-//! [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your `main()` function.
+//! Usage with [`tonic-build`](https://crates.io/crates/tonic-build):
+//!
+//! ```rust
+//! # use std::{env, fs, path::PathBuf};
+//! # let tempdir = tempfile::TempDir::new().unwrap();
+//! # env::set_current_dir(&tempdir).unwrap();
+//! # env::set_var("OUT_DIR", tempdir.path());
+//! # fs::write("root.proto", "").unwrap();
+//! use protox::prost::Message;
+//!
+//! let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
+//!
+//! let file_descriptor_path = PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR not set"))
+//!     .join("file_descriptor_set.bin");
+//! fs::write(&file_descriptor_path, file_descriptors.encode_to_vec()).unwrap();
+//!
+//! tonic_build::configure()
+//!     .build_server(true)
+//!     .file_descriptor_set_path(&file_descriptor_path)
+//!     .skip_protoc_run()
+//!     .compile(&["root.proto"], &["."])
+//!     .unwrap();
+//! ```
+//!
+//! ### Error messages
+//!
+//! This crate uses [`miette`](https://crates.io/crates/miette) to add additional details to errors. For nice error messages, add `miette` as a dependency with the `fancy` feature enabled and return a [`miette::Result`](https://docs.rs/miette/latest/miette/type.Result.html) from your build script.
+//!
+//! ```rust
+//! # use std::{env, fs, path::PathBuf};
+//! # let tempdir = tempfile::TempDir::new().unwrap();
+//! # env::set_current_dir(&tempdir).unwrap();
+//! # env::set_var("OUT_DIR", tempdir.path());
+//! # fs::write("root.proto", "").unwrap();
+//! fn main() -> miette::Result<()> {
+//!   let _ = protox::compile(["root.proto"], ["."])?;
+//!
+//!   Ok(())
+//! }
+//! ```
+//!
+//! Example error message:
+//!
+//! ```text
+//! Error:
+//!   × name 'Bar' is not defined
+//!    ╭─[root.proto:3:1]
+//!  3 │ message Foo {
+//!  4 │     Bar bar = 1;
+//!    ·     ─┬─
+//!    ·      ╰── found here
+//!  5 │ }
+//!    ╰────
+//! ```
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
 #![doc(html_root_url = "https://docs.rs/protox/0.5.0/")]
