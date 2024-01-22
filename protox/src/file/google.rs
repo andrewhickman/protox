@@ -18,7 +18,7 @@ impl GoogleFileResolver {
 
 impl FileResolver for GoogleFileResolver {
     fn open_file(&self, name: &str, file_io: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
-        let source = file_io.read_proto(Path::new(&format!("protox/protobuf/src/{}",name))).map_err(Error::new)?;
+        let source = file_io.read_proto(Path::new(name)).map_err(Error::new)?;
         File::from_source(name, &source)
     }
 }
