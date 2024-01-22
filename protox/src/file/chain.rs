@@ -1,6 +1,7 @@
+use std::sync::Arc;
 use std::{fmt, path::Path};
 
-use super::{File, FileResolver};
+use super::{File, FileResolver, ProtoxFileIO};
 use crate::Error;
 
 /// An implementation of [`FileResolver`] which chains together several other resolvers.
@@ -39,9 +40,9 @@ impl FileResolver for ChainFileResolver {
         None
     }
 
-    fn open_file(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str, file_io: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
         for resolver in &self.resolvers {
-            match resolver.open_file(name) {
+            match resolver.open_file(name, file_io.clone()) {
                 Ok(file) => return Ok(file),
                 Err(err) if err.is_file_not_found() => continue,
                 Err(err) => return Err(err),

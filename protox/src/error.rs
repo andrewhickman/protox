@@ -21,18 +21,6 @@ pub(crate) enum ErrorKind {
     #[error("{}", err)]
     #[diagnostic(forward(err))]
     Check { err: DescriptorError },
-    #[error("error opening file '{path}'")]
-    OpenFile {
-        name: String,
-        path: PathBuf,
-        #[source]
-        err: io::Error,
-    },
-    #[error("file '{name}' is too large")]
-    #[diagnostic(help("the maximum file length is 2,147,483,647 bytes"))]
-    FileTooLarge { name: String },
-    #[error("file '{name}' is not valid utf-8")]
-    FileInvalidUtf8 { name: String },
     #[error("import '{name}' not found")]
     ImportNotFound { name: String },
     #[error("import cycle detected: {cycle}")]
@@ -73,10 +61,7 @@ impl Error {
         match &*self.kind {
             ErrorKind::Parse { err } => Some(err.file()),
             ErrorKind::Check { err } => err.file(),
-            ErrorKind::OpenFile { name, .. }
-            | ErrorKind::FileTooLarge { name }
-            | ErrorKind::FileInvalidUtf8 { name }
-            | ErrorKind::ImportNotFound { name }
+            ErrorKind::ImportNotFound { name }
             | ErrorKind::CircularImport { name, .. }
             | ErrorKind::FileShadowed { name, .. } => Some(name),
             ErrorKind::FileNotIncluded { .. } => None,
@@ -105,21 +90,12 @@ impl Error {
 
     /// Returns true if this error is caused by an invalid protobuf source file.
     pub fn is_parse(&self) -> bool {
-        matches!(
-            &*self.kind,
-            ErrorKind::Parse { .. }
-                | ErrorKind::FileTooLarge { .. }
-                | ErrorKind::FileInvalidUtf8 { .. }
-        )
+        matches!(&*self.kind, ErrorKind::Parse { .. })
     }
 
     /// Returns true if this error is caused by an IO error while opening a file.
     pub fn is_io(&self) -> bool {
-        match &*self.kind {
-            ErrorKind::OpenFile { .. } => true,
-            ErrorKind::Custom(err) if err.downcast_ref::<io::Error>().is_some() => true,
-            _ => false,
-        }
+        matches!(&*self.kind, ErrorKind::Custom(err) if err.downcast_ref::<io::Error>().is_some())
     }
 }
 
@@ -146,32 +122,13 @@ impl fmt::Debug for Error {
         match &*self.kind {
             ErrorKind::Parse { err } => err.fmt(f),
             ErrorKind::Check { err } => err.fmt(f),
-            ErrorKind::OpenFile { err, .. } => write!(f, "{}: {}", self, err),
-            ErrorKind::FileTooLarge { .. }
-            | ErrorKind::FileInvalidUtf8 { .. }
-            | ErrorKind::ImportNotFound { .. }
+            ErrorKind::ImportNotFound { .. }
             | ErrorKind::CircularImport { .. }
             | ErrorKind::FileNotIncluded { .. }
             | ErrorKind::FileShadowed { .. } => write!(f, "{}", self),
             ErrorKind::Custom(err) => err.fmt(f),
         }
     }
-}
-
-#[test]
-fn fmt_debug_io() {
-    let err = Error::from_kind(ErrorKind::OpenFile {
-        name: "file.proto".into(),
-        path: "path/to/file.proto".into(),
-        err: io::Error::new(io::ErrorKind::Other, "io error"),
-    });
-
-    assert!(err.is_io());
-    assert_eq!(err.file(), Some("file.proto"));
-    assert_eq!(
-        format!("{:?}", err),
-        "error opening file 'path/to/file.proto': io error"
-    );
 }
 
 #[test]

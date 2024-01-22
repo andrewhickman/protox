@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{
     io::{self, Seek, Write},
     path::{Path, PathBuf},
@@ -9,12 +10,13 @@ use crate::{file::FileResolver, Error};
 
 use super::{
     ChainFileResolver, DescriptorSetFileResolver, File, GoogleFileResolver, IncludeFileResolver,
+    ProtoxFileIO,
 };
 
 struct EmptyFileResolver;
 
 impl FileResolver for EmptyFileResolver {
-    fn open_file(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str, _: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
         Err(Error::file_not_found(name))
     }
 }
@@ -30,7 +32,7 @@ impl FileResolver for SingleFileResolver {
         }
     }
 
-    fn open_file(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str, _: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
         if name == self.0.name() {
             Ok(File::from_file_descriptor_proto(
                 self.0.file_descriptor_proto().clone(),
@@ -41,9 +43,18 @@ impl FileResolver for SingleFileResolver {
     }
 }
 
+struct TestFileIO;
+
+impl ProtoxFileIO for TestFileIO {
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+        Ok(std::fs::read_to_string(path)?)
+    }
+}
+
 #[test]
 fn chain_file_resolver() {
     let source = "syntax = 'proto3';";
+    let file_io = Arc::new(TestFileIO {});
 
     let mut resolver = ChainFileResolver::new();
     resolver.add(EmptyFileResolver);
@@ -64,10 +75,13 @@ fn chain_file_resolver() {
     );
 
     assert!(resolver
-        .open_file("notfound.proto")
+        .open_file("notfound.proto", file_io.clone())
         .unwrap_err()
         .is_file_not_found());
-    assert_eq!(resolver.open_file("foo.proto").unwrap().name(), "foo.proto");
+    assert_eq!(
+        resolver.open_file("foo.proto", file_io).unwrap().name(),
+        "foo.proto"
+    );
 }
 
 #[test]
@@ -78,10 +92,11 @@ fn descriptor_set_file_resolver() {
     ];
     let unknown_field = &[0x90, 0x03, 0x05];
     encoded_files.extend_from_slice(unknown_field);
+    let file_io = Arc::new(TestFileIO {});
 
     let resolver = DescriptorSetFileResolver::decode(encoded_files.as_slice()).unwrap();
 
-    let file = resolver.open_file("foo.proto").unwrap();
+    let file = resolver.open_file("foo.proto", file_io.clone()).unwrap();
     assert_eq!(file.name(), "foo.proto");
     assert_eq!(file.source(), None);
     assert_eq!(file.path(), None);
@@ -100,7 +115,7 @@ fn descriptor_set_file_resolver() {
         .ends_with(unknown_field.as_ref()));
 
     assert!(resolver
-        .open_file("notfound.proto")
+        .open_file("notfound.proto", file_io)
         .unwrap_err()
         .is_file_not_found());
 }
@@ -108,92 +123,93 @@ fn descriptor_set_file_resolver() {
 #[test]
 fn google_resolver() {
     let resolver = GoogleFileResolver::new();
+    let file_io = Arc::new(TestFileIO {});
     assert_eq!(
         resolver
-            .open_file("google/protobuf/any.proto")
+            .open_file("google/protobuf/any.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/any.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/api.proto")
+            .open_file("google/protobuf/api.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/api.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/descriptor.proto")
+            .open_file("google/protobuf/descriptor.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/descriptor.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/duration.proto")
+            .open_file("google/protobuf/duration.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/duration.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/empty.proto")
+            .open_file("google/protobuf/empty.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/empty.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/field_mask.proto")
+            .open_file("google/protobuf/field_mask.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/field_mask.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/source_context.proto")
+            .open_file("google/protobuf/source_context.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/source_context.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/struct.proto")
+            .open_file("google/protobuf/struct.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/struct.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/timestamp.proto")
+            .open_file("google/protobuf/timestamp.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/timestamp.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/type.proto")
+            .open_file("google/protobuf/type.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/type.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/wrappers.proto")
+            .open_file("google/protobuf/wrappers.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/wrappers.proto"
     );
     assert_eq!(
         resolver
-            .open_file("google/protobuf/compiler/plugin.proto")
+            .open_file("google/protobuf/compiler/plugin.proto", file_io.clone())
             .unwrap()
             .name(),
         "google/protobuf/compiler/plugin.proto"
     );
     assert!(resolver
-        .open_file("otherfile")
+        .open_file("otherfile", file_io)
         .unwrap_err()
         .is_file_not_found());
 }
@@ -284,8 +300,8 @@ fn file_open() {
     let mut tempfile = tempfile::NamedTempFile::new().unwrap();
     tempfile.write_all("syntax = 'proto3';".as_bytes()).unwrap();
     tempfile.seek(io::SeekFrom::Start(0)).unwrap();
-
-    let file = File::open("foo.proto", tempfile.path()).unwrap();
+    let file_io = Arc::new(TestFileIO {});
+    let file = File::open("foo.proto", tempfile.path(), file_io).unwrap();
 
     assert_eq!(file.name(), "foo.proto");
     assert_eq!(file.path(), Some(tempfile.path()));

@@ -1,7 +1,10 @@
+use std::path::Path;
+use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
 use clap::Parser;
 use miette::Result;
+use protox::file::ProtoxFileIO;
 use protox::Compiler;
 
 #[derive(Debug, Parser)]
@@ -36,6 +39,14 @@ pub struct Args {
     include_imports: bool,
 }
 
+struct ProtoxIO;
+
+impl ProtoxFileIO for ProtoxIO {
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+        Ok(fs::read_to_string(path)?)
+    }
+}
+
 pub fn main() -> Result<()> {
     miette::set_panic_hook();
 
@@ -44,7 +55,7 @@ pub fn main() -> Result<()> {
     compiler.include_imports(args.include_imports);
     compiler.include_source_info(args.include_source_info);
     for file in args.files {
-        compiler.open_file(file)?;
+        compiler.open_file(file, Arc::new(ProtoxIO {}))?;
     }
     if let Some(output) = args.output {
         fs::write(output, compiler.encode_file_descriptor_set())

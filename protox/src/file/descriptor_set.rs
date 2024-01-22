@@ -4,7 +4,9 @@ use prost::{
     DecodeError, Message,
 };
 use prost_types::FileDescriptorProto;
+use std::sync::Arc;
 
+use crate::file::ProtoxFileIO;
 use crate::{
     file::{File, FileResolver},
     Error,
@@ -66,7 +68,7 @@ impl DescriptorSetFileResolver {
 }
 
 impl FileResolver for DescriptorSetFileResolver {
-    fn open_file(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str, _: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
         for file in &self.set {
             if file.file.name() == name {
                 return Ok(File {

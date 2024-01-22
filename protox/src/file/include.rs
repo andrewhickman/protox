@@ -1,8 +1,9 @@
 use std::path::{self, Path, PathBuf};
+use std::sync::Arc;
 
 use crate::{error::ErrorKind, Error};
 
-use super::{File, FileResolver};
+use super::{File, FileResolver, ProtoxFileIO};
 
 /// An implementation of [`FileResolver`] which searches an include path on the file system.
 #[derive(Debug)]
@@ -64,8 +65,8 @@ impl FileResolver for IncludeFileResolver {
     /// assert_eq!(file.path(), Some("./foo.proto".as_ref()));
     /// assert_eq!(file.source(), Some("/* hello! */"));
     /// ```
-    fn open_file(&self, name: &str) -> Result<File, Error> {
-        File::open(name, &self.include.join(name))
+    fn open_file(&self, name: &str, file_io: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
+        File::open(name, &self.include.join(name), file_io)
     }
 }
 

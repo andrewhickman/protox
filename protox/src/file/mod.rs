@@ -13,19 +13,14 @@ pub use google::GoogleFileResolver;
 pub use include::IncludeFileResolver;
 use prost_types::FileDescriptorProto;
 
-use std::{
-    fs,
-    io::{self, Read},
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use bytes::{Buf, Bytes};
 pub(crate) use include::{check_shadow, path_to_file_name};
 use prost::{DecodeError, Message};
 
-use crate::error::{Error, ErrorKind};
-
-const MAX_FILE_LEN: u64 = i32::MAX as u64;
+use crate::error::Error;
 
 /// A strategy for locating protobuf source files.
 ///
@@ -42,9 +37,14 @@ pub trait FileResolver {
     /// # Errors
     ///
     /// If the file is not found, the implementation should return [`Error::file_not_found`].
-    fn open_file(&self, name: &str) -> Result<File, Error>;
+    fn open_file(&self, name: &str, file_io: Arc<dyn ProtoxFileIO>) -> Result<File, Error>;
 }
 
+/// This trait allows dynamically implement file system for custom IO
+pub trait ProtoxFileIO {
+    /// This function can be used to implement the custom Input
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String>;
+}
 impl<T> FileResolver for Box<T>
 where
     T: FileResolver + ?Sized,
@@ -53,8 +53,8 @@ where
         (**self).resolve_path(path)
     }
 
-    fn open_file(&self, name: &str) -> Result<File, Error> {
-        (**self).open_file(name)
+    fn open_file(&self, name: &str, file_io: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
+        (**self).open_file(name, file_io)
     }
 }
 
@@ -89,13 +89,24 @@ impl File {
     ///
     /// ```
     /// # use std::{fs, path::PathBuf};
-    /// # use protox::file::File;
+    /// use std::path::Path;
+    /// use std::sync::Arc;
+    /// # use protox::file::{File, ProtoxFileIO};
     /// # use prost_types::{DescriptorProto, FileDescriptorProto, SourceCodeInfo, source_code_info::Location};
     /// # let tempdir = tempfile::TempDir::new().unwrap();
     /// # std::env::set_current_dir(&tempdir).unwrap();
     /// fs::write("foo.proto", "message Foo { }").unwrap();
     ///
-    /// let file = File::open("foo.proto", "foo.proto".as_ref()).unwrap();
+    /// struct MyFileIO;
+    ///
+    /// impl ProtoxFileIO for MyFileIO {
+    ///     fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+    ///         Ok(fs::read_to_string(path)?)
+    ///     }
+    /// }
+    ///
+    /// let file_io = Arc::new(MyFileIO{});
+    /// let file = File::open("foo.proto", "foo.proto".as_ref(), file_io.clone()).unwrap();
     /// assert_eq!(file.path(), Some("foo.proto".as_ref()));
     /// assert_eq!(file.source(), Some("message Foo { }"));
     /// assert_eq!(file.file_descriptor_proto(), &FileDescriptorProto {
@@ -114,39 +125,11 @@ impl File {
     ///     ..Default::default()
     /// });
     ///
-    /// assert!(File::open("notfound.proto", "notfound.proto".as_ref()).unwrap_err().is_file_not_found());
+    /// assert!(File::open("notfound.proto", "notfound.proto".as_ref(), file_io).unwrap_err().is_file_not_found());
     /// ```
-    pub fn open(name: &str, path: &Path) -> Result<Self, Error> {
-        let map_io_err = |err: io::Error| -> Error {
-            match err.kind() {
-                io::ErrorKind::NotFound => Error::file_not_found(name),
-                io::ErrorKind::InvalidData => Error::from_kind(ErrorKind::FileInvalidUtf8 {
-                    name: name.to_owned(),
-                }),
-                _ => Error::from_kind(ErrorKind::OpenFile {
-                    name: name.to_owned(),
-                    path: path.to_owned(),
-                    err,
-                }),
-            }
-        };
-
-        let file = fs::File::open(path).map_err(map_io_err)?;
-        let metadata = file.metadata().map_err(map_io_err)?;
-
-        if metadata.len() > MAX_FILE_LEN {
-            return Err(Error::from_kind(ErrorKind::FileTooLarge {
-                name: name.to_owned(),
-            }));
-        }
-
-        let mut buf = String::with_capacity(metadata.len() as usize);
-        file.take(MAX_FILE_LEN)
-            .read_to_string(&mut buf)
-            .map_err(map_io_err)?;
-
+    pub fn open(name: &str, path: &Path, file_io: Arc<dyn ProtoxFileIO>) -> Result<Self, Error> {
+        let buf = file_io.read_proto(path).map_err(Error::new)?;
         let descriptor = protox_parse::parse(name, &buf)?;
-
         Ok(File {
             path: Some(path.to_owned()),
             source: Some(buf),

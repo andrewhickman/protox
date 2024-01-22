@@ -82,7 +82,9 @@ mod compile;
 mod error;
 
 use std::path::Path;
+use std::sync::Arc;
 
+use crate::file::ProtoxFileIO;
 pub use {prost, prost_reflect};
 
 pub use self::compile::Compiler;
@@ -184,10 +186,11 @@ pub use self::error::Error;
 pub fn compile(
     files: impl IntoIterator<Item = impl AsRef<Path>>,
     includes: impl IntoIterator<Item = impl AsRef<Path>>,
+    file_io: Arc<dyn ProtoxFileIO>,
 ) -> Result<prost_types::FileDescriptorSet, Error> {
     Ok(Compiler::new(includes)?
         .include_source_info(true)
         .include_imports(true)
-        .open_files(files)?
+        .open_files(files, file_io)?
         .file_descriptor_set())
 }

@@ -1,3 +1,5 @@
+use std::path::Path;
+use std::sync::Arc;
 use std::{
     env, fs,
     path::PathBuf,
@@ -7,8 +9,17 @@ use std::{
 use prost::Message;
 use prost_reflect::{DynamicMessage, ReflectMessage};
 use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
+use protox::file::ProtoxFileIO;
 use similar_asserts::assert_serde_eq;
 use tempfile::TempDir;
+
+struct TestFileIO;
+
+impl ProtoxFileIO for TestFileIO {
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+        Ok(fs::read_to_string(path)?)
+    }
+}
 
 fn test_data_dir() -> PathBuf {
     PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data")
@@ -86,9 +97,11 @@ fn protoc(files: &[String]) -> DynamicMessage {
 }
 
 fn protox(files: &[String]) -> DynamicMessage {
+    let file_io = Arc::new(TestFileIO {});
     let descriptor = protox::compile(
         files,
         [test_data_dir(), google_proto_dir(), google_src_dir()],
+        file_io,
     )
     .unwrap();
     file_descriptor_to_dynamic(descriptor)

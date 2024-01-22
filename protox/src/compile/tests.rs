@@ -5,7 +5,14 @@ use tempfile::TempDir;
 use super::*;
 
 const EMPTY: &[u8] = &[];
-const INVALID_UTF8: &[u8] = &[255];
+
+struct TestFileIO;
+
+impl ProtoxFileIO for TestFileIO {
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+        Ok(fs::read_to_string(path)?)
+    }
+}
 
 fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
     use std::{
@@ -34,6 +41,7 @@ fn with_current_dir(path: impl AsRef<Path>, f: impl FnOnce()) {
 fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name: &str) {
     let include = include.as_ref();
     let file = file.as_ref();
+    let file_io = Arc::new(TestFileIO {});
 
     std::fs::create_dir_all(include).unwrap();
     if let Some(parent) = include.join(name).parent() {
@@ -42,7 +50,7 @@ fn test_compile_success(include: impl AsRef<Path>, file: impl AsRef<Path>, name:
     std::fs::write(include.join(name), EMPTY).unwrap();
 
     let mut compiler = Compiler::new(once(include)).unwrap();
-    compiler.open_file(file).unwrap();
+    compiler.open_file(file, file_io).unwrap();
 
     assert_eq!(compiler.files().len(), 1);
     assert_eq!(compiler.descriptor_pool().files().len(), 1);
@@ -65,6 +73,7 @@ fn test_compile_error(
     name: &str,
     expected_err: ErrorKind,
 ) {
+    let file_io = Arc::new(TestFileIO {});
     let include = include.as_ref();
     let file = file.as_ref();
 
@@ -75,7 +84,7 @@ fn test_compile_error(
     std::fs::write(include.join(name), EMPTY).unwrap();
 
     let mut compiler = Compiler::new(once(include)).unwrap();
-    let err = compiler.open_file(file).unwrap_err();
+    let err = compiler.open_file(file, file_io).unwrap_err();
 
     match (err.kind(), &expected_err) {
         (
@@ -630,24 +639,8 @@ fn complex_include_complex_file() {
 }
 
 #[test]
-fn invalid_file() {
-    let dir = TempDir::new().unwrap();
-
-    std::fs::write(dir.path().join("foo.proto"), INVALID_UTF8).unwrap();
-
-    let mut compiler = Compiler::new(once(&dir)).unwrap();
-    let err = compiler.open_file("foo.proto").unwrap_err();
-
-    match err.kind() {
-        ErrorKind::FileInvalidUtf8 { name } => {
-            assert_eq!(name, "foo.proto");
-        }
-        kind => panic!("unexpected error: {}", kind),
-    }
-}
-
-#[test]
 fn shadow_file_rel() {
+    let file_io = Arc::new(TestFileIO {});
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         std::fs::write("foo.proto", EMPTY).unwrap();
@@ -655,7 +648,7 @@ fn shadow_file_rel() {
         std::fs::write(Path::new("include").join("foo.proto"), EMPTY).unwrap();
 
         let mut compiler = Compiler::new(["include", "."]).unwrap();
-        let err = compiler.open_file("foo.proto").unwrap_err();
+        let err = compiler.open_file("foo.proto", file_io).unwrap_err();
 
         match err.kind() {
             ErrorKind::FileShadowed { name, path, shadow } => {
@@ -670,6 +663,7 @@ fn shadow_file_rel() {
 
 #[test]
 fn shadow_file_rel_subdir() {
+    let file_io = Arc::new(TestFileIO {});
     let dir = TempDir::new().unwrap();
     with_current_dir(&dir, || {
         fs::create_dir_all("include1").unwrap();
@@ -680,7 +674,7 @@ fn shadow_file_rel_subdir() {
 
         let mut compiler = Compiler::new(["include1", "include2"]).unwrap();
         let err = compiler
-            .open_file(Path::new("include2").join("foo.proto"))
+            .open_file(Path::new("include2").join("foo.proto"), file_io)
             .unwrap_err();
 
         match err.kind() {
@@ -697,14 +691,14 @@ fn shadow_file_rel_subdir() {
 #[test]
 fn shadow_file_abs() {
     let dir = TempDir::new().unwrap();
-
+    let file_io = Arc::new(TestFileIO {});
     std::fs::write(dir.path().join("foo.proto"), EMPTY).unwrap();
     fs::create_dir_all(dir.path().join("include")).unwrap();
     std::fs::write(dir.path().join("include").join("foo.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.path().join("include").as_ref(), dir.path()]).unwrap();
     let err = compiler
-        .open_file(dir.path().join("foo.proto"))
+        .open_file(dir.path().join("foo.proto"), file_io)
         .unwrap_err();
 
     match err.kind() {
@@ -720,6 +714,7 @@ fn shadow_file_abs() {
 #[test]
 fn shadow_file_abs_subdir() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir_all(dir.path().join("include1")).unwrap();
     std::fs::write(dir.path().join("include1").join("foo.proto"), EMPTY).unwrap();
@@ -730,7 +725,7 @@ fn shadow_file_abs_subdir() {
     let mut compiler =
         Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
     let err = compiler
-        .open_file(dir.path().join("include2").join("foo.proto"))
+        .open_file(dir.path().join("include2").join("foo.proto"), file_io)
         .unwrap_err();
 
     match err.kind() {
@@ -744,32 +739,9 @@ fn shadow_file_abs_subdir() {
 }
 
 #[test]
-fn shadow_invalid_file() {
-    let dir = TempDir::new().unwrap();
-
-    fs::create_dir_all(dir.path().join("include1")).unwrap();
-    std::fs::write(dir.path().join("include1").join("foo.proto"), INVALID_UTF8).unwrap();
-
-    fs::create_dir_all(dir.path().join("include2")).unwrap();
-    std::fs::write(dir.path().join("include2").join("foo.proto"), EMPTY).unwrap();
-
-    let mut compiler =
-        Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
-    let err = compiler
-        .open_file(dir.path().join("include2").join("foo.proto"))
-        .unwrap_err();
-
-    match err.kind() {
-        ErrorKind::FileInvalidUtf8 { name } => {
-            assert_eq!(name, "foo.proto");
-        }
-        kind => panic!("unexpected error: {}", kind),
-    }
-}
-
-#[test]
 fn shadow_already_imported_file() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir_all(dir.path().join("include1")).unwrap();
     std::fs::write(dir.path().join("include1").join("foo.proto"), EMPTY).unwrap();
@@ -779,9 +751,9 @@ fn shadow_already_imported_file() {
 
     let mut compiler =
         Compiler::new([dir.path().join("include1"), dir.path().join("include2")]).unwrap();
-    compiler.open_file("foo.proto").unwrap();
+    compiler.open_file("foo.proto", file_io.clone()).unwrap();
     let err = compiler
-        .open_file(dir.path().join("include2").join("foo.proto"))
+        .open_file(dir.path().join("include2").join("foo.proto"), file_io)
         .unwrap_err();
 
     match err.kind() {
@@ -797,6 +769,7 @@ fn shadow_already_imported_file() {
 #[test]
 fn import_files() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
@@ -809,7 +782,7 @@ fn import_files() {
     std::fs::write(dir.path().join("dep2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     assert_eq!(compiler.files().len(), 3);
 
@@ -846,18 +819,19 @@ fn import_files() {
 #[test]
 fn import_files_include_imports_path_already_imported() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     std::fs::write(dir.path().join("root1.proto"), "import 'root2.proto';").unwrap();
     std::fs::write(dir.path().join("root2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned()]).unwrap();
-    compiler.open_file("root1.proto").unwrap();
+    compiler.open_file("root1.proto", file_io.clone()).unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 1);
     assert_eq!(file_descriptor_set.file[0].name(), "root1.proto");
 
-    compiler.open_file("root2.proto").unwrap();
+    compiler.open_file("root2.proto", file_io).unwrap();
 
     let file_descriptor_set = compiler.file_descriptor_set();
     assert_eq!(file_descriptor_set.file.len(), 2);
@@ -868,6 +842,7 @@ fn import_files_include_imports_path_already_imported() {
 #[test]
 fn import_cycle() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
@@ -880,7 +855,7 @@ fn import_cycle() {
     std::fs::write(dir.path().join("dep2.proto"), "import 'root.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
-    let err = compiler.open_file("root.proto").unwrap_err();
+    let err = compiler.open_file("root.proto", file_io).unwrap_err();
 
     match err.kind() {
         ErrorKind::CircularImport { name, cycle } => {
@@ -894,12 +869,13 @@ fn import_cycle() {
 #[test]
 fn import_cycle_short() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     std::fs::write(dir.path().join("root.proto"), "import 'dep.proto';").unwrap();
     std::fs::write(dir.path().join("dep.proto"), "import 'dep.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.path()]).unwrap();
-    let err = compiler.open_file("root.proto").unwrap_err();
+    let err = compiler.open_file("root.proto", file_io).unwrap_err();
 
     match err.kind() {
         ErrorKind::CircularImport { name, cycle } => {
@@ -913,11 +889,12 @@ fn import_cycle_short() {
 #[test]
 fn import_cycle_nested() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     std::fs::write(dir.path().join("root.proto"), "import 'root.proto';").unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
-    let err = compiler.open_file("root.proto").unwrap_err();
+    let err = compiler.open_file("root.proto", file_io).unwrap_err();
 
     match err.kind() {
         ErrorKind::CircularImport { name, cycle } => {
@@ -931,6 +908,7 @@ fn import_cycle_nested() {
 #[test]
 fn duplicated_import() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(
@@ -947,7 +925,7 @@ fn duplicated_import() {
     std::fs::write(dir.path().join("dep2.proto"), EMPTY).unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     assert_eq!(compiler.files().len(), 3);
 
@@ -973,6 +951,7 @@ fn duplicated_import() {
 #[test]
 fn import_file_absolute_path() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::create_dir(dir.path().join("include")).unwrap();
     std::fs::write(dir.path().join("include").join("dep.proto"), EMPTY).unwrap();
@@ -993,7 +972,7 @@ fn import_file_absolute_path() {
     .unwrap();
 
     let mut compiler = Compiler::new([dir.path().to_owned(), dir.path().join("include")]).unwrap();
-    compiler.open_file("root.proto").unwrap_err();
+    compiler.open_file("root.proto", file_io).unwrap_err();
 }
 
 #[cfg(windows)]

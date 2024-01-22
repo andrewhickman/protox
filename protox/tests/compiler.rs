@@ -1,3 +1,5 @@
+use std::path::Path;
+use std::sync::Arc;
 use std::{fs, io};
 
 use insta::assert_yaml_snapshot;
@@ -7,6 +9,7 @@ use prost_reflect::{DescriptorPool, Value};
 use prost_types::{
     source_code_info::Location, FileDescriptorProto, FileDescriptorSet, SourceCodeInfo,
 };
+use protox::file::ProtoxFileIO;
 use protox::{
     compile,
     file::{ChainFileResolver, DescriptorSetFileResolver, File, FileResolver, GoogleFileResolver},
@@ -18,8 +21,16 @@ struct TestFileResolver {
     files: &'static [(&'static str, &'static str)],
 }
 
+struct TestFileIO;
+
+impl ProtoxFileIO for TestFileIO {
+    fn read_proto(&self, path: &Path) -> anyhow::Result<String> {
+        Ok(fs::read_to_string(path)?)
+    }
+}
+
 impl FileResolver for TestFileResolver {
-    fn open_file(&self, name: &str) -> Result<File, Error> {
+    fn open_file(&self, name: &str, _: Arc<dyn ProtoxFileIO>) -> Result<File, Error> {
         if name == "customerror.proto" {
             return Err(Error::new(io::Error::new(
                 io::ErrorKind::Other,
@@ -39,16 +50,17 @@ impl FileResolver for TestFileResolver {
 
 fn check(files: &'static [(&'static str, &'static str)]) -> Result<Compiler, Error> {
     let tempdir = tempfile::tempdir().unwrap();
+    let file_io = Arc::new(TestFileIO {});
     for (file, source) in files {
         fs::write(tempdir.path().join(file), source).unwrap();
     }
 
     let mut compiler = Compiler::with_file_resolver(TestFileResolver { files });
     for (file, _) in &files[..files.len() - 1] {
-        compiler.open_file(file).unwrap();
+        compiler.open_file(file, file_io.clone()).unwrap();
     }
 
-    compiler.open_file(files[files.len() - 1].0)?;
+    compiler.open_file(files[files.len() - 1].0, file_io)?;
     Ok(compiler)
 }
 
@@ -91,8 +103,9 @@ fn default_options() {
     let mut compiler = Compiler::with_file_resolver(TestFileResolver {
         files: &[("dep.proto", ""), ("root.proto", "import 'dep.proto';")],
     });
+    let file_io = Arc::new(TestFileIO {});
 
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     let files = compiler.file_descriptor_set();
     assert_eq!(
@@ -118,9 +131,10 @@ fn include_imports() {
     let mut compiler = Compiler::with_file_resolver(TestFileResolver {
         files: &[("dep.proto", ""), ("root.proto", "import 'dep.proto';")],
     });
+    let file_io = Arc::new(TestFileIO {});
 
     compiler.include_imports(true);
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     let files = compiler.file_descriptor_set();
     assert_eq!(
@@ -152,9 +166,10 @@ fn include_source_info() {
     let mut compiler = Compiler::with_file_resolver(TestFileResolver {
         files: &[("dep.proto", ""), ("root.proto", "import 'dep.proto';")],
     });
+    let file_io = Arc::new(TestFileIO {});
 
     compiler.include_source_info(true);
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     let files = compiler.file_descriptor_set();
     assert_eq!(
@@ -194,10 +209,11 @@ fn include_source_info_and_imports() {
     let mut compiler = Compiler::with_file_resolver(TestFileResolver {
         files: &[("dep.proto", ""), ("root.proto", "import 'dep.proto';")],
     });
+    let file_io = Arc::new(TestFileIO {});
 
     compiler.include_imports(true);
     compiler.include_source_info(true);
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io).unwrap();
 
     let files = compiler.file_descriptor_set();
     assert_eq!(
@@ -262,11 +278,12 @@ fn pass_through_extension_options() {
         ",
         )],
     });
+    let file_io = Arc::new(TestFileIO {});
     resolver.add(GoogleFileResolver::new());
 
     let mut compiler = Compiler::with_file_resolver(resolver);
     compiler.include_imports(true);
-    compiler.open_file("root.proto").unwrap();
+    compiler.open_file("root.proto", file_io.clone()).unwrap();
 
     let dyn_set = DescriptorPool::decode(compiler.encode_file_descriptor_set().as_slice()).unwrap();
     let ext = dyn_set.get_extension_by_name("ext").unwrap();
@@ -286,7 +303,9 @@ fn pass_through_extension_options() {
     let mut roundtripped_compiler = Compiler::with_file_resolver(roundtripped_resolver);
     roundtripped_compiler.include_imports(true);
 
-    roundtripped_compiler.open_file("root.proto").unwrap();
+    roundtripped_compiler
+        .open_file("root.proto", file_io)
+        .unwrap();
     let roundtripped_dyn_set = DescriptorPool::decode(
         roundtripped_compiler
             .encode_file_descriptor_set()
@@ -351,10 +370,11 @@ fn error_fmt_debug() {
 #[test]
 fn error_invalid_utf8() {
     let dir = TempDir::new().unwrap();
+    let file_io = Arc::new(TestFileIO {});
 
     fs::write(dir.path().join("foo.proto"), b"message \xF0\x90\x80Foo {}").unwrap();
 
-    let err = compile([dir.path().join("foo.proto")], [dir.path()]).unwrap_err();
+    let err = compile([dir.path().join("foo.proto")], [dir.path()], file_io).unwrap_err();
 
     assert!(err.is_parse());
     assert_eq!(err.file(), Some("foo.proto"));

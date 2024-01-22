@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     fmt::{self, Write},
@@ -8,6 +9,7 @@ use prost::Message;
 use prost_reflect::{DescriptorPool, DynamicMessage, ReflectMessage, Value};
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
+use crate::file::ProtoxFileIO;
 use crate::{
     error::{Error, ErrorKind},
     file::{check_shadow, path_to_file_name, File, FileMetadata, FileResolver},
@@ -114,7 +116,11 @@ impl Compiler {
     /// If the path is absolute, or relative to the current directory, it must reside under one of the
     /// include paths. Otherwise, it is looked up relative to the given include paths in the same way as
     /// `import` statements.
-    pub fn open_file(&mut self, path: impl AsRef<Path>) -> Result<&mut Self, Error> {
+    pub fn open_file(
+        &mut self,
+        path: impl AsRef<Path>,
+        file_io: Arc<dyn ProtoxFileIO>,
+    ) -> Result<&mut Self, Error> {
         let path = path.as_ref();
         let (name, is_resolved) = if let Some(name) = self.resolver.resolve_path(path) {
             (name, true)
@@ -134,22 +140,25 @@ impl Compiler {
             return Ok(self);
         }
 
-        let file = self.resolver.open_file(&name).map_err(|err| {
-            if err.is_file_not_found() {
-                Error::from_kind(ErrorKind::FileNotIncluded {
-                    path: path.to_owned(),
-                })
-            } else {
-                err
-            }
-        })?;
+        let file = self
+            .resolver
+            .open_file(&name, file_io.clone())
+            .map_err(|err| {
+                if err.is_file_not_found() {
+                    Error::from_kind(ErrorKind::FileNotIncluded {
+                        path: path.to_owned(),
+                    })
+                } else {
+                    err
+                }
+            })?;
         if is_resolved {
             check_shadow(&name, file.path(), path)?;
         }
 
         let mut import_stack = vec![name.clone()];
         for import in &file.descriptor.dependency {
-            self.add_import(import, &mut import_stack)?;
+            self.add_import(import, &mut import_stack, file_io.clone())?;
         }
         drop(import_stack);
 
@@ -171,9 +180,10 @@ impl Compiler {
     pub fn open_files(
         &mut self,
         paths: impl IntoIterator<Item = impl AsRef<Path>>,
+        file_io: Arc<dyn ProtoxFileIO>,
     ) -> Result<&mut Self, Error> {
         for path in paths {
-            self.open_file(path)?;
+            self.open_file(path, file_io.clone())?;
         }
 
         Ok(self)
@@ -248,7 +258,12 @@ impl Compiler {
         self.pool.files().map(|f| &self.files[f.name()])
     }
 
-    fn add_import(&mut self, file_name: &str, import_stack: &mut Vec<String>) -> Result<(), Error> {
+    fn add_import(
+        &mut self,
+        file_name: &str,
+        import_stack: &mut Vec<String>,
+        file_io: Arc<dyn ProtoxFileIO>,
+    ) -> Result<(), Error> {
         if import_stack.iter().any(|name| name == file_name) {
             let mut cycle = String::new();
             for import in import_stack {
@@ -266,11 +281,11 @@ impl Compiler {
             return Ok(());
         }
 
-        let file = self.resolver.open_file(file_name)?;
+        let file = self.resolver.open_file(file_name, file_io.clone())?;
 
         import_stack.push(file_name.to_owned());
         for import in &file.descriptor.dependency {
-            self.add_import(import, import_stack)?;
+            self.add_import(import, import_stack, file_io.clone())?;
         }
         import_stack.pop();
 
