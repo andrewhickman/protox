@@ -10,7 +10,7 @@ documentation = "https://docs.rs/protox-parse"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2021"
-rust-version = "1.64.0"
+rust-version = "1.70.0"
 include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
@@ -20,7 +20,7 @@ include = [
 
 [dependencies]
 logos = "0.13.0"
-miette = "5.8.0"
+miette = "7.0.0"
 prost-types = "0.12.1"
 thiserror = "1.0.50"
 
