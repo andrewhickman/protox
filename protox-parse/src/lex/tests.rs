@@ -1,6 +1,6 @@
 use super::*;
 
-// use proptest::prelude::*;
+use proptest::prelude::*;
 
 #[test]
 fn simple_tokens() {
@@ -552,20 +552,19 @@ fn whitespace() {
     );
 }
 
-// TODO Disabled for now due to logos bug: https://github.com/maciejhirsz/logos/issues/255
-// #[test]
-// fn prop_regression_1() {
-//     let mut lexer = Token::lexer("08¡");
+#[test]
+fn prop_regression_1() {
+    let mut lexer = Token::lexer("08¡");
 
-//     assert_eq!(lexer.next(), Some(Token::IntLiteral(0)));
-//     assert_eq!(lexer.next(), Some(Token::Error));
-//     assert_eq!(lexer.next(), None);
-// }
+    assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(0))));
+    assert_eq!(lexer.next(), Some(Err(())));
+    assert_eq!(lexer.next(), None);
+}
 
-// proptest! {
-//     #[test]
-//     fn prop_lex_random_string(s in ".{2,256}") {
-//         // Should produce at least one 'Error' token.
-//         assert_ne!(Token::lexer(&s).count(), 0);
-//     }
-// }
+proptest! {
+    #[test]
+    fn prop_lex_random_string(s in ".{2,256}") {
+        // Should produce at least one 'Error' token.
+        assert_ne!(Token::lexer(&s).count(), 0);
+    }
+}
