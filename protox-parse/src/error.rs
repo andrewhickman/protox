@@ -15,7 +15,7 @@ pub struct ParseError {
     #[related]
     related: Vec<ParseErrorKind>,
     #[source_code]
-    source_code: NamedSource,
+    source_code: NamedSource<String>,
 }
 
 #[derive(Error, Debug, Diagnostic, PartialEq)]
@@ -216,11 +216,7 @@ pub(crate) enum ParseErrorKind {
 }
 
 impl ParseError {
-    pub(crate) fn new(
-        mut related: Vec<ParseErrorKind>,
-        name: &str,
-        source: impl SourceCode + Send + Sync + 'static,
-    ) -> Self {
+    pub(crate) fn new(mut related: Vec<ParseErrorKind>, name: &str, source: String) -> Self {
         debug_assert!(!related.is_empty());
         let kind = related.remove(0);
         ParseError {

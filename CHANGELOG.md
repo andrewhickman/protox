@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The minimum supported rust version is now **1.70.0**.
+- Updated the miette dependency to version [7.0.0](https://crates.io/crates/miette/7.0.0).
 
 ## [0.5.1] - 2023-11-02
 
