@@ -177,9 +177,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "clap"
-version = "4.5.0"
+version = "4.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c21025abd42669a92efc996ef13cfb2c5c627858421ea58d5c3b331a6c134f"
+checksum = "c918d541ef2913577a0f9566e9ce27cb35b6df072075769e0b26cb5a554520da"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -187,9 +187,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.0"
+version = "4.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99"
+checksum = "9f3e7391dad68afb0c2ede1bf619f579a3dc9c2ec67f089baa397123a2f3d1eb"
 dependencies = [
  "anstream",
  "anstyle",
@@ -471,9 +471,9 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "miette"
-version = "7.0.0"
+version = "7.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98a72adfa0c7ae88ba0abcbd00047a476616c66b831d628b8ac7f1e9de0cfd67"
+checksum = "baed61d13cc3723ee6dbed730a82bfacedc60a85d81da2d77e9c3e8ebc0b504a"
 dependencies = [
  "backtrace",
  "backtrace-ext",
@@ -490,9 +490,9 @@ dependencies = [
 
 [[package]]
 name = "miette-derive"
-version = "7.0.0"
+version = "7.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "279def6bf114a34b3cf887489eb440d4dfcf709ab3ce9955e4a6f957ce5cce77"
+checksum = "f301c3f54f98abc6c212ee722f5e5c62e472a334415840669e356f04850051ec"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -895,9 +895,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.9.31"
+version = "0.9.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adf8a49373e98a4c5f0ceb5d05aa7c648d75f63774981ed95b7c7443bbd50c6e"
+checksum = "8fd075d994154d4a774f95b51fb96bdc2832b0ea48425c92546073816cda1f2f"
 dependencies = [
  "indexmap",
  "itoa",
