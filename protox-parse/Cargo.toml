@@ -22,7 +22,7 @@ include = [
 logos = "0.14.0"
 miette = "7.2.0"
 prost-types = "0.12.1"
-thiserror = "1.0.57"
+thiserror = "1.0.58"
 
 [dev-dependencies]
 insta = "1.36.1"
