@@ -159,6 +159,7 @@ compare!(reserved_ranges);
 compare!(oneof_group_field);
 compare!(service);
 compare!(option_group_field);
+compare!(message_name_field_name_conflict);
 
 #[test]
 fn google_protobuf_any() {

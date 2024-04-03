@@ -1,0 +1,17 @@
+// Regression test for https://github.com/andrewhickman/protox/issues/57
+syntax = "proto3";
+
+message Parent {
+    ChildMessage ChildMessage  = 1;
+    ChildEnum ChildEnum  = 2;
+}
+
+message ChildMessage {
+    string field = 1;
+}
+
+enum ChildEnum {
+    UNKNOWN = 0;
+    A = 1;
+    B = 2;
+}
