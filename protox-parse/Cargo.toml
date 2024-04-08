@@ -21,11 +21,11 @@ include = [
 [dependencies]
 logos = "0.14.0"
 miette = "7.2.0"
-prost-types = "0.12.1"
-thiserror = "1.0.57"
+prost-types = "0.12.4"
+thiserror = "1.0.58"
 
 [dev-dependencies]
-insta = "1.36.1"
+insta = "1.38.0"
 proptest = "1.3.1"
 
 [[package.metadata.release.pre-release-replacements]]
