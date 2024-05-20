@@ -40,25 +40,25 @@ required-features = ["bin"]
 bin = ["dep:clap", "miette/fancy"]
 
 [dependencies]
-bytes = "1.5.0"
-clap = { version = "4.5.2", features = ["derive"], optional = true }
+bytes = "1.6.0"
+clap = { version = "4.5.4", features = ["derive"], optional = true }
 miette = "7.2.0"
-prost = "0.12.1"
+prost = "0.12.6"
 prost-reflect = { version = "0.13.1", features = ["miette", "text-format"] }
-prost-types = "0.12.1"
+prost-types = "0.12.6"
 protox-parse = { version = "0.6.0", path = "../protox-parse" }
-thiserror = "1.0.57"
+thiserror = "1.0.61"
 
 [dev-dependencies]
-insta = { version = "1.36.1", features = ["yaml"] }
-prost-build = { version = "0.12.1" }
+insta = { version = "1.39.0", features = ["yaml"] }
+prost-build = { version = "0.12.6" }
 prost-reflect = { version = "0.13.1", features = ["serde"] }
 once_cell = { version = "1.12.0", default_features = false }
 scopeguard = "1.1.0"
-serde_yaml = "0.9.32"
+serde_yaml = "0.9.34"
 similar-asserts = { version = "1.2.0", features = ["serde"] }
 tempfile = "3.10.1"
-serde_json = "1.0.114"
+serde_json = "1.0.117"
 tonic-build = "0.11.0"
 
 [package.metadata.release]
