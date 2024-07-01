@@ -41,7 +41,7 @@ bin = ["dep:clap", "miette/fancy"]
 
 [dependencies]
 bytes = "1.6.0"
-clap = { version = "4.5.4", features = ["derive"], optional = true }
+clap = { version = "4.5.8", features = ["derive"], optional = true }
 miette = "7.2.0"
 prost = "0.12.6"
 prost-reflect = { version = "0.13.1", features = ["miette", "text-format"] }
@@ -58,7 +58,7 @@ scopeguard = "1.1.0"
 serde_yaml = "0.9.34"
 similar-asserts = { version = "1.2.0", features = ["serde"] }
 tempfile = "3.10.1"
-serde_json = "1.0.117"
+serde_json = "1.0.119"
 tonic-build = "0.11.0"
 
 [package.metadata.release]
