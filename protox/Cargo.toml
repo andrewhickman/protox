@@ -46,7 +46,7 @@ miette = "7.2.0"
 prost = "0.13.0"
 prost-reflect = { version = "0.14.0", features = ["miette", "text-format"] }
 prost-types = "0.13.0"
-protox-parse = { version = "0.6.1", path = "../protox-parse" }
+protox-parse = { version = "0.7.0", path = "../protox-parse" }
 thiserror = "1.0.61"
 
 [dev-dependencies]
