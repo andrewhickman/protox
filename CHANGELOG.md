@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2024-07-08
+
 ### Changed
 - Updated to prost [**0.13.0**](https://github.com/tokio-rs/prost/releases/tag/v0.13.0)
 
@@ -118,7 +120,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.6.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/andrewhickman/protox/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/andrewhickman/protox/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/andrewhickman/protox/compare/0.5.1...0.6.0
 [0.5.1]: https://github.com/andrewhickman/protox/compare/0.5.0...0.5.1
