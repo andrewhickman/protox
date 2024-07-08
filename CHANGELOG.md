@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.1] - 2024-06-11
+### Changed
+- Updated to prost [**0.13.0**](https://github.com/tokio-rs/prost/releases/tag/v0.13.0)
 
 ## [0.6.0] - 2024-02-07
 
