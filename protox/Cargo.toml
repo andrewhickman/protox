@@ -40,18 +40,18 @@ required-features = ["bin"]
 bin = ["dep:clap", "miette/fancy"]
 
 [dependencies]
-bytes = "1.6.0"
-clap = { version = "4.5.4", features = ["derive"], optional = true }
+bytes = "1.6.1"
+clap = { version = "4.5.9", features = ["derive"], optional = true }
 miette = "7.2.0"
-prost = "0.13.0"
+prost = "0.13.1"
 prost-reflect = { version = "0.14.0", features = ["miette", "text-format"] }
-prost-types = "0.13.0"
+prost-types = "0.13.1"
 protox-parse = { version = "0.7.0", path = "../protox-parse" }
-thiserror = "1.0.61"
+thiserror = "1.0.62"
 
 [dev-dependencies]
 insta = { version = "1.39.0", features = ["yaml"] }
-prost-build = { version = "0.13.0" }
+prost-build = { version = "0.13.1" }
 prost-reflect = { version = "0.14.0", features = ["serde"] }
 once_cell = { version = "1.12.0", default_features = false }
 scopeguard = "1.1.0"
