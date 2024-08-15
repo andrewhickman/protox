@@ -144,9 +144,9 @@ impl Error {
                             if location.span.len() != 3 {
                                 continue;
                             }
-                            let start_line = *location.span.get(0)? as usize + 1;
-                            let start_col = *location.span.get(1)? as usize + 1;
-                            let end_col = *location.span.get(2)? as usize + 1;
+                            let start_line = location.span[0] as usize + 1;
+                            let start_col = location.span[1] as usize + 1;
+                            let end_col = location.span[2] as usize + 1;
                             return Some(SourceSpan::new(
                                 SourceOffset::from_location(source, start_line, start_col),
                                 end_col - start_col,
@@ -160,7 +160,7 @@ impl Error {
         match *self.kind {
             ErrorKind::FileNotFound { name } => {
                 let source_code: NamedSource<String> =
-                    NamedSource::new(file.name(), file.source().or(Some("")).unwrap().to_string());
+                    NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
                 let span = find_span(file, import_idx);
                 Error::from_kind(ErrorKind::ImportNotFound {
                     span,
@@ -209,7 +209,7 @@ impl fmt::Debug for Error {
             } => {
                 write!(f, "{}:", source_code.name())?;
                 if let Some(span) = span {
-                    if let Ok(span_contents) = source_code.read_span(span.into(), 0, 0) {
+                    if let Ok(span_contents) = source_code.read_span(span, 0, 0) {
                         write!(
                             f,
                             "{}:{}: ",
