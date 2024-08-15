@@ -1,9 +1,11 @@
 use std::{fmt, io, path::PathBuf};
 
-use miette::Diagnostic;
+use miette::{Diagnostic, NamedSource, SourceCode, SourceOffset, SourceSpan};
 use prost_reflect::DescriptorError;
 use protox_parse::ParseError;
 use thiserror::Error;
+
+use crate::file::File;
 
 /// An error that can occur when compiling protobuf files.
 #[derive(Diagnostic, Error)]
@@ -33,8 +35,16 @@ pub(crate) enum ErrorKind {
     FileTooLarge { name: String },
     #[error("file '{name}' is not valid utf-8")]
     FileInvalidUtf8 { name: String },
+    #[error("file '{name}' not found")]
+    FileNotFound { name: String },
     #[error("import '{name}' not found")]
-    ImportNotFound { name: String },
+    ImportNotFound {
+        #[label("imported here")]
+        span: Option<SourceSpan>,
+        #[source_code]
+        source_code: NamedSource<String>,
+        name: String,
+    },
     #[error("import cycle detected: {cycle}")]
     CircularImport { name: String, cycle: String },
     #[error("file '{path}' is not in any include path")]
@@ -63,7 +73,7 @@ impl Error {
     ///
     /// This error should be returned by [`FileResolver`](crate::file::FileResolver) instances if a file is not found.
     pub fn file_not_found(name: &str) -> Self {
-        Error::from_kind(ErrorKind::ImportNotFound {
+        Error::from_kind(ErrorKind::FileNotFound {
             name: name.to_owned(),
         })
     }
@@ -76,11 +86,12 @@ impl Error {
             ErrorKind::OpenFile { name, .. }
             | ErrorKind::FileTooLarge { name }
             | ErrorKind::FileInvalidUtf8 { name }
-            | ErrorKind::ImportNotFound { name }
+            | ErrorKind::FileNotFound { name }
             | ErrorKind::CircularImport { name, .. }
             | ErrorKind::FileShadowed { name, .. } => Some(name),
             ErrorKind::FileNotIncluded { .. } => None,
             ErrorKind::Custom(_) => None,
+            ErrorKind::ImportNotFound { source_code, .. } => Some(source_code.name()),
         }
     }
 
@@ -99,7 +110,9 @@ impl Error {
     pub fn is_file_not_found(&self) -> bool {
         matches!(
             &*self.kind,
-            ErrorKind::ImportNotFound { .. } | ErrorKind::FileNotIncluded { .. }
+            ErrorKind::FileNotFound { .. }
+                | ErrorKind::ImportNotFound { .. }
+                | ErrorKind::FileNotIncluded { .. }
         )
     }
 
@@ -119,6 +132,43 @@ impl Error {
             ErrorKind::OpenFile { .. } => true,
             ErrorKind::Custom(err) if err.downcast_ref::<io::Error>().is_some() => true,
             _ => false,
+        }
+    }
+
+    pub(crate) fn into_import_error(self, file: &File, import_idx: usize) -> Self {
+        fn find_span(file: &File, import_idx: usize) -> Option<SourceSpan> {
+            if let Some(sci) = &file.descriptor.source_code_info {
+                if let Some(source) = file.source() {
+                    for location in &sci.location {
+                        if location.path == vec![3, import_idx as i32] {
+                            if location.span.len() != 3 {
+                                continue;
+                            }
+                            let start_line = location.span[0] as usize + 1;
+                            let start_col = location.span[1] as usize + 1;
+                            let end_col = location.span[2] as usize + 1;
+                            return Some(SourceSpan::new(
+                                SourceOffset::from_location(source, start_line, start_col),
+                                end_col - start_col,
+                            ));
+                        }
+                    }
+                }
+            }
+            None
+        }
+        match *self.kind {
+            ErrorKind::FileNotFound { name } => {
+                let source_code: NamedSource<String> =
+                    NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
+                let span = find_span(file, import_idx);
+                Error::from_kind(ErrorKind::ImportNotFound {
+                    span,
+                    source_code,
+                    name,
+                })
+            }
+            _ => self,
         }
     }
 }
@@ -149,11 +199,27 @@ impl fmt::Debug for Error {
             ErrorKind::OpenFile { err, .. } => write!(f, "{}: {}", self, err),
             ErrorKind::FileTooLarge { .. }
             | ErrorKind::FileInvalidUtf8 { .. }
-            | ErrorKind::ImportNotFound { .. }
+            | ErrorKind::FileNotFound { .. }
             | ErrorKind::CircularImport { .. }
             | ErrorKind::FileNotIncluded { .. }
             | ErrorKind::FileShadowed { .. } => write!(f, "{}", self),
             ErrorKind::Custom(err) => err.fmt(f),
+            ErrorKind::ImportNotFound {
+                span, source_code, ..
+            } => {
+                write!(f, "{}:", source_code.name())?;
+                if let Some(span) = span {
+                    if let Ok(span_contents) = source_code.read_span(span, 0, 0) {
+                        write!(
+                            f,
+                            "{}:{}: ",
+                            span_contents.line() + 1,
+                            span_contents.column() + 1
+                        )?;
+                    }
+                }
+                write!(f, "{}", self)
+            }
         }
     }
 }

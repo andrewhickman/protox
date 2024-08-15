@@ -3,7 +3,12 @@ source: protox/tests/compiler.rs
 expression: "check_err(&[(\"root.proto\", \"import 'notfound.proto';\")])"
 ---
 causes: []
-labels: []
+filename: root.proto
+labels:
+  - label: imported here
+    span:
+      length: 24
+      offset: 0
 message: "import 'notfound.proto' not found"
 related: []
 severity: error

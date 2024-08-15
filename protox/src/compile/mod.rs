@@ -148,8 +148,9 @@ impl Compiler {
         }
 
         let mut import_stack = vec![name.clone()];
-        for import in &file.descriptor.dependency {
-            self.add_import(import, &mut import_stack)?;
+        for (i, import) in file.descriptor.dependency.iter().enumerate() {
+            self.add_import(import, &mut import_stack)
+                .map_err(|e| e.into_import_error(&file, i))?;
         }
         drop(import_stack);
 
@@ -269,8 +270,9 @@ impl Compiler {
         let file = self.resolver.open_file(file_name)?;
 
         import_stack.push(file_name.to_owned());
-        for import in &file.descriptor.dependency {
-            self.add_import(import, import_stack)?;
+        for (i, import) in file.descriptor.dependency.iter().enumerate() {
+            self.add_import(import, import_stack)
+                .map_err(|e| e.into_import_error(&file, i))?;
         }
         import_stack.pop();
 

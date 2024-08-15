@@ -309,7 +309,7 @@ fn pass_through_extension_options() {
 fn error_fmt_debug() {
     let parse_err = check(&[("root.proto", "message {")]).unwrap_err();
     let check_err = check(&[("root.proto", "message Foo {} service Foo {}")]).unwrap_err();
-    let import_err = check(&[("root.proto", "import 'notfound.proto';")]).unwrap_err();
+    let import_err = check(&[("root.proto", "// comment \nimport 'notfound.proto';")]).unwrap_err();
     let open_err = check(&[("root.proto", "import 'customerror.proto';")]).unwrap_err();
 
     assert!(parse_err.is_parse());
@@ -332,11 +332,11 @@ fn error_fmt_debug() {
     );
 
     assert!(import_err.is_file_not_found());
-    assert_eq!(import_err.file(), Some("notfound.proto"));
+    assert_eq!(import_err.file(), Some("root.proto"));
     assert_eq!(import_err.to_string(), "import 'notfound.proto' not found");
     assert_eq!(
         format!("{:?}", import_err),
-        "import 'notfound.proto' not found"
+        "root.proto:2:1: import 'notfound.proto' not found"
     );
 
     assert!(open_err.is_io());
