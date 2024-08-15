@@ -103,3 +103,8 @@ included under its original ([BSD][2]) license.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+## Related projects
+
+  * [prost](https://crates.io/crates/prost) - a protocol buffers implementation for the Rust Language
+  * [protoxy](https://github.com/tardyp/protoxy) - python bindings for protox

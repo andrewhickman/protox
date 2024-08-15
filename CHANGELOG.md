@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Fixed
+
+- Improved error spans for import errors ([#80](https://github.com/andrewhickman/protox/pull/80))
+
 ## [0.7.0] - 2024-07-08
 
 ### Changed
