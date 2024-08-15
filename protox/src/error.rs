@@ -145,7 +145,7 @@ impl Error {
                                 continue;
                             }
                             let start_line = *location.span.get(0)? as usize + 1;
-                            let start_col = *location.span.get(1)? as usize + 1 ;
+                            let start_col = *location.span.get(1)? as usize + 1;
                             let end_col = *location.span.get(2)? as usize + 1;
                             return Some(SourceSpan::new(
                                 SourceOffset::from_location(source, start_line, start_col),
