@@ -4,10 +4,8 @@ use std::{
     process::{Command, Stdio},
 };
 
-use prost::Message;
-use prost_reflect::{DynamicMessage, ReflectMessage};
-use prost_types::{field_descriptor_proto::Type, DescriptorProto, FileDescriptorSet};
-use similar_asserts::assert_serde_eq;
+use prost_reflect::{DescriptorPool, DynamicMessage, SerializeOptions, Value};
+use prost_types::{field_descriptor_proto::Type, source_code_info::Location};
 use tempfile::TempDir;
 
 fn test_data_dir() -> PathBuf {
@@ -33,27 +31,24 @@ fn compare(name: &str) {
         ]
     };
 
-    let expected = protoc(&files);
-    let actual = protox(&files);
+    let expected = to_yaml(&protoc(&files));
+    let actual = to_yaml(&protox(&files));
 
-    // std::fs::write("expected.yml", to_yaml(&expected));
-    // std::fs::write("actual.yml", to_yaml(&actual));
-
-    assert_serde_eq!(expected, actual);
+    similar_asserts::assert_eq!(expected, actual);
 }
 
-// fn to_yaml(message: &DynamicMessage) -> Vec<u8> {
-//     let mut serializer = serde_yaml::Serializer::new(Vec::new());
-//     message
-//         .serialize_with_options(
-//             &mut serializer,
-//             &SerializeOptions::new()
-//                 .skip_default_fields(true)
-//                 .stringify_64_bit_integers(false),
-//         )
-//         .unwrap();
-//     serializer.into_inner().unwrap()
-// }
+fn to_yaml(message: &DynamicMessage) -> String {
+    let mut serializer = serde_yaml::Serializer::new(Vec::new());
+    message
+        .serialize_with_options(
+            &mut serializer,
+            &SerializeOptions::new()
+                .skip_default_fields(true)
+                .stringify_64_bit_integers(false),
+        )
+        .unwrap();
+    String::from_utf8(serializer.into_inner().unwrap()).unwrap()
+}
 
 fn protoc(files: &[String]) -> DynamicMessage {
     let tempdir = TempDir::new().unwrap();
@@ -80,57 +75,118 @@ fn protoc(files: &[String]) -> DynamicMessage {
     }
     let bytes = fs::read(result).unwrap();
 
-    let descriptor = FileDescriptorSet::decode(bytes.as_ref()).unwrap();
-
-    file_descriptor_to_dynamic(descriptor)
+    decode_file_descriptor(bytes)
 }
 
 fn protox(files: &[String]) -> DynamicMessage {
-    let descriptor = protox::compile(
-        files,
-        [test_data_dir(), google_proto_dir(), google_src_dir()],
-    )
-    .unwrap();
-    file_descriptor_to_dynamic(descriptor)
+    let descriptor = protox::Compiler::new([test_data_dir(), google_proto_dir(), google_src_dir()])
+        .unwrap()
+        .include_imports(true)
+        .include_source_info(true)
+        .open_files(files)
+        .unwrap()
+        .encode_file_descriptor_set();
+    decode_file_descriptor(descriptor)
 }
 
-fn file_descriptor_to_dynamic(mut descriptor: FileDescriptorSet) -> DynamicMessage {
-    for file in &mut descriptor.file {
-        // Normalize ordering of spans
-        if let Some(source_code_info) = &mut file.source_code_info {
-            source_code_info
-                .location
-                .sort_unstable_by(|l, r| l.path.cmp(&r.path).then_with(|| l.span.cmp(&r.span)));
-        }
+fn decode_file_descriptor(bytes: Vec<u8>) -> DynamicMessage {
+    let pool = DescriptorPool::decode(bytes.as_slice()).unwrap();
+    let desc = pool
+        .get_message_by_name("google.protobuf.FileDescriptorSet")
+        .unwrap();
+    let mut file_set = DynamicMessage::decode(desc, bytes.as_slice()).unwrap();
 
-        // Our formatting of floats is slightly different to protoc (and exact conformance is tricky), so we normalize
-        // them in default values
-        visit_messages(&mut file.message_type, &|message| {
-            for field in &mut message.field {
-                if !field.default_value().is_empty()
-                    && matches!(field.r#type(), Type::Float | Type::Double)
-                {
-                    field.default_value =
-                        Some(field.default_value().parse::<f64>().unwrap().to_string());
-                }
-            }
-        })
-    }
+    let files = file_set
+        .get_field_by_name_mut("file")
+        .unwrap()
+        .as_list_mut()
+        .unwrap();
 
     // We can't compare google.protobuf files directly since they are baked into protoc and may be a different version to
     // what we are using. (The google_protobuf_* tests ensures we are compiling these files correctly)
-    descriptor
-        .file
-        .retain(|f| !f.name().starts_with("google/protobuf/"));
-    debug_assert!(!descriptor.file.is_empty());
+    files.retain(|f| {
+        !f.as_message()
+            .unwrap()
+            .get_field_by_name("name")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .starts_with("google/protobuf/")
+    });
+    debug_assert!(!files.is_empty());
 
-    descriptor.transcode_to_dynamic()
+    for file in files {
+        let file = file.as_message_mut().unwrap();
+
+        // Normalize ordering of spans
+        let locations = file
+            .get_field_by_name_mut("source_code_info")
+            .unwrap()
+            .as_message_mut()
+            .unwrap()
+            .get_field_by_name_mut("location")
+            .unwrap()
+            .as_list_mut()
+            .unwrap();
+        locations.sort_unstable_by_key(|location| {
+            let location = location
+                .as_message()
+                .unwrap()
+                .transcode_to::<Location>()
+                .unwrap();
+            (location.path, location.span)
+        });
+
+        // Our formatting of floats is slightly different to protoc (and exact conformance is tricky), so we normalize
+        // them in default values
+        visit_messages(
+            file.get_field_by_name_mut("message_type")
+                .unwrap()
+                .as_list_mut()
+                .unwrap(),
+            &|message| {
+                for field in message
+                    .get_field_by_name_mut("field")
+                    .unwrap()
+                    .as_list_mut()
+                    .unwrap()
+                {
+                    let field = field.as_message_mut().unwrap();
+                    let ty = field
+                        .get_field_by_name("type")
+                        .unwrap()
+                        .as_enum_number()
+                        .unwrap();
+                    let default_value = field
+                        .get_field_by_name_mut("default_value")
+                        .unwrap()
+                        .as_string_mut()
+                        .unwrap();
+                    if !default_value.is_empty()
+                        && matches!(Type::try_from(ty), Ok(Type::Float | Type::Double))
+                    {
+                        *default_value = default_value.parse::<f64>().unwrap().to_string();
+                    }
+                }
+            },
+        )
+    }
+
+    file_set
 }
 
-fn visit_messages(messages: &mut [DescriptorProto], f: &impl Fn(&mut DescriptorProto)) {
+fn visit_messages(messages: &mut [Value], f: &impl Fn(&mut DynamicMessage)) {
     for message in messages {
+        let message = message.as_message_mut().unwrap();
         f(message);
-        visit_messages(&mut message.nested_type, f);
+        visit_messages(
+            message
+                .get_field_by_name_mut("nested_type")
+                .unwrap()
+                .as_list_mut()
+                .unwrap(),
+            f,
+        );
     }
 }
 
@@ -241,10 +297,7 @@ fn google_test_messages_proto3() {
     compare("test_messages_proto3");
 }
 
-#[test]
-fn google_unittest_custom_options() {
-    compare("unittest_custom_options");
-}
+compare!(google_unittest_custom_options);
 
 #[test]
 fn google_unittest_empty() {

@@ -56,7 +56,7 @@ prost-reflect = { version = "0.14.0", features = ["serde"] }
 once_cell = { version = "1.12.0", default-features = false }
 scopeguard = "1.1.0"
 serde_yaml = "0.9.34"
-similar-asserts = { version = "1.2.0", features = ["serde"] }
+similar-asserts = { version = "1.2.0" }
 tempfile = "3.10.1"
 serde_json = "1.0.117"
 tonic-build = "0.12.0"
