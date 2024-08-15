@@ -297,10 +297,7 @@ fn google_test_messages_proto3() {
     compare("test_messages_proto3");
 }
 
-#[test]
-fn google_unittest_custom_options() {
-    compare("unittest_custom_options");
-}
+compare!(google_unittest_custom_options);
 
 #[test]
 fn google_unittest_empty() {
