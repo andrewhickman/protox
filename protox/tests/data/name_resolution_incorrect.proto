@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "include/package.proto";
+
+package com.foo.bar;
+
+
+message Names {
+    .foo.Foo field5 = 5; // correct
+    foo.Foo field6 = 6; // incorrect: not found in com.foo
+}
