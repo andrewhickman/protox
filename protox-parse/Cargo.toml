@@ -19,10 +19,10 @@ include = [
 ]
 
 [dependencies]
-logos = "0.14.0"
+logos = "0.14.1"
 miette = "7.2.0"
-prost-types = "0.13.0"
-thiserror = "1.0.61"
+prost-types = "0.13.2"
+thiserror = "1.0.63"
 
 [dev-dependencies]
 insta = "1.39.0"
