@@ -372,10 +372,13 @@ fn name_resolution_incorrect() {
         .include_source_info(true)
         .open_files(["name_resolution_incorrect.proto"])
         .unwrap_err();
-    assert_eq!(error.to_string(), "name 'foo.Foo' is shadowed");
+    assert_eq!(
+        error.to_string(),
+        "'foo.Foo' resolves to 'com.foo.Foo', which is not defined"
+    );
     assert_eq!(
         format!("{:?}", error),
-        "name_resolution_incorrect.proto:10:5: name 'foo.Foo' is shadowed"
+        "name_resolution_incorrect.proto:10:5: 'foo.Foo' resolves to 'com.foo.Foo', which is not defined"
     );
-    assert_eq!(format!("{}", error.help().unwrap()), "'foo.Foo' is is resolved to 'com.foo.Foo', which is not defined. The innermost scope is searched first in name resolution. Consider using a leading '.'(i.e., '.foo.Foo') to start from the outermost scope.");
+    assert_eq!(format!("{}", error.help().unwrap()), "The innermost scope is searched first in name resolution. Consider using a leading '.' (i.e., '.foo.Foo') to start from the outermost scope.");
 }

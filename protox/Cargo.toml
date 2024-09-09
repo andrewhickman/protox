@@ -44,7 +44,7 @@ bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"], optional = true }
 miette = "7.2.0"
 prost = "0.13.0"
-prost-reflect = { version = "0.14.0", features = ["miette", "text-format"] }
+prost-reflect = { version = "0.14.2", features = ["miette", "text-format"] }
 prost-types = "0.13.0"
 protox-parse = { version = "0.7.0", path = "../protox-parse" }
 thiserror = "1.0.61"
@@ -52,7 +52,7 @@ thiserror = "1.0.61"
 [dev-dependencies]
 insta = { version = "1.39.0", features = ["yaml"] }
 prost-build = { version = "0.13.0" }
-prost-reflect = { version = "0.14.0", features = ["serde"] }
+prost-reflect = { version = "0.14.2", features = ["serde"] }
 once_cell = { version = "1.12.0", default-features = false }
 scopeguard = "1.1.0"
 serde_yaml = "0.9.34"
