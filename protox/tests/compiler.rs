@@ -1,4 +1,4 @@
-use std::{fs, io};
+use std::{env, fs, io, path::PathBuf};
 
 use insta::assert_yaml_snapshot;
 use miette::{Diagnostic, JSONReportHandler};
@@ -360,4 +360,25 @@ fn error_invalid_utf8() {
     assert_eq!(err.file(), Some("foo.proto"));
     assert_eq!(err.to_string(), "file 'foo.proto' is not valid utf-8");
     assert_eq!(format!("{:?}", err), "file 'foo.proto' is not valid utf-8");
+}
+
+#[test]
+fn name_resolution_incorrect() {
+    let test_data_dir =
+        PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/data");
+    let error = protox::Compiler::new([test_data_dir])
+        .unwrap()
+        .include_imports(true)
+        .include_source_info(true)
+        .open_files(["name_resolution_incorrect.proto"])
+        .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "'foo.Foo' resolves to 'com.foo.Foo', which is not defined"
+    );
+    assert_eq!(
+        format!("{:?}", error),
+        "name_resolution_incorrect.proto:10:5: 'foo.Foo' resolves to 'com.foo.Foo', which is not defined"
+    );
+    assert_eq!(format!("{}", error.help().unwrap()), "The innermost scope is searched first in name resolution. Consider using a leading '.' (i.e., '.foo.Foo') to start from the outermost scope.");
 }
