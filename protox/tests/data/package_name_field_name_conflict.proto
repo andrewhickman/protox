@@ -1,0 +1,10 @@
+// Regression test for https://github.com/andrewhickman/protox/issues/86
+syntax = "proto3";
+
+package sample;
+
+import "include/package.proto";
+
+message Sample {
+  foo.Foo foo = 2;
+}
