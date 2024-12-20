@@ -44,10 +44,9 @@ fn check(files: &'static [(&'static str, &'static str)]) -> Result<Compiler, Err
     }
 
     let mut compiler = Compiler::with_file_resolver(TestFileResolver { files });
-    for (file, _) in &files[..files.len() - 1] {
-        compiler.open_file(file).unwrap();
-    }
 
+    // Only compile last file.
+    // Imports may have errors that must be correctly listed by compilation of root.
     compiler.open_file(files[files.len() - 1].0)?;
     Ok(compiler)
 }
@@ -72,6 +71,37 @@ fn import_not_found() {
 #[test]
 fn import_error() {
     assert_yaml_snapshot!(check_err(&[("root.proto", "import 'customerror.proto';")]));
+}
+
+#[test]
+fn double_import_error() {
+    assert_yaml_snapshot!(check_err(&[
+        ("existing.proto", ""),
+        (
+            "root.proto",
+            "import 'existing.proto';
+        import 'existing.proto';
+        "
+        ),
+    ]));
+}
+
+#[test]
+fn double_import_branch_error() {
+    assert_yaml_snapshot!(check_err(&[
+        ("existing.proto", ""),
+        (
+            "branch.proto",
+            "import 'existing.proto';
+        import 'existing.proto';
+        "
+        ),
+        (
+            "root.proto",
+            "import 'branch.proto';
+        "
+        ),
+    ]));
 }
 
 #[test]

@@ -56,6 +56,17 @@ pub(crate) enum ErrorKind {
         path: PathBuf,
         shadow: PathBuf,
     },
+    /// This variant is intermediate and should not be present in the final error.
+    #[error("'{name}' was listed twice")]
+    DuplicatedThing { name: String },
+    #[error("import '{name}' was listed twice")]
+    DuplicateImport {
+        #[label("imported here")]
+        span: Option<SourceSpan>,
+        #[source_code]
+        source_code: NamedSource<String>,
+        name: String,
+    },
     #[error(transparent)]
     Custom(Box<dyn std::error::Error + Send + Sync>),
 }
@@ -83,6 +94,7 @@ impl Error {
         match &*self.kind {
             ErrorKind::Parse { err } => Some(err.file()),
             ErrorKind::Check { err } => err.file(),
+            ErrorKind::DuplicatedThing { .. } => None,
             ErrorKind::OpenFile { name, .. }
             | ErrorKind::FileTooLarge { name }
             | ErrorKind::FileInvalidUtf8 { name }
@@ -91,7 +103,8 @@ impl Error {
             | ErrorKind::FileShadowed { name, .. } => Some(name),
             ErrorKind::FileNotIncluded { .. } => None,
             ErrorKind::Custom(_) => None,
-            ErrorKind::ImportNotFound { source_code, .. } => Some(source_code.name()),
+            ErrorKind::ImportNotFound { source_code, .. }
+            | ErrorKind::DuplicateImport { source_code, .. } => Some(source_code.name()),
         }
     }
 
@@ -157,17 +170,19 @@ impl Error {
             }
             None
         }
+        let source_code =
+            NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
         match *self.kind {
-            ErrorKind::FileNotFound { name } => {
-                let source_code: NamedSource<String> =
-                    NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
-                let span = find_span(file, import_idx);
-                Error::from_kind(ErrorKind::ImportNotFound {
-                    span,
-                    source_code,
-                    name,
-                })
-            }
+            ErrorKind::FileNotFound { name } => Error::from_kind(ErrorKind::ImportNotFound {
+                span: find_span(file, import_idx),
+                source_code,
+                name,
+            }),
+            ErrorKind::DuplicatedThing { name } => Error::from_kind(ErrorKind::DuplicateImport {
+                span: find_span(file, import_idx),
+                source_code,
+                name,
+            }),
             _ => self,
         }
     }
@@ -202,9 +217,13 @@ impl fmt::Debug for Error {
             | ErrorKind::FileNotFound { .. }
             | ErrorKind::CircularImport { .. }
             | ErrorKind::FileNotIncluded { .. }
+            | ErrorKind::DuplicatedThing { .. }
             | ErrorKind::FileShadowed { .. } => write!(f, "{}", self),
             ErrorKind::Custom(err) => err.fmt(f),
-            ErrorKind::ImportNotFound {
+            ErrorKind::DuplicateImport {
+                span, source_code, ..
+            }
+            | ErrorKind::ImportNotFound {
                 span, source_code, ..
             } => {
                 write!(f, "{}:", source_code.name())?;
