@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::{self, Write},
     path::{Path, PathBuf},
 };
@@ -148,11 +148,16 @@ impl Compiler {
         }
 
         let mut import_stack = vec![name.clone()];
+        let mut already_imported = HashSet::new();
         for (i, import) in file.descriptor.dependency.iter().enumerate() {
+            if !already_imported.insert(import) {
+                return Err(Error::from_kind(ErrorKind::DuplicatedThing {
+                    name: import.to_owned(),
+                }).into_import_error(&file, i));
+            }
             self.add_import(import, &mut import_stack)
                 .map_err(|e| e.into_import_error(&file, i))?;
         }
-        drop(import_stack);
 
         let path = self.check_file(file)?;
         self.files.insert(
@@ -270,7 +275,13 @@ impl Compiler {
         let file = self.resolver.open_file(file_name)?;
 
         import_stack.push(file_name.to_owned());
+        let mut already_imported = HashSet::new();
         for (i, import) in file.descriptor.dependency.iter().enumerate() {
+            if !already_imported.insert(import) {
+                return Err(Error::from_kind(ErrorKind::DuplicatedThing {
+                    name: import.to_owned(),
+                }).into_import_error(&file, i));
+            }
             self.add_import(import, import_stack)
                 .map_err(|e| e.into_import_error(&file, i))?;
         }

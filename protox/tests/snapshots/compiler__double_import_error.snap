@@ -1,0 +1,15 @@
+---
+source: protox/tests/compiler.rs
+assertion_line: 79
+expression: "check_err(&[(\"existing.proto\", \"\"),\n(\"root.proto\",\n\"import 'existing.proto';\n        import 'existing.proto';\n        \"),])"
+---
+causes: []
+filename: root.proto
+labels:
+  - label: imported here
+    span:
+      length: 24
+      offset: 33
+message: "import 'existing.proto' was listed twice"
+related: []
+severity: error
