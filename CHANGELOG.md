@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2025-01-13
+
 ### Fixed
 
 - Duplicate `import` statements are now correctly rejected with an error ([#90](https://github.com/andrewhickman/protox/pull/90))
@@ -130,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.7.1...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.7.2...HEAD
+[0.7.2]: https://github.com/andrewhickman/protox/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/andrewhickman/protox/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/andrewhickman/protox/compare/0.6.1...0.7.0
 [0.6.1]: https://github.com/andrewhickman/protox/compare/0.6.0...0.6.1
