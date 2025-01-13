@@ -151,9 +151,7 @@ impl Compiler {
         let mut already_imported = HashSet::new();
         for (i, import) in file.descriptor.dependency.iter().enumerate() {
             if !already_imported.insert(import) {
-                return Err(Error::from_kind(ErrorKind::DuplicatedThing {
-                    name: import.to_owned(),
-                }).into_import_error(&file, i));
+                return Err(Error::duplicated_import(import.to_owned(), &file, i));
             }
             self.add_import(import, &mut import_stack)
                 .map_err(|e| e.into_import_error(&file, i))?;
@@ -278,9 +276,7 @@ impl Compiler {
         let mut already_imported = HashSet::new();
         for (i, import) in file.descriptor.dependency.iter().enumerate() {
             if !already_imported.insert(import) {
-                return Err(Error::from_kind(ErrorKind::DuplicatedThing {
-                    name: import.to_owned(),
-                }).into_import_error(&file, i));
+                return Err(Error::duplicated_import(import.to_owned(), &file, i));
             }
             self.add_import(import, import_stack)
                 .map_err(|e| e.into_import_error(&file, i))?;

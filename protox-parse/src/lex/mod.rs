@@ -79,7 +79,7 @@ impl EqFloat {
 
 impl Eq for EqFloat {}
 
-impl<'a> Token<'a> {
+impl Token<'_> {
     pub const SYNTAX: Token<'static> = Token::Ident("syntax");
     pub const PACKAGE: Token<'static> = Token::Ident("package");
     pub const IMPORT: Token<'static> = Token::Ident("import");
@@ -120,7 +120,7 @@ impl<'a> Token<'a> {
     pub const MAX: Token<'static> = Token::Ident("max");
 }
 
-impl<'a> fmt::Display for Token<'a> {
+impl fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::Ident(value) => write!(f, "{}", value),

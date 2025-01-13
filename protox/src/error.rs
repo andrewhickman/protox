@@ -57,8 +57,6 @@ pub(crate) enum ErrorKind {
         shadow: PathBuf,
     },
     /// This variant is intermediate and should not be present in the final error.
-    #[error("'{name}' was listed twice")]
-    DuplicatedThing { name: String },
     #[error("import '{name}' was listed twice")]
     DuplicateImport {
         #[label("imported here")]
@@ -94,7 +92,6 @@ impl Error {
         match &*self.kind {
             ErrorKind::Parse { err } => Some(err.file()),
             ErrorKind::Check { err } => err.file(),
-            ErrorKind::DuplicatedThing { .. } => None,
             ErrorKind::OpenFile { name, .. }
             | ErrorKind::FileTooLarge { name }
             | ErrorKind::FileInvalidUtf8 { name }
@@ -149,43 +146,53 @@ impl Error {
     }
 
     pub(crate) fn into_import_error(self, file: &File, import_idx: usize) -> Self {
-        fn find_span(file: &File, import_idx: usize) -> Option<SourceSpan> {
-            if let Some(sci) = &file.descriptor.source_code_info {
-                if let Some(source) = file.source() {
-                    for location in &sci.location {
-                        if location.path == vec![3, import_idx as i32] {
-                            if location.span.len() != 3 {
-                                continue;
-                            }
-                            let start_line = location.span[0] as usize + 1;
-                            let start_col = location.span[1] as usize + 1;
-                            let end_col = location.span[2] as usize + 1;
-                            return Some(SourceSpan::new(
-                                SourceOffset::from_location(source, start_line, start_col),
-                                end_col - start_col,
-                            ));
-                        }
-                    }
-                }
-            }
-            None
-        }
-        let source_code =
-            NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
         match *self.kind {
-            ErrorKind::FileNotFound { name } => Error::from_kind(ErrorKind::ImportNotFound {
-                span: find_span(file, import_idx),
-                source_code,
-                name,
-            }),
-            ErrorKind::DuplicatedThing { name } => Error::from_kind(ErrorKind::DuplicateImport {
-                span: find_span(file, import_idx),
-                source_code,
-                name,
-            }),
+            ErrorKind::FileNotFound { name } => {
+                let source_code: NamedSource<String> =
+                    NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
+                let span = find_import_span(file, import_idx);
+                Error::from_kind(ErrorKind::ImportNotFound {
+                    span,
+                    source_code,
+                    name,
+                })
+            }
             _ => self,
         }
     }
+
+    pub(crate) fn duplicated_import(name: String, file: &File, import_idx: usize) -> Error {
+        let source_code: NamedSource<String> =
+            NamedSource::new(file.name(), file.source().unwrap_or_default().to_owned());
+        let span = find_import_span(file, import_idx);
+        Error::from_kind(ErrorKind::DuplicateImport {
+            span,
+            source_code,
+            name,
+        })
+    }
+}
+
+fn find_import_span(file: &File, import_idx: usize) -> Option<SourceSpan> {
+    if let Some(sci) = &file.descriptor.source_code_info {
+        if let Some(source) = file.source() {
+            for location in &sci.location {
+                if location.path == [3, import_idx as i32] {
+                    if location.span.len() != 3 {
+                        continue;
+                    }
+                    let start_line = location.span[0] as usize + 1;
+                    let start_col = location.span[1] as usize + 1;
+                    let end_col = location.span[2] as usize + 1;
+                    return Some(SourceSpan::new(
+                        SourceOffset::from_location(source, start_line, start_col),
+                        end_col - start_col,
+                    ));
+                }
+            }
+        }
+    }
+    None
 }
 
 impl From<DescriptorError> for Error {
@@ -217,7 +224,6 @@ impl fmt::Debug for Error {
             | ErrorKind::FileNotFound { .. }
             | ErrorKind::CircularImport { .. }
             | ErrorKind::FileNotIncluded { .. }
-            | ErrorKind::DuplicatedThing { .. }
             | ErrorKind::FileShadowed { .. } => write!(f, "{}", self),
             ErrorKind::Custom(err) => err.fmt(f),
             ErrorKind::DuplicateImport {
