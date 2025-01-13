@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Duplicate `import` statements are now correctly rejected with an error ([#90](https://github.com/andrewhickman/protox/pull/90))
+
 ## [0.7.1] - 2024-08-15
 
 ## Fixed
