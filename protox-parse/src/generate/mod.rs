@@ -98,7 +98,7 @@ impl Context {
                     self.add_span_for(
                         &[
                             tag::file::WEAK_DEPENDENCY,
-                            index_to_i32(public_dependency.len()),
+                            index_to_i32(weak_dependency.len()),
                         ],
                         span,
                     );
