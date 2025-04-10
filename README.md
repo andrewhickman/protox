@@ -71,7 +71,7 @@ Error:
 
 ## Minimum Supported Rust Version
 
-Rust **1.70** or higher.
+Rust **1.74** or higher.
 
 The minimum supported Rust version may be changed in the future, but it will be
 done with a minor version bump.

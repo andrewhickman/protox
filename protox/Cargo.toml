@@ -10,7 +10,7 @@ documentation = "https://docs.rs/protox"
 license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2021"
-rust-version = "1.70.0"
+rust-version = "1.74.0"
 include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
@@ -47,7 +47,7 @@ prost = "0.13.0"
 prost-reflect = { version = "0.14.2", features = ["miette", "text-format"] }
 prost-types = "0.13.0"
 protox-parse = { version = "0.7.0", path = "../protox-parse" }
-thiserror = "1.0.61"
+thiserror = "2.0.0"
 
 [dev-dependencies]
 insta = { version = "1.39.0", features = ["yaml"] }

@@ -42,11 +42,11 @@
 //!
 //! ```rust
 //! # use std::{env, fs, path::PathBuf};
+//! fn main() -> miette::Result<()> {
 //! # let tempdir = tempfile::TempDir::new().unwrap();
 //! # env::set_current_dir(&tempdir).unwrap();
 //! # env::set_var("OUT_DIR", tempdir.path());
 //! # fs::write("root.proto", "").unwrap();
-//! fn main() -> miette::Result<()> {
 //!   let _ = protox::compile(["root.proto"], ["."])?;
 //!
 //!   Ok(())
