@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum supported rust version is now **1.74.0**.
+- Updated to `prost-reflect` version 0.15.0.
+
 ## [0.7.2] - 2025-01-13
 
 ### Fixed
