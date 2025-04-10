@@ -1,7 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/protox.svg)](https://crates.io/crates/protox/)
 [![docs.rs](https://docs.rs/protox/badge.svg)](https://docs.rs/protox/)
 [![deps.rs](https://deps.rs/crate/protox/0.8.0/status.svg)](https://deps.rs/crate/protox)
-![MSRV](https://img.shields.io/badge/rustc-1.70+-blue.svg)
+![MSRV](https://img.shields.io/badge/rustc-1.74+-blue.svg)
 [![Continuous integration](https://github.com/andrewhickman/protox/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewhickman/protox/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/andrewhickman/protox/branch/main/graph/badge.svg?token=9YKHGUUPUX)](https://codecov.io/gh/andrewhickman/protox)
 ![Apache 2.0 OR MIT licensed](https://img.shields.io/badge/license-Apache2.0%2FMIT-blue.svg)
