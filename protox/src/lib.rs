@@ -68,7 +68,7 @@
 //! ```
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/protox/0.7.2/")]
+#![doc(html_root_url = "https://docs.rs/protox/0.8.0/")]
 
 pub mod file;
 

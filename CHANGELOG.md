@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2025-04-10
+
 ### Changed
 
 - The minimum supported rust version is now **1.74.0**.
@@ -137,7 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Setting extension options in .proto source files is not supported
   - Some validation checks are missing
 
-[Unreleased]: https://github.com/andrewhickman/protox/compare/0.7.2...HEAD
+[Unreleased]: https://github.com/andrewhickman/protox/compare/0.8.0...HEAD
+[0.8.0]: https://github.com/andrewhickman/protox/compare/0.7.2...0.8.0
 [0.7.2]: https://github.com/andrewhickman/protox/compare/0.7.1...0.7.2
 [0.7.1]: https://github.com/andrewhickman/protox/compare/0.7.0...0.7.1
 [0.7.0]: https://github.com/andrewhickman/protox/compare/0.6.1...0.7.0
