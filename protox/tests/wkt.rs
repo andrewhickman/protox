@@ -16,6 +16,9 @@ fn prost_reflect_wkt_matches_compiled_wkt() {
         let expected = format!("{desc:#?}");
         let diff = similar_asserts::SimpleDiff::from_str(&actual, &expected, "actual", "expected");
 
+        std::fs::write("actual.txt", &actual).unwrap();
+        std::fs::write("expected.txt", &expected).unwrap();
+
         // If this fails with a non-trivial diff it's reasonable to just dump `desc` via
         // the debug representation and afterwards adjust the output to be valid rust code
         // The following steps were done for the intial version:

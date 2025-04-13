@@ -5,3 +5,6 @@ members = ["protox", "protox-parse"]
 [workspace.metadata.release]
 allow-branch = ["main"]
 consolidate-commits = false
+
+[patch.crates-io]
+prost-reflect = { git = "https://github.com/andrewhickman/prost-reflect", branch = "update-wkt" }

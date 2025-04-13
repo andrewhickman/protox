@@ -298,7 +298,10 @@ fn google_test_messages_proto3() {
     compare("test_messages_proto3");
 }
 
-compare!(google_unittest_custom_options);
+#[test]
+fn google_unittest_custom_options() {
+    compare("google/google_unittest_custom_options");
+}
 
 #[test]
 fn google_unittest_empty() {
@@ -316,23 +319,18 @@ fn google_unittest_import() {
 }
 
 #[test]
-fn google_unittest_lazy_dependencies() {
-    compare("unittest_lazy_dependencies");
-}
-
-#[test]
 fn google_unittest_no_field_presence() {
-    compare("unittest_no_field_presence");
+    compare("google/unittest_no_field_presence");
 }
 
 #[test]
 fn google_unittest_preserve_unknown_enum() {
-    compare("unittest_preserve_unknown_enum");
+    compare("google/unittest_preserve_unknown_enum");
 }
 
 #[test]
 fn google_unittest_preserve_unknown_enum2() {
-    compare("unittest_preserve_unknown_enum2");
+    compare("google/unittest_preserve_unknown_enum2");
 }
 
 #[test]
