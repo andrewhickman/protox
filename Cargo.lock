@@ -666,7 +666,7 @@ dependencies = [
 
 [[package]]
 name = "protox"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "bytes",
  "clap",
@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "protox-parse"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "insta",
  "logos",
