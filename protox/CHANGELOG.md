@@ -1,0 +1,17 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.8.1](https://github.com/andrewhickman/protox/compare/protox-v0.8.0...protox-v0.8.1) - 2025-05-24
+
+### Other
+
+- Include test files in the crate ([#95](https://github.com/andrewhickman/protox/pull/95))
+- Update protobuf version ([#94](https://github.com/andrewhickman/protox/pull/94))
+- Clarify the license due to bundled protobuf sources ([#92](https://github.com/andrewhickman/protox/pull/92))
+- Update MSRV badge in readme
