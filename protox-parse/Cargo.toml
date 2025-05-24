@@ -15,7 +15,6 @@ include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
     "src/**/*.rs",
-    "!src/**/tests.rs",
 ]
 
 [dependencies]

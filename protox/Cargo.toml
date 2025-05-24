@@ -15,7 +15,7 @@ include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
     "src/**/*.rs",
-    "!src/**/tests.rs",
+    "tests",
     "protobuf/LICENSE",
     "protobuf/src/google/protobuf/any.proto",
     "protobuf/src/google/protobuf/api.proto",
