@@ -20,7 +20,7 @@
 //!
 //! Usage with [`tonic-build`](https://crates.io/crates/tonic-build):
 //!
-//! ```rust
+//! ```rust,ignore
 //! # use std::{env, fs, path::PathBuf};
 //! # let tempdir = tempfile::TempDir::new().unwrap();
 //! # env::set_current_dir(&tempdir).unwrap();

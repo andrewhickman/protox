@@ -7,7 +7,7 @@ version = "0.8.0"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/protox"
 documentation = "https://docs.rs/protox"
-license = "(MIT OR Apache-2.0) AND BSD-3-Clause"
+license = "MIT OR Apache-2.0"
 readme = "../README.md"
 edition = "2021"
 rust-version = "1.74.0"
@@ -16,19 +16,6 @@ include = [
     "LICENSE-MIT",
     "src/**/*.rs",
     "tests",
-    "protobuf/LICENSE",
-    "protobuf/src/google/protobuf/any.proto",
-    "protobuf/src/google/protobuf/api.proto",
-    "protobuf/src/google/protobuf/descriptor.proto",
-    "protobuf/src/google/protobuf/duration.proto",
-    "protobuf/src/google/protobuf/empty.proto",
-    "protobuf/src/google/protobuf/field_mask.proto",
-    "protobuf/src/google/protobuf/source_context.proto",
-    "protobuf/src/google/protobuf/struct.proto",
-    "protobuf/src/google/protobuf/timestamp.proto",
-    "protobuf/src/google/protobuf/type.proto",
-    "protobuf/src/google/protobuf/wrappers.proto",
-    "protobuf/src/google/protobuf/compiler/plugin.proto",
 ]
 
 [[bin]]
@@ -43,23 +30,23 @@ bin = ["dep:clap", "miette/fancy"]
 bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"], optional = true }
 miette = "7.2.0"
-prost = "0.13.0"
-prost-reflect = { version = "0.15.0", features = ["miette", "text-format"] }
-prost-types = "0.13.0"
+prost = "0.14.0"
+prost-reflect = { version = "0.16.0", features = ["miette", "text-format"] }
+prost-types = "0.14.0"
 protox-parse = { version = "0.8.0", path = "../protox-parse" }
 thiserror = "2.0.0"
 
 [dev-dependencies]
 insta = { version = "1.39.0", features = ["yaml"] }
-prost-build = { version = "0.13.0" }
-prost-reflect = { version = "0.15.0", features = ["serde"] }
+prost-build = { version = "0.14.0" }
+prost-reflect = { version = "0.16.0", features = ["serde"] }
 once_cell = { version = "1.12.0", default-features = false }
 scopeguard = "1.1.0"
 serde_yaml = "0.9.34"
 similar-asserts = { version = "1.2.0" }
 tempfile = "3.10.1"
 serde_json = "1.0.117"
-tonic-build = "0.12.3"
+# tonic-build = "0.12.3"
 
 [package.metadata.release]
 tag-name = "{{version}}"

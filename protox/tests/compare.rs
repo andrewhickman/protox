@@ -13,11 +13,12 @@ fn test_data_dir() -> PathBuf {
 }
 
 fn google_proto_dir() -> PathBuf {
-    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("protobuf/src/google/protobuf")
+    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap())
+        .join("tests/protobuf/src/google/protobuf")
 }
 
 fn google_src_dir() -> PathBuf {
-    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("protobuf/src")
+    PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("tests/protobuf/src")
 }
 
 fn compare(name: &str) {
