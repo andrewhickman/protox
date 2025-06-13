@@ -87,11 +87,6 @@ Licensed under either of
 
 at your option.
 
-This project includes code imported from the Protocol Buffers project, which is
-included under its original ([BSD][2]) license.
-
-[2]: https://github.com/protocolbuffers/protobuf/blob/master/LICENSE
-
 ## Contribution
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
