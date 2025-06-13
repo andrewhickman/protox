@@ -3,7 +3,6 @@
 //! See the documentation for [`parse()`] for details.
 #![warn(missing_debug_implementations, missing_docs)]
 #![deny(unsafe_code)]
-#![doc(html_root_url = "https://docs.rs/protox-parse/0.8.0/")]
 
 use logos::Span;
 use prost_types::FileDescriptorProto;
