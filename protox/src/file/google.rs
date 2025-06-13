@@ -41,7 +41,7 @@ impl FileResolver for GoogleFileResolver {
                     file.file_descriptor_proto().clone(),
                 ))
             }
-            _ => return Err(Error::file_not_found(name)),
+            _ => Err(Error::file_not_found(name)),
         }
     }
 }
