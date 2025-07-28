@@ -46,7 +46,7 @@ serde_yaml = "0.9.34"
 similar-asserts = { version = "1.2.0" }
 tempfile = "3.10.1"
 serde_json = "1.0.117"
-# tonic-build = "0.12.3"
+tonic-prost-build = { version = "0.14", default-features = false }
 
 [package.metadata.release]
 tag-name = "{{version}}"

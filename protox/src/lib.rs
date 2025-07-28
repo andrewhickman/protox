@@ -18,9 +18,9 @@
 //! prost_build::compile_fds(file_descriptors).unwrap();
 //! ```
 //!
-//! Usage with [`tonic-build`](https://crates.io/crates/tonic-build):
+//! Usage with [`tonic-prost-build`](https://crates.io/crates/tonic-prost-build):
 //!
-//! ```rust,ignore
+//! ```rust
 //! # use std::{env, fs, path::PathBuf};
 //! # let tempdir = tempfile::TempDir::new().unwrap();
 //! # env::set_current_dir(&tempdir).unwrap();
@@ -30,7 +30,7 @@
 //!
 //! let file_descriptors = protox::compile(["root.proto"], ["."]).unwrap();
 //!
-//! tonic_build::configure()
+//! tonic_prost_build::configure()
 //!     .build_server(true)
 //!     .compile_fds(file_descriptors)
 //!     .unwrap();
