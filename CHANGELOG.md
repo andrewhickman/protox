@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1](https://github.com/andrewhickman/protox/compare/protox-v0.9.0...protox-v0.9.1) - 2025-12-01
+
+### Other
+
+- Remove a reference to `prost::DecodeError::new` which was removed in prost version 0.14.2
+
+## [0.9.0](https://github.com/andrewhickman/protox/compare/protox-v0.8.0...protox-v0.9.0) - 2025-06-13
+
+### Added
+
+- [**breaking**] Update to prost 0.14.0
+
+### Other
+
+- Fix clippy lint
+- Include test files in the crate ([#95](https://github.com/andrewhickman/protox/pull/95))
+- Update protobuf version ([#94](https://github.com/andrewhickman/protox/pull/94))
+- Clarify the license due to bundled protobuf sources ([#92](https://github.com/andrewhickman/protox/pull/92))
+- Update MSRV badge in readme
+
 ## [0.8.0] - 2025-04-10
 
 ### Changed
