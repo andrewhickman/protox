@@ -54,7 +54,7 @@ impl DescriptorSetFileResolver {
                 check_wire_type(WireType::LengthDelimited, wire_type)?;
                 let len = decode_varint(&mut buf)? as usize;
                 if len > buf.remaining() {
-                    return Err(DecodeError::new("buffer underflow"));
+                    return Err(buffer_underflow_error());
                 }
                 set.push(FileDescriptor::decode((&mut buf).take(len))?);
             } else {
@@ -92,4 +92,14 @@ impl FileDescriptor {
             encoded: Some(encoded),
         })
     }
+}
+
+fn buffer_underflow_error() -> DecodeError {
+    prost::encoding::skip_field(
+        WireType::ThirtyTwoBit,
+        1,
+        &mut [].as_slice(),
+        DecodeContext::default(),
+    )
+    .unwrap_err()
 }

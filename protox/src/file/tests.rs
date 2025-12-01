@@ -106,6 +106,12 @@ fn descriptor_set_file_resolver() {
 }
 
 #[test]
+fn file_decode_file_descriptor_proto_buffer_underflow() {
+    let invalid = b"\x0a\x01";
+    assert!(DescriptorSetFileResolver::decode(invalid.as_ref()).is_err());
+}
+
+#[test]
 fn google_resolver() {
     let resolver = GoogleFileResolver::new();
     assert_eq!(
