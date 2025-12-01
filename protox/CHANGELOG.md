@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1](https://github.com/andrewhickman/protox/compare/protox-v0.9.0...protox-v0.9.1) - 2025-12-01
+
+### Other
+
+- Avoid relying on DecodeError::new
+- Remove a couple of references to the package version which release-plz doesn't update automatically
+- Remove old reference to the BSD license
+
 ## [0.9.0](https://github.com/andrewhickman/protox/compare/protox-v0.8.0...protox-v0.9.0) - 2025-06-13
 
 ### Added
