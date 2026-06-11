@@ -59,7 +59,7 @@ pub(crate) enum Token<'a> {
     Semicolon,
     #[token("/")]
     ForwardSlash,
-    #[regex(r#"(//|#)[^\n]*\n?"#, line_comment)]
+    #[regex(r#"(//|#)[^\n]*\n?"#, line_comment, allow_greedy = true)]
     LineComment(Cow<'a, str>),
     #[token(r#"/*"#, block_comment)]
     BlockComment(Cow<'a, str>),
