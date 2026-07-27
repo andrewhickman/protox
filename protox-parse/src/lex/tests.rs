@@ -557,6 +557,7 @@ fn prop_regression_1() {
     let mut lexer = Token::lexer("08¡");
 
     assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(0))));
+    assert_eq!(lexer.next(), Some(Ok(Token::IntLiteral(8))));
     assert_eq!(lexer.next(), Some(Err(())));
     assert_eq!(lexer.next(), None);
 }
