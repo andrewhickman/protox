@@ -351,9 +351,9 @@ impl Context {
         {
             if let Some(oneof_tag) = oneof_tag {
                 let oneof_name = if ast.name.value.starts_with('_') {
-                    format!("X{}", &ast.name.value)
+                    format!("X{}", ast.name.value)
                 } else {
-                    format!("_{}", &ast.name.value)
+                    format!("_{}", ast.name.value)
                 };
 
                 let oneof_index = index_to_i32(oneofs.len());

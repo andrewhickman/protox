@@ -74,14 +74,11 @@ pub(crate) fn path_to_file_name(path: &Path) -> Option<String> {
     for component in path.components() {
         match component {
             std::path::Component::Normal(component) => {
-                if let Some(component) = component.to_str() {
-                    if !name.is_empty() {
-                        name.push('/');
-                    }
-                    name.push_str(component);
-                } else {
-                    return None;
+                let component = component.to_str()?;
+                if !name.is_empty() {
+                    name.push('/');
                 }
+                name.push_str(component);
             }
             _ => return None,
         }
