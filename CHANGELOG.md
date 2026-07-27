@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/andrewhickman/protox/compare/protox-v0.9.1...protox-v0.10.0) - 2025-12-01
+
+### Changed
+
+- The minimum supported Rust version is now 1.85.0
+- Updated logos to latest version ([#103](https://github.com/andrewhickman/protox/pull/103))
+
 ## [0.9.1](https://github.com/andrewhickman/protox/compare/protox-v0.9.0...protox-v0.9.1) - 2025-12-01
 
 ### Other
