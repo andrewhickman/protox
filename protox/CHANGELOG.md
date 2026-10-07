@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.10.0](https://github.com/andrewhickman/protox/compare/protox-v0.9.1...protox-v0.10.0) - 2026-10-07
+
+### Other
+
+- release ([#108](https://github.com/andrewhickman/protox/pull/108))
+- Update MSRV ([#107](https://github.com/andrewhickman/protox/pull/107))
+- Update MSRV to 1.80
+- Fix clippy lints
+- Update similar-asserts
