@@ -4,7 +4,7 @@ use logos::Span;
 use miette::{Diagnostic, NamedSource, SourceCode};
 use thiserror::Error;
 
-use crate::MAX_MESSAGE_FIELD_NUMBER;
+use crate::{parse::MAX_MESSAGE_NESTING_DEPTH, MAX_MESSAGE_FIELD_NUMBER};
 
 /// An error that may occur while parsing a protobuf source file.
 #[derive(Error, Diagnostic)]
@@ -210,6 +210,15 @@ pub(crate) enum ParseErrorKind {
         #[label("defined here")]
         span: Span,
     },
+    #[error("reached maximum recursion limit for nested messages")]
+    #[diagnostic(help(
+        "messages and groups may be nested at most {} levels deep",
+        MAX_MESSAGE_NESTING_DEPTH
+    ))]
+    MessageNestingTooDeep {
+        #[label("defined here")]
+        span: Span,
+    },
     #[error("file is too large")]
     #[diagnostic(help("the maximum file length is 2,147,483,647 bytes"))]
     FileTooLarge,
@@ -274,6 +283,7 @@ impl ParseError {
             ParseErrorKind::ValueInvalidType { span, .. } => Some(span.clone()),
             ParseErrorKind::IntegerValueOutOfRange { span, .. } => Some(span.clone()),
             ParseErrorKind::EmptyOneof { span } => Some(span.clone()),
+            ParseErrorKind::MessageNestingTooDeep { span } => Some(span.clone()),
             ParseErrorKind::FileTooLarge => None,
         }
     }

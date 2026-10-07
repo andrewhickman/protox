@@ -412,3 +412,55 @@ pub fn parse_file() {
     case!(parse_file("message } } } message } } }"));
     case!(parse_file("thing $"));
 }
+
+fn nested_messages(depth: usize) -> String {
+    let mut source = String::new();
+    for i in 0..depth {
+        source.push_str(&format!("message M{} {{ ", i));
+    }
+    for _ in 0..depth {
+        source.push_str("} ");
+    }
+    source
+}
+
+#[test]
+pub fn parse_message_nesting_limit() {
+    let max_depth = MAX_MESSAGE_NESTING_DEPTH as usize;
+    assert!(super::parse_file(&nested_messages(max_depth)).is_ok());
+
+    let source = nested_messages(max_depth + 1);
+    let start = source.rfind("message").unwrap();
+    assert_eq!(
+        super::parse_file(&source).unwrap_err(),
+        vec![ParseErrorKind::MessageNestingTooDeep {
+            span: start..start + "message".len(),
+        }]
+    );
+
+    // Deeply nested input must produce an error instead of overflowing the stack.
+    assert_eq!(
+        super::parse_file(&nested_messages(100_000))
+            .unwrap_err()
+            .len(),
+        1
+    );
+}
+
+#[test]
+pub fn parse_group_nesting_limit() {
+    let mut source = String::from("message Foo { ");
+    for i in 0..MAX_MESSAGE_NESTING_DEPTH {
+        source.push_str(&format!("optional group G{} = 1 {{ ", i));
+    }
+    for _ in 0..=MAX_MESSAGE_NESTING_DEPTH {
+        source.push_str("} ");
+    }
+    let start = source.rfind("group").unwrap();
+    assert_eq!(
+        super::parse_file(&source).unwrap_err(),
+        vec![ParseErrorKind::MessageNestingTooDeep {
+            span: start..start + "group".len(),
+        }]
+    );
+}

@@ -19,6 +19,11 @@ mod comments;
 #[cfg(test)]
 mod tests;
 
+/// The maximum number of levels that message and group declarations may be nested. This matches
+/// protoc, and bounds the recursion of the parser so that deeply nested input produces an error
+/// instead of overflowing the stack.
+pub(crate) const MAX_MESSAGE_NESTING_DEPTH: u32 = 31;
+
 pub(crate) fn parse_file(source: &str) -> Result<ast::File, Vec<ParseErrorKind>> {
     let mut parser = Parser::new(source);
     match parser.parse_file() {
@@ -31,6 +36,7 @@ struct Parser<'a> {
     lexer: Lexer<'a, Token<'a>>,
     peek: Option<Result<(Token<'a>, Span), ()>>,
     comments: Comments,
+    message_depth: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +62,7 @@ impl<'a> Parser<'a> {
             lexer: Token::lexer(source),
             comments: Comments::new(),
             peek: None,
+            message_depth: 0,
         }
     }
 
@@ -250,7 +257,7 @@ impl<'a> Parser<'a> {
         self.expect_eq(Token::LeftBrace)?;
         let comments = self.parse_trailing_comment(leading_comments);
 
-        let (body, end) = self.parse_message_body()?;
+        let (body, end) = self.parse_nested_message_body(start.clone())?;
 
         Ok(ast::Message {
             name,
@@ -258,6 +265,19 @@ impl<'a> Parser<'a> {
             comments,
             span: join_span(start, end),
         })
+    }
+
+    fn parse_nested_message_body(&mut self, span: Span) -> Result<(ast::MessageBody, Span), ()> {
+        if self.message_depth >= MAX_MESSAGE_NESTING_DEPTH {
+            self.add_error(ParseErrorKind::MessageNestingTooDeep { span });
+            self.skip_block();
+            return Err(());
+        }
+
+        self.message_depth += 1;
+        let result = self.parse_message_body();
+        self.message_depth -= 1;
+        result
     }
 
     fn parse_message_body(&mut self) -> Result<(ast::MessageBody, Span), ()> {
@@ -407,7 +427,7 @@ impl<'a> Parser<'a> {
 
         let comments = self.parse_trailing_comment(leading_comments);
 
-        let (body, end) = self.parse_message_body()?;
+        let (body, end) = self.parse_nested_message_body(ty_span.clone())?;
 
         Ok(ast::Field {
             label,
@@ -1162,6 +1182,33 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Ok(None) => return,
                 Ok(Some((tok, _))) if tokens.contains(&tok) => return,
+                Ok(Some(_)) => {
+                    self.bump();
+                }
+                Err(()) => {
+                    self.peek = None;
+                }
+            }
+        }
+    }
+
+    /// Skips tokens up to and including the '}' which closes the current block.
+    fn skip_block(&mut self) {
+        let mut depth = 0u32;
+        loop {
+            match self.peek() {
+                Ok(None) => return,
+                Ok(Some((Token::LeftBrace, _))) => {
+                    self.bump();
+                    depth += 1;
+                }
+                Ok(Some((Token::RightBrace, _))) => {
+                    self.bump();
+                    match depth.checked_sub(1) {
+                        None => return,
+                        Some(new_depth) => depth = new_depth,
+                    }
+                }
                 Ok(Some(_)) => {
                     self.bump();
                 }
