@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0](https://github.com/andrewhickman/protox/compare/protox-v0.9.1...protox-v0.10.0) - 2026-10-07
+
 ### Fixed
 
 - Fixed a stack overflow vulnerability when parsing deeply nested proto files. The maximum allowed nesting depth is now limited to 32 ([#106](https://github.com/andrewhickman/protox/pull/106)).
