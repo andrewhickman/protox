@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed a stack overflow vulnerability when parsing deeply nested proto files. The maximum allowed nesting depth is now limited to 32 ([#106](https://github.com/andrewhickman/protox/pull/106)).
+
 ### Other
 
 - The MSRV is now **1.85**.
