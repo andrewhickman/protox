@@ -1,7 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/protox.svg)](https://crates.io/crates/protox/)
 [![docs.rs](https://docs.rs/protox/badge.svg)](https://docs.rs/protox/)
 [![deps.rs](https://deps.rs/crate/protox/latest/status.svg)](https://deps.rs/crate/protox)
-![MSRV](https://img.shields.io/badge/rustc-1.80+-blue.svg)
+![MSRV](https://img.shields.io/badge/rustc-1.85+-blue.svg)
 [![Continuous integration](https://github.com/andrewhickman/protox/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewhickman/protox/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/andrewhickman/protox/branch/main/graph/badge.svg?token=9YKHGUUPUX)](https://codecov.io/gh/andrewhickman/protox)
 ![Apache 2.0 OR MIT licensed](https://img.shields.io/badge/license-Apache2.0%2FMIT-blue.svg)
@@ -71,7 +71,7 @@ Error:
 
 ## Minimum Supported Rust Version
 
-Rust **1.80** or higher.
+Rust **1.85** or higher.
 
 The minimum supported Rust version may be changed in the future, but it will be
 done with a minor version bump.
